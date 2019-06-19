@@ -45,7 +45,7 @@ bool Renderer::init()
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glViewport(0, 0, 1920, 1080);
 
-	std::string shaderPath = "../../src/Shaders";
+	std::string shaderPath = "../src/Shaders";
 	auto vsCode = loadTxtFile(shaderPath + "/Unlit.vs.glsl");
 	auto fsCode = loadTxtFile(shaderPath + "/Unlit.fs.glsl");
 
@@ -83,7 +83,7 @@ bool Renderer::init()
 
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
-	std::string path = "../../assets/glTF-Sample-Models/2.0";
+	std::string path = "../assets/glTF-Sample-Models/2.0";
 	std::string name = "Box";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";

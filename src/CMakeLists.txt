@@ -1,15 +1,14 @@
-project(GLRenderer)
+project(PhotonRenderer)
 
 cmake_minimum_required(VERSION 3.0)
 
-#find_package(assimp REQUIRED)
+find_package(assimp REQUIRED)
 find_package(glfw3 REQUIRED)
-#find_package(gl3w CONFIG REQUIRED)
 find_package(glew REQUIRED)
 find_package(opengl REQUIRED)
 find_package(rapidjson REQUIRED)
 
-set(BUILD_TARGET "GLRenderer")
+set(BUILD_TARGET "PhotonRenderer")
 set(SRC_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -24,9 +23,9 @@ foreach(SRC IN ITEMS ${SRC_LIST})
 endforeach()
 source_group("Shaders" FILES ${SHADER_LIST})
 
-add_executable(GLRenderer ${SRC_LIST} ${SHADER_LIST})
-target_link_libraries(GLRenderer PRIVATE glfw GLEW::GLEW ${ASSIMP_LIBRARIES} ${OPENGL_gl_LIBRARY})
+add_executable(PhotonRenderer ${SRC_LIST} ${SHADER_LIST})
+target_link_libraries(PhotonRenderer PRIVATE glfw GLEW::GLEW ${ASSIMP_LIBRARIES} ${OPENGL_gl_LIBRARY})
 
 if(WIN32)
-	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT GLRenderer)
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT PhotonRenderer)
 endif()
