@@ -49,6 +49,7 @@ namespace IO
 		}
 
 		loadBuffers(doc, path);
+		loadAnimations(doc);
 		loadMeshes(doc);
 
 		auto material = Material::create();
@@ -57,6 +58,7 @@ namespace IO
 		glm::mat4 M = glm::mat4(1.0f);
 		auto entity = Entity::create("blub", M);
 		auto r = Renderable::create(meshes[0], material);
+		r->setAnimation(animations[0]);
 		entity->addComponent(r);
 		return entity;
 	}
@@ -66,20 +68,22 @@ namespace IO
 		auto buffersNode = doc.FindMember("buffers");
 		for (auto& bufferNode : buffersNode->value.GetArray())
 		{
+			Buffer buffer;
 			std::string uri(bufferNode.FindMember("uri")->value.GetString());
 			unsigned int byteLength = bufferNode.FindMember("byteLength")->value.GetInt();
-			buffer = readBinaryFile(path + "/" + uri, byteLength);
+			buffer.data = readBinaryFile(path + "/" + uri, byteLength);
+			buffers.push_back(buffer);
 		}
 
 		auto bufferViewsNode = doc.FindMember("bufferViews");
 		for (auto& bufferViewNode : bufferViewsNode->value.GetArray())
 		{
-			BufferView bv;
-			bv.buffer = bufferViewNode.FindMember("buffer")->value.GetInt();
-			bv.byteOffset = bufferViewNode.FindMember("byteOffset")->value.GetInt();
-			bv.byteLength = bufferViewNode.FindMember("byteLength")->value.GetInt();
-			bv.target = bufferViewNode.FindMember("target")->value.GetInt();
-			bufferViews.push_back(bv);
+			BufferView bufferView;
+			bufferView.buffer = bufferViewNode.FindMember("buffer")->value.GetInt();
+			bufferView.byteOffset = bufferViewNode.FindMember("byteOffset")->value.GetInt();
+			bufferView.byteLength = bufferViewNode.FindMember("byteLength")->value.GetInt();
+			//bufferView.target = bufferViewNode.FindMember("target")->value.GetInt();
+			bufferViews.push_back(bufferView);
 		}
 
 		auto accessorsNode = doc.FindMember("accessors");
@@ -95,6 +99,63 @@ namespace IO
 		}
 	}
 
+	void GLTFImporter::loadAnimations(const json::Document& doc)
+	{
+		auto animationsNode = doc.FindMember("animations");
+		for (auto& animationNode : animationsNode->value.GetArray())
+		{
+			std::vector<std::pair<float, glm::quat>> rotationKeys;
+			auto samplersNode = animationNode.FindMember("samplers");
+			for (auto& samplerNode : samplersNode->value.GetArray())
+			{
+				int inputAcc = samplerNode.FindMember("input")->value.GetInt();
+				int outputAcc = samplerNode.FindMember("output")->value.GetInt();
+				std::string interpolation = samplerNode.FindMember("interpolation")->value.GetString();
+
+				std::cout << "sampler input: " << inputAcc << " output: " << outputAcc << " interp: " << interpolation << std::endl;
+				std::vector<float> times;
+				std::vector<glm::quat> rotations;
+				{
+					Accessor& acc = accessors[inputAcc];
+					BufferView& bv = bufferViews[acc.bufferView];
+					Buffer& buffer = buffers[bv.buffer];
+					int offset = bv.byteOffset + acc.byteOffset;
+					times.resize(acc.count);
+					memcpy(times.data(), &buffer.data[offset], acc.count * 4);
+				}
+				{
+					Accessor& acc = accessors[outputAcc];
+					BufferView& bv = bufferViews[acc.bufferView];
+					Buffer& buffer = buffers[bv.buffer];
+					int offset = bv.byteOffset + acc.byteOffset;
+					rotations.resize(acc.count);
+					memcpy(rotations.data(), &buffer.data[offset], acc.count * 16);
+				}
+
+				std::cout << "loaded " << times.size() << " times and " << rotations.size() << " rotations" << std::endl;
+				for (int i = 0; i < times.size(); i++)
+				{
+					std::cout << "rotation key: " << times[i] << " " << rotations[i].x << " " << rotations[i].y << " " << rotations[i].z << " " << rotations[i].w << std::endl;
+					rotationKeys.push_back(std::make_pair(times[i], rotations[i]));
+				}
+			}
+			auto channelsNode = animationNode.FindMember("channels");
+			for (auto& channelNode : channelsNode->value.GetArray())
+			{
+				int samplerIndex = channelNode.FindMember("sampler")->value.GetInt();
+				auto targetNode = channelNode.FindMember("target")->value.GetObject();
+				int tartetNodeIndex = targetNode.FindMember("node")->value.GetInt();
+				std::string targetPath = targetNode.FindMember("path")->value.GetString();
+
+				std::cout << "channel sampler: " << samplerIndex << " node: " << tartetNodeIndex << " path: " << targetPath << std::endl;
+			}
+
+			Animation::Ptr anim(new Animation("blub", 0, 1.0f));
+			anim->setRotations(rotationKeys);
+			animations.push_back(anim);
+		}
+	}
+	
 	void GLTFImporter::loadMeshes(const json::Document& doc)
 	{
 		TriangleSurface surface;
@@ -113,9 +174,10 @@ namespace IO
 
 					Accessor& acc = accessors[accIndex];
 					BufferView& bv = bufferViews[acc.bufferView];
+					Buffer& buffer = buffers[bv.buffer];
 					int offset = bv.byteOffset + acc.byteOffset;
 					std::vector<glm::vec3> positions(acc.count);
-					memcpy(positions.data(), &buffer[offset], acc.count * 12);
+					memcpy(positions.data(), &buffer.data[offset], acc.count * 12);
 					for (auto& p : positions)
 					{
 						Vertex v;
@@ -133,9 +195,10 @@ namespace IO
 
 					Accessor& acc = accessors[accIndex];
 					BufferView& bv = bufferViews[acc.bufferView];
+					Buffer& buffer = buffers[bv.buffer];
 					int offset = bv.byteOffset + acc.byteOffset;
 					std::vector<glm::vec3> normals(acc.count);
-					memcpy(normals.data(), &buffer[offset], acc.count * 12);
+					memcpy(normals.data(), &buffer.data[offset], acc.count * 12);
 					for (int i = 0; i < acc.count; i++)
 						surface.vertices[i].normal = normals[i];
 				}
@@ -146,14 +209,12 @@ namespace IO
 					int accIndex = indicesNode->value.GetInt();
 					std::cout << "mesh has indices at index " << accIndex << std::endl;
 
-					std::vector<GLuint> indices;
-					BufferView& bv_idx = bufferViews[accessors[accIndex].bufferView];
-					for (int i = bv_idx.byteOffset; i < bv_idx.byteLength + bv_idx.byteOffset; i += 2)
-					{
-						GLushort index;
-						memcpy(&index, &buffer[i], sizeof(unsigned short));
-						indices.push_back(index);
-					}
+					Accessor& acc = accessors[accIndex];
+					BufferView& bv = bufferViews[acc.bufferView];
+					Buffer& buffer = buffers[bv.buffer];
+					int offset = bv.byteOffset + acc.byteOffset;
+					std::vector<GLushort> indices(acc.count);
+					memcpy(indices.data(), &buffer.data[offset], acc.count * 2);
 
 					for (int i = 0; i < indices.size(); i += 3)
 					{

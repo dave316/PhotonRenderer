@@ -158,7 +158,7 @@ namespace IO
 	Entity::Ptr ModelImporter::traverse(const aiScene* pScene, const aiNode* pNode, glm::mat4 parentTransform)
 	{
 		std::string name(pNode->mName.C_Str());
-		//std::cout << "node: " << name << " #children: " << pNode->mNumChildren << " #meshes: " << pNode->mNumMeshes << std::endl;
+		std::cout << "node: " << name << " #children: " << pNode->mNumChildren << " #meshes: " << pNode->mNumMeshes << std::endl;
 
 		glm::mat4 M = parentTransform * toMat4(pNode->mTransformation);
 		auto entity = Entity::create(name, M);
@@ -171,7 +171,7 @@ namespace IO
 			//std::cout << "added mesh " << mesh->getName() << " index: " << pNode->mMeshes[0] << " mat index: " << mesh->getMaterialIndex() << std::endl;
 			if (animations.find(name) != animations.end())
 			{
-				//std::cout << "adding animation to node " << name << std::endl;
+				std::cout << "adding animation to node " << name << std::endl;
 				r->setAnimation(animations[name]);
 			}
 
@@ -193,10 +193,10 @@ namespace IO
 		float ticksPerSecond = pAnimation->mTicksPerSecond;
 		float duration = pAnimation->mDuration;
 
-		//std::cout << "loading animation " << pAnimation->mName.C_Str()
-		//	<< " ticks per second: " << ticksPerSecond
-		//	<< " duration: " << duration
-		//	<< std::endl;
+		std::cout << "loading animation " << pAnimation->mName.C_Str()
+			<< " ticks per second: " << ticksPerSecond
+			<< " duration: " << duration
+			<< std::endl;
 
 		//std::cout << "animation " << pAnimation->mName.C_Str() << " channel: " << pAnimation->mChannels[0]->mNodeName.C_Str() << std::endl;
 

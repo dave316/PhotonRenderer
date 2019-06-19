@@ -15,6 +15,11 @@ namespace IO
 	class GLTFImporter
 	{
 	private:
+		struct Buffer
+		{
+			std::vector<unsigned char> data;
+		};
+
 		struct BufferView
 		{
 			int buffer;
@@ -33,7 +38,7 @@ namespace IO
 		};
 
 		// GLTF related data
-		std::vector<unsigned char> buffer;
+		std::vector<Buffer> buffers;
 		std::vector<BufferView> bufferViews;
 		std::vector<Accessor> accessors;
 
@@ -45,6 +50,7 @@ namespace IO
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
 
 		void loadBuffers(const json::Document& doc, const std::string& path);
+		void loadAnimations(const json::Document& doc);
 		void loadMeshes(const json::Document& doc);
 
 	public:

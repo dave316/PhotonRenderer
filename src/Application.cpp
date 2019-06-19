@@ -52,13 +52,19 @@ void Application::loop()
 
 		if (animTime > tickTime)
 		{
-			camera.move(tickTime);
-			camera.rotate(tickTime);
+			camera.move(animTime);
+			camera.rotate(animTime);
 			renderer.updateCamera(camera);
 
-			//renderer.updateAnimations(startTime * 1000.0f);
+			renderer.updateAnimations(startTime);
 			animTime = 0.0f;
-		}			
+		}	
+
+		//camera.move(dt);
+		//camera.rotate(dt);
+
+		//renderer.updateCamera(camera);
+		//renderer.updateAnimations(startTime);
 		renderer.render();
 
 		window.swapBuffers();

@@ -84,7 +84,7 @@ bool Renderer::init()
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
 	std::string path = "../assets/glTF-Sample-Models/2.0";
-	std::string name = "Box";
+	std::string name = "AnimatedTriangle";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
@@ -185,25 +185,44 @@ void Renderer::render()
 	
 	auto e = rootEntitis[modelIndex];
 	{
-		auto r = e->getComponent<Renderable>();
-		glm::mat4 M = *(e->getComponent<Transform>());
+		auto rootRenderable = e->getComponent<Renderable>();
+		if (rootRenderable)
+		{
+			glm::mat4 M(1.0f);
+			if (rootRenderable->hasAnimations())
+				M = rootRenderable->getTransform();
+			else
+				M = *(e->getComponent<Transform>());
+			program.setUniform("M", M);
+			rootRenderable->render(program);
+		}
+			
+		auto models = e->getChildrenWithComponent<Renderable>();
+		for (auto m : models)
+		{
+			glm::mat4 M(1.0f);
+			auto r = m->getComponent<Renderable>();
 
-		program.setUniform("M", M);
-		r->render(program);
-//	program.setUniform("M", M);
-		//auto models = e->getChildrenWithComponent<Renderable>();
-		//for (auto m : models)
-		//{
-		//	glm::mat4 M(1.0f);
-		//	auto r = m->getComponent<Renderable>();
+			if (r->hasAnimations())
+			{
 
-		//	if(r->hasAnimations())
-		//		M = r->getTransform();
-		//	else
-		//		M = *(m->getComponent<Transform>());
+				M = r->getTransform();
+				for (int row = 0; row < 4; row++)
+				{
+					for (int col = 0; col < 4; col++)
+					{
+						std::cout << M[row][col] << " ";
+					}
+					std::cout << std::endl;
 
-		//	program.setUniform("M", M);
-		//	r->render(program);
-		//}
+				}
+			}
+				
+			else
+				M = *(m->getComponent<Transform>());
+
+			program.setUniform("M", M);
+			r->render(program);
+		}
 	}
 }

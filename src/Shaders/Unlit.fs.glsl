@@ -32,5 +32,5 @@ void main()
 	float lambert = max(dot(n,l),0.0);
 	vec3 radiance = 0.1 * diffColor + diffColor * lambert;
 
-	fragColor = vec4(radiance, 1.0);
+	fragColor = vec4(diffColor, 1.0);
 }

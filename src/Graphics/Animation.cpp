@@ -135,10 +135,10 @@ glm::mat4 Animation::calcInterpScaling()
 void Animation::update(float time)
 {
 	currentTime = fmodf(time, duration);
-	glm::mat4 translation = calcInterpPosition();
+	//glm::mat4 translation = calcInterpPosition();
 	glm::mat4 rotation = calcInterpRotation();
-	glm::mat4 scale = calcInterpScaling();
-	currentTransform = translation * rotation * scale;
+	//glm::mat4 scale = calcInterpScaling();
+	currentTransform = rotation;
 }
 
 std::string Animation::getName()
