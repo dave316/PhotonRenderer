@@ -37,6 +37,13 @@ namespace IO
 			std::string type;
 		};
 
+		struct Sampler
+		{
+			int input;
+			int output;
+			std::string interpolation;
+		};
+
 		// GLTF related data
 		std::vector<Buffer> buffers;
 		std::vector<BufferView> bufferViews;

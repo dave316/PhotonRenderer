@@ -65,6 +65,7 @@ namespace IO
 
 	void GLTFImporter::loadBuffers(const json::Document& doc, const std::string& path)
 	{
+		// TODO check if members exist....
 		auto buffersNode = doc.FindMember("buffers");
 		for (auto& bufferNode : buffersNode->value.GetArray())
 		{
@@ -82,7 +83,7 @@ namespace IO
 			bufferView.buffer = bufferViewNode.FindMember("buffer")->value.GetInt();
 			bufferView.byteOffset = bufferViewNode.FindMember("byteOffset")->value.GetInt();
 			bufferView.byteLength = bufferViewNode.FindMember("byteLength")->value.GetInt();
-			//bufferView.target = bufferViewNode.FindMember("target")->value.GetInt();
+			//bufferView.target = bufferViewNode.FindMember("target")->value.GetInt(); 
 			bufferViews.push_back(bufferView);
 		}
 
@@ -105,9 +106,16 @@ namespace IO
 		for (auto& animationNode : animationsNode->value.GetArray())
 		{
 			std::vector<std::pair<float, glm::quat>> rotationKeys;
+			std::vector<Sampler> samplers;
 			auto samplersNode = animationNode.FindMember("samplers");
 			for (auto& samplerNode : samplersNode->value.GetArray())
 			{
+				//Sampler sampler;
+				//sampler.input = samplerNode.FindMember("input")->value.GetInt();
+				//sampler.output = samplerNode.FindMember("output")->value.GetInt();
+				//sampler.interpolation = samplerNode.FindMember("interpolation")->value.GetString();
+				//samplers.push_back(sampler);
+
 				int inputAcc = samplerNode.FindMember("input")->value.GetInt();
 				int outputAcc = samplerNode.FindMember("output")->value.GetInt();
 				std::string interpolation = samplerNode.FindMember("interpolation")->value.GetString();
@@ -155,7 +163,7 @@ namespace IO
 			animations.push_back(anim);
 		}
 	}
-	
+
 	void GLTFImporter::loadMeshes(const json::Document& doc)
 	{
 		TriangleSurface surface;
