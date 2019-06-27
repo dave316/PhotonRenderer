@@ -1,5 +1,6 @@
 #include "GLTFImporter.h"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 
@@ -40,25 +41,35 @@ namespace IO
 		doc.Parse(content.c_str());
 
 		auto sceneNode = doc.FindMember("scenes");
-		for (auto& scene : sceneNode->value.GetArray())
-		{
-			for (auto& nodes : scene.FindMember("nodes")->value.GetArray())
-			{
-				std::cout <<  "root node: " << nodes.GetInt() << std::endl;
-			}
-		}
+		//for (auto& scene : sceneNode->value.GetArray())
+		//{
+		//	for (auto& nodes : scene.FindMember("nodes")->value.GetArray())
+		//	{
+		//		std::cout <<  "root node: " << nodes.GetInt() << std::endl;
+		//	}
+		//}
 
 		loadBuffers(doc, path);
-		loadAnimations(doc);
+
+		if(doc.HasMember("animations"))
+			loadAnimations(doc);
+
 		loadMeshes(doc);
 
 		auto material = Material::create();
 		material->setColor(glm::vec3(0.5f));
 
+		// TODO: parse scene graphs 
+		// TODO: add meshes/animations to corresponding nodes
 		glm::mat4 M = glm::mat4(1.0f);
 		auto entity = Entity::create("blub", M);
 		auto r = Renderable::create(meshes[0], material);
-		r->setAnimation(animations[0]);
+
+		// TODO handle multiple animations!
+		if(animations.size() > 0)
+			r->setAnimation(animations[0]);
+		if (morphAnims.size() > 0)
+			r->setMorphAnim(morphAnims[0]);
 		entity->addComponent(r);
 		return entity;
 	}
@@ -91,13 +102,23 @@ namespace IO
 		for (auto& accessorNode : accessorsNode->value.GetArray())
 		{
 			Accessor accessor;
-			accessor.bufferView = accessorNode.FindMember("bufferView")->value.GetInt();
-			accessor.byteOffset = accessorNode.FindMember("byteOffset")->value.GetInt();
+			if(accessorNode.HasMember("bufferView"))
+				accessor.bufferView = accessorNode["bufferView"].GetInt();
+			if (accessorNode.HasMember("byteOffset"))
+				accessor.byteOffset = accessorNode["byteOffset"].GetInt();
 			accessor.componentType = accessorNode.FindMember("componentType")->value.GetInt();
 			accessor.count = accessorNode.FindMember("count")->value.GetInt();
 			accessor.type = accessorNode.FindMember("type")->value.GetString();
 			accessors.push_back(accessor);
 		}
+
+		std::cout << "GLTF loadBuffers" << std::endl;
+		std::cout << "----------------" << std::endl;
+		std::cout << "Binary buffers: " << buffers.size() << std::endl;
+		for (int i = 0; i < buffers.size(); i++)
+			std::cout << "Buffer " << i << " " << buffers[i].data.size() << " bytes" << std::endl;
+		std::cout << "BufferViews: " << bufferViews.size() << std::endl;
+		std::cout << "Accesssors: " << accessors.size() << std::endl;
 	}
 
 	void GLTFImporter::loadAnimations(const json::Document& doc)
@@ -105,48 +126,23 @@ namespace IO
 		auto animationsNode = doc.FindMember("animations");
 		for (auto& animationNode : animationsNode->value.GetArray())
 		{
-			std::vector<std::pair<float, glm::quat>> rotationKeys;
 			std::vector<Sampler> samplers;
 			auto samplersNode = animationNode.FindMember("samplers");
 			for (auto& samplerNode : samplersNode->value.GetArray())
 			{
-				//Sampler sampler;
-				//sampler.input = samplerNode.FindMember("input")->value.GetInt();
-				//sampler.output = samplerNode.FindMember("output")->value.GetInt();
-				//sampler.interpolation = samplerNode.FindMember("interpolation")->value.GetString();
-				//samplers.push_back(sampler);
-
-				int inputAcc = samplerNode.FindMember("input")->value.GetInt();
-				int outputAcc = samplerNode.FindMember("output")->value.GetInt();
-				std::string interpolation = samplerNode.FindMember("interpolation")->value.GetString();
-
-				std::cout << "sampler input: " << inputAcc << " output: " << outputAcc << " interp: " << interpolation << std::endl;
-				std::vector<float> times;
-				std::vector<glm::quat> rotations;
-				{
-					Accessor& acc = accessors[inputAcc];
-					BufferView& bv = bufferViews[acc.bufferView];
-					Buffer& buffer = buffers[bv.buffer];
-					int offset = bv.byteOffset + acc.byteOffset;
-					times.resize(acc.count);
-					memcpy(times.data(), &buffer.data[offset], acc.count * 4);
-				}
-				{
-					Accessor& acc = accessors[outputAcc];
-					BufferView& bv = bufferViews[acc.bufferView];
-					Buffer& buffer = buffers[bv.buffer];
-					int offset = bv.byteOffset + acc.byteOffset;
-					rotations.resize(acc.count);
-					memcpy(rotations.data(), &buffer.data[offset], acc.count * 16);
-				}
-
-				std::cout << "loaded " << times.size() << " times and " << rotations.size() << " rotations" << std::endl;
-				for (int i = 0; i < times.size(); i++)
-				{
-					std::cout << "rotation key: " << times[i] << " " << rotations[i].x << " " << rotations[i].y << " " << rotations[i].z << " " << rotations[i].w << std::endl;
-					rotationKeys.push_back(std::make_pair(times[i], rotations[i]));
-				}
+				Sampler sampler;
+				sampler.input = samplerNode.FindMember("input")->value.GetInt();
+				sampler.output = samplerNode.FindMember("output")->value.GetInt();
+				sampler.interpolation = samplerNode.FindMember("interpolation")->value.GetString();
+				samplers.push_back(sampler);
 			}
+
+			std::vector<std::pair<float, glm::vec3>> positionKeys;
+			std::vector<std::pair<float, glm::quat>> rotationKeys;
+			std::vector<std::pair<float, glm::vec3>> scaleKeys;
+			std::vector<std::pair<float, std::pair<float, float>>> timeWeights;
+			bool isMorphAnim = false;
+			float maxTime = 0.0f;
 			auto channelsNode = animationNode.FindMember("channels");
 			for (auto& channelNode : channelsNode->value.GetArray())
 			{
@@ -155,12 +151,80 @@ namespace IO
 				int tartetNodeIndex = targetNode.FindMember("node")->value.GetInt();
 				std::string targetPath = targetNode.FindMember("path")->value.GetString();
 
-				std::cout << "channel sampler: " << samplerIndex << " node: " << tartetNodeIndex << " path: " << targetPath << std::endl;
+				int input = samplers[samplerIndex].input;
+				int output = samplers[samplerIndex].output;
+
+				if (targetPath.compare("translation") == 0)
+				{
+					std::vector<float> times;
+					std::vector<glm::vec3> translations;
+					loadData(input, times);
+					loadData(output, translations);
+
+					for (int i = 0; i < times.size(); i++)
+						positionKeys.push_back(std::make_pair(times[i], translations[i]));
+
+				}
+				else if (targetPath.compare("rotation") == 0)
+				{
+					std::vector<float> times;
+					std::vector<glm::quat> rotations;
+					loadData(input, times);
+					loadData(output, rotations);
+
+					for (int i = 0; i < times.size(); i++)
+						rotationKeys.push_back(std::make_pair(times[i], rotations[i]));
+
+				}
+				else if (targetPath.compare("scale") == 0)
+				{
+					std::vector<float> times;
+					std::vector<glm::vec3> scales;
+					loadData(input, times);
+					loadData(output, scales);
+
+					for (int i = 0; i < times.size(); i++)
+						scaleKeys.push_back(std::make_pair(times[i], scales[i]));
+
+				}
+				else if (targetPath.compare("weights") == 0)
+				{
+					isMorphAnim = true;
+
+					std::vector<float> times;
+					std::vector<float> weights;
+					loadData(input, times);
+					loadData(output, weights);
+
+					std::cout << "times: " << times.size() << std::endl;
+					std::cout << "weights: " << weights.size() << std::endl;
+
+					for (int i = 0; i < times.size(); i++)
+					{
+						maxTime = std::max(maxTime, times[i]);
+						auto weight = std::make_pair(weights[i * 2], weights[i * 2 + 1]);
+						timeWeights.push_back(std::make_pair(times[i], weight));
+					}
+				}
+				else
+				{
+					std::cout << "ERROR: animation path " << targetPath << " not implemented!!!" << std::endl;
+				}
 			}
 
-			Animation::Ptr anim(new Animation("blub", 0, 1.0f));
-			anim->setRotations(rotationKeys);
-			animations.push_back(anim);
+			if (isMorphAnim)
+			{
+				MorphAnimation::Ptr anim(new MorphAnimation("morph", 0.0f, maxTime, timeWeights));
+				morphAnims.push_back(anim);
+			}
+			else
+			{
+				Animation::Ptr anim(new Animation("blub", 0, 1.0f));
+				anim->setPositions(positionKeys);
+				anim->setRotations(rotationKeys);
+				anim->setPositions(scaleKeys);
+				animations.push_back(anim);
+			}
 		}
 	}
 
@@ -173,99 +237,101 @@ namespace IO
 			auto primitvesNode = meshNode.FindMember("primitives");
 			for (auto& primitiveNode : primitvesNode->value.GetArray())
 			{
+				std::vector<glm::vec3> positions;
+				std::vector<glm::vec3> normals;
+				std::vector<GLushort> indices; // TODO check other index types!
+
 				auto attributesNode = primitiveNode.FindMember("attributes");
 				if (attributesNode->value.HasMember("POSITION"))
 				{
 					auto posNode = attributesNode->value.FindMember("POSITION");
 					int accIndex = posNode->value.GetInt();
-					std::cout << "mesh has positions at index " << accIndex << std::endl;
-
-					Accessor& acc = accessors[accIndex];
-					BufferView& bv = bufferViews[acc.bufferView];
-					Buffer& buffer = buffers[bv.buffer];
-					int offset = bv.byteOffset + acc.byteOffset;
-					std::vector<glm::vec3> positions(acc.count);
-					memcpy(positions.data(), &buffer.data[offset], acc.count * 12);
-					for (auto& p : positions)
-					{
-						Vertex v;
-						v.position = p;
-						std::cout << p.x << " " << p.y << " " << p.z << std::endl;
-						surface.addVertex(v);
-					}
+					loadData(accIndex, positions);
 				}
 
 				if (attributesNode->value.HasMember("NORMAL"))
 				{
 					auto normalNode = attributesNode->value.FindMember("NORMAL");
 					int accIndex = normalNode->value.GetInt();
-					std::cout << "mesh has normals at index " << accIndex << std::endl;
-
-					Accessor& acc = accessors[accIndex];
-					BufferView& bv = bufferViews[acc.bufferView];
-					Buffer& buffer = buffers[bv.buffer];
-					int offset = bv.byteOffset + acc.byteOffset;
-					std::vector<glm::vec3> normals(acc.count);
-					memcpy(normals.data(), &buffer.data[offset], acc.count * 12);
-					for (int i = 0; i < acc.count; i++)
-						surface.vertices[i].normal = normals[i];
+					loadData(accIndex, normals);
 				}
 
 				if (primitiveNode.HasMember("indices"))
 				{
 					auto indicesNode = primitiveNode.FindMember("indices");
 					int accIndex = indicesNode->value.GetInt();
-					std::cout << "mesh has indices at index " << accIndex << std::endl;
+					loadData(accIndex, indices);
+				}
 
-					Accessor& acc = accessors[accIndex];
-					BufferView& bv = bufferViews[acc.bufferView];
-					Buffer& buffer = buffers[bv.buffer];
-					int offset = bv.byteOffset + acc.byteOffset;
-					std::vector<GLushort> indices(acc.count);
-					memcpy(indices.data(), &buffer.data[offset], acc.count * 2);
-
-					for (int i = 0; i < indices.size(); i += 3)
+				struct Target
+				{
+					std::vector<glm::vec3> positions;
+					std::vector<glm::vec3> normals;
+					std::vector<glm::vec3> tangents;
+				};
+				std::vector<Target> morphTargets;
+				if (primitiveNode.HasMember("targets"))
+				{
+					for (auto& targetNode : primitiveNode["targets"].GetArray())
 					{
-						std::cout << "tri " << (i / 3) << "[" << 
-							indices[i] << "," << 
-							indices[i + 1] << "," << 
-							indices[i + 2] << "]" << 
-							std::endl;
-
-						Triangle t(indices[i], indices[i + 1], indices[i + 2]);
-						surface.addTriangle(t);
+						Target t;
+						if (targetNode.HasMember("POSITION"))
+						{
+							auto posNode = targetNode.FindMember("POSITION");
+							int accIndex = posNode->value.GetInt();
+							loadData(accIndex, t.positions);
+						}
+						if (targetNode.HasMember("NORMAL"))
+						{
+							auto normalNode = targetNode.FindMember("NORMAL");
+							int accIndex = normalNode->value.GetInt();
+							loadData(accIndex, t.normals);
+						}
+						if (targetNode.HasMember("TANGENT"))
+						{
+							auto tangentNode = targetNode.FindMember("TANGENT");
+							int accIndex = tangentNode->value.GetInt();
+							loadData(accIndex, t.tangents);
+						}	
+						morphTargets.push_back(t);
 					}
+				}
+
+				for (int i = 0; i < positions.size(); i++)
+				{
+					Vertex v;
+					v.position = positions[i];
+					if (i < normals.size())
+						v.normal = normals[i];
+
+					if (morphTargets.size() == 2) // TODO: add support for more thant 2...
+					{
+						v.targetPosition0 = morphTargets[0].positions[i];
+						v.targetPosition1 = morphTargets[1].positions[i];
+						if (i < morphTargets[0].normals.size() &&
+							i < morphTargets[1].normals.size())
+						{
+							v.targetNormal0 = morphTargets[0].normals[i];
+							v.targetNormal1 = morphTargets[1].normals[i];
+						}
+						if (i < morphTargets[0].tangents.size() &&
+							i < morphTargets[1].tangents.size())
+						{
+							v.targetTangent0 = morphTargets[0].tangents[i];
+							v.targetTangent1 = morphTargets[1].tangents[i];
+						}
+					}
+
+					surface.addVertex(v);
+				}
+
+				for (int i = 0; i < indices.size(); i += 3)
+				{
+					Triangle t(indices[i], indices[i + 1], indices[i + 2]);
+					surface.addTriangle(t);
 				}
 			}			
 		}
-
-		std::cout << "loaded " << surface.vertices.size() << " verts, " << surface.triangles.size() << " tris " << std::endl;
-
-		//TriangleSurface surface;
-		//BufferView& bv_verts = bufferViews[accessors[1].bufferView];
-		//std::vector<glm::vec3> positions(accessors[1].count);
-		//memcpy(positions.data(), &buffer[bv_verts.byteOffset], bv_verts.byteLength);
-		//for (auto& p : positions)
-		//{
-		//	Vertex v;
-		//	v.position = p;
-		//	surface.addVertex(v);
-		//}
-
-		//std::vector<GLuint> indices;
-		//BufferView& bv_idx = bufferViews[accessors[0].bufferView];
-		//for (int i = bv_idx.byteOffset; i < bv_idx.byteLength + bv_idx.byteOffset; i += 2)
-		//{
-		//	GLushort index;
-		//	memcpy(&index, &buffer[i], sizeof(short));
-		//	indices.push_back(index);
-		//}
-
-		//for (int i = 0; i < indices.size(); i += 3)
-		//{
-		//	Triangle t(indices[i], indices[i + 1], indices[i + 2]);
-		//	surface.addTriangle(t);
-		//}
 
 		auto mesh = Mesh::create("blub", surface, 0);
 		meshes.push_back(mesh);

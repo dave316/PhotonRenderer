@@ -51,8 +51,8 @@ glm::vec2 MorphAnimation::calcInterpWeight()
 		float w1_start = weights[weightIndex].second.second;
 		float w0_end = weights[nextWeightIndex].second.first;
 		float w1_end = weights[nextWeightIndex].second.second;
-		result.x = w0_start;
-		result.y = w1_start;
+		result.x = glm::mix(w0_start, w0_end, factor);
+		result.y = glm::mix(w1_start, w1_end, factor);
 	}
 	return result;
 }

@@ -30,8 +30,8 @@ namespace IO
 
 		struct Accessor
 		{
-			int bufferView;
-			int byteOffset;
+			int bufferView = 0;
+			int byteOffset = 0;
 			int componentType;
 			int count;
 			std::string type;
@@ -52,6 +52,7 @@ namespace IO
 		std::vector<Mesh::Ptr> meshes;
 		std::vector<Material::Ptr> materials;
 		std::vector<Animation::Ptr> animations;
+		std::vector<MorphAnimation::Ptr> morphAnims;
 
 		GLTFImporter(const GLTFImporter&) = delete;
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
@@ -59,6 +60,17 @@ namespace IO
 		void loadBuffers(const json::Document& doc, const std::string& path);
 		void loadAnimations(const json::Document& doc);
 		void loadMeshes(const json::Document& doc);
+
+		template<typename T>
+		void loadData(int accIndex, std::vector<T>& data)
+		{
+			Accessor& acc = accessors[accIndex];
+			BufferView& bv = bufferViews[acc.bufferView];
+			Buffer& buffer = buffers[bv.buffer];
+			int offset = bv.byteOffset + acc.byteOffset;
+			data.resize(acc.count);
+			memcpy(data.data(), &buffer.data[offset], acc.count * sizeof(T));
+		}
 
 	public:
 		GLTFImporter() {}

@@ -34,12 +34,12 @@ void main()
 {
 	// TODO: initialize this correctly, otherwise there can be random values!
 	
-//	vec3 mPosition = vPosition + vTargetPosition0 * w0 + vTargetPosition1 * w1;
-//	vec3 mNormal = vNormal + vTargetNormal0 * w0 + vTargetNormal1 * w1;
-//	//vec3 mPosition = vPosition;
+	vec3 mPosition = vPosition + vTargetPosition0 * w0 + vTargetPosition1 * w1;
+	vec3 mNormal = vNormal + vTargetNormal0 * w0 + vTargetNormal1 * w1;
+	//vec3 mPosition = vPosition;
 
-	wPosition = vec3(M * vec4(vPosition, 1.0));
-	wNormal = inverse(transpose(mat3(M))) * vNormal; // TODO transform to world space
+	wPosition = vec3(M * vec4(mPosition, 1.0));
+	wNormal = inverse(transpose(mat3(M))) * mNormal;
 	color = vColor;
 	texCoord = vTexCoord;
 	gl_Position = VP * vec4(wPosition, 1.0);

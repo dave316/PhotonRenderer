@@ -84,7 +84,7 @@ bool Renderer::init()
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
 	std::string path = "../assets/glTF-Sample-Models/2.0";
-	std::string name = "AnimatedTriangle";
+	std::string name = "AnimatedMorphCube";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
@@ -188,12 +188,25 @@ void Renderer::render()
 		auto rootRenderable = e->getComponent<Renderable>();
 		if (rootRenderable)
 		{
-			glm::mat4 M(1.0f);
+			glm::mat4 A(1.0f);
 			if (rootRenderable->hasAnimations())
-				M = rootRenderable->getTransform();
+				A = rootRenderable->getTransform();
+			else if (rootRenderable->hasMorphAnim())
+			{
+				glm::vec2 weights = rootRenderable->getWeights();
+				program.setUniform("w0", weights.x);
+				program.setUniform("w1", weights.y);
+
+				//std::cout << "w: " << weights.x << " " << weights.y << std::endl;
+			}
 			else
-				M = *(e->getComponent<Transform>());
-			program.setUniform("M", M);
+			{
+				program.setUniform("w0", 0.0f);
+				program.setUniform("w1", 0.0f);
+			}
+
+			glm::mat4 M = *(e->getComponent<Transform>());
+			program.setUniform("M", M * A);
 			rootRenderable->render(program);
 		}
 			
@@ -204,20 +217,13 @@ void Renderer::render()
 			auto r = m->getComponent<Renderable>();
 
 			if (r->hasAnimations())
-			{
-
 				M = r->getTransform();
-				for (int row = 0; row < 4; row++)
-				{
-					for (int col = 0; col < 4; col++)
-					{
-						std::cout << M[row][col] << " ";
-					}
-					std::cout << std::endl;
-
-				}
+			else if (rootRenderable->hasMorphAnim())
+			{
+				glm::vec2 weights = rootRenderable->getWeights();
+				program.setUniform("w0", weights.x);
+				program.setUniform("w1", weights.y);
 			}
-				
 			else
 				M = *(m->getComponent<Transform>());
 
