@@ -84,13 +84,15 @@ bool Renderer::init()
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
 	std::string path = "../assets/glTF-Sample-Models/2.0";
-	std::string name = "AnimatedMorphCube";
+	std::string name = "Buggy";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
 	IO::GLTFImporter importer;
 	auto root = importer.importModel(path + "/" + fn);
 	rootEntitis.push_back(root);
+	entities = importer.getEntities();
+
 	//IO::ModelImporter importer;
 	//auto rootEntity = importer.importModel(path + "/" + fn);
 	//rootEntitis.push_back(rootEntity);
@@ -185,50 +187,69 @@ void Renderer::render()
 	
 	auto e = rootEntitis[modelIndex];
 	{
-		auto rootRenderable = e->getComponent<Renderable>();
-		if (rootRenderable)
-		{
-			glm::mat4 A(1.0f);
-			if (rootRenderable->hasAnimations())
-				A = rootRenderable->getTransform();
-			else if (rootRenderable->hasMorphAnim())
-			{
-				glm::vec2 weights = rootRenderable->getWeights();
-				program.setUniform("w0", weights.x);
-				program.setUniform("w1", weights.y);
+		//auto rootRenderable = e->getComponent<Renderable>();
+		//if (rootRenderable)
+		//{
+		//	glm::mat4 A(1.0f);
+		//	if (rootRenderable->hasAnimations())
+		//		A = rootRenderable->getTransform();
+		//	else if (rootRenderable->hasMorphAnim())
+		//	{
+		//		glm::vec2 weights = rootRenderable->getWeights();
+		//		program.setUniform("w0", weights.x);
+		//		program.setUniform("w1", weights.y);
 
-				//std::cout << "w: " << weights.x << " " << weights.y << std::endl;
-			}
-			else
-			{
-				program.setUniform("w0", 0.0f);
-				program.setUniform("w1", 0.0f);
-			}
+		//		//std::cout << "w: " << weights.x << " " << weights.y << std::endl;
+		//	}
+		//	else
+		//	{
+		//		program.setUniform("w0", 0.0f);
+		//		program.setUniform("w1", 0.0f);
+		//	}
 
-			glm::mat4 M = *(e->getComponent<Transform>());
-			program.setUniform("M", M * A);
-			rootRenderable->render(program);
-		}
+		//	glm::mat4 M = *(e->getComponent<Transform>());
+		//	program.setUniform("M", M * A);
+		//	rootRenderable->render(program);
+		//}
 			
 		auto models = e->getChildrenWithComponent<Renderable>();
 		for (auto m : models)
 		{
-			glm::mat4 M(1.0f);
+			glm::mat4 A(1.0f);
 			auto r = m->getComponent<Renderable>();
 
-			if (r->hasAnimations())
-				M = r->getTransform();
-			else if (rootRenderable->hasMorphAnim())
+			if (r)
 			{
-				glm::vec2 weights = rootRenderable->getWeights();
-				program.setUniform("w0", weights.x);
-				program.setUniform("w1", weights.y);
-			}
-			else
-				M = *(m->getComponent<Transform>());
+				if (r->hasAnimations())
+					A = r->getTransform();
+				else if (r->hasMorphAnim())
+				{
+					glm::vec2 weights = r->getWeights();
+					program.setUniform("w0", weights.x);
+					program.setUniform("w1", weights.y);
+				}
+				else
+				{
+					program.setUniform("w0", 0.0f);
+					program.setUniform("w1", 0.0f);
+				}
 
-			program.setUniform("M", M);
-			r->render(program);
+				glm::mat4 M = *(m->getComponent<Transform>());
+				//glm::mat4 M = glm::scale(glm::mat4(1.0f), glm::vec3(0.001f));
+
+
+				//for (int row = 0; row < 4; row++)
+				//{
+				//	for (int col = 0; col < 4; col++)
+				//	{
+				//		std::cout << M[row][col] << " ";
+				//	}
+				//	std::cout << std::endl;
+				//}
+
+				program.setUniform("M", M);
+				r->render(program);
+			}
 		}
 	}
 }

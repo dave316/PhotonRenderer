@@ -111,7 +111,8 @@ namespace IO
 		std::string path = filename.substr(0, filename.find_last_of('/'));
 		//loadMorphAnim(path, filename);
 		//const int flags = 0;
-		const int flags = aiProcess_ValidateDataStructure; // |
+		const int flags = aiProcess_ValidateDataStructure |
+			aiProcess_FlipUVs;
 			//aiProcess_JoinIdenticalVertice |
 			//aiProcess_Triangulate |
 			//aiProcess_GenSmoothNormals;
@@ -166,8 +167,8 @@ namespace IO
 		if (pNode->mNumMeshes == 1) // TODO: multiple meshes
 		{
 			Mesh::Ptr mesh = meshes[pNode->mMeshes[0]];
-			auto r = Renderable::create(mesh, materials[mesh->getMaterialIndex()]);
-
+			auto r = Renderable::create();
+			r->addMesh(mesh, materials[mesh->getMaterialIndex()]);
 			//std::cout << "added mesh " << mesh->getName() << " index: " << pNode->mMeshes[0] << " mat index: " << mesh->getMaterialIndex() << std::endl;
 			if (animations.find(name) != animations.end())
 			{

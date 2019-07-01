@@ -124,7 +124,8 @@ namespace IO
 		{
 			auto childEntity = Entity::create("blub", glm::mat4()); // TODO get mesh name
 			entities.push_back(childEntity);
-			auto r = Renderable::create(m, materials[m->getMaterialIndex()]);
+			auto r = Renderable::create();
+			r->addMesh(m, materials[m->getMaterialIndex()]);
 			auto t = childEntity->getComponent<Transform>();
 			rootTransform->addChild(t);
 			childEntity->addComponent<Renderable>(r);

@@ -44,15 +44,30 @@ namespace IO
 			std::string interpolation;
 		};
 
+		struct GLTFNode
+		{
+			int meshIndex = -1;
+			std::string name;
+			std::vector<int> children;
+			//glm::vec3 translation = glm::vec3(0.0f);
+			//glm::quat rotation;
+			//glm::vec3 scale = glm::vec3(1.0f);
+			glm::mat4 transform = glm::mat4(1.0f);
+		};
+
 		// GLTF related data
 		std::vector<Buffer> buffers;
 		std::vector<BufferView> bufferViews;
 		std::vector<Accessor> accessors;
+		std::vector<GLTFNode> nodes;
 
-		std::vector<Mesh::Ptr> meshes;
+		//std::vector<Mesh::Ptr> meshes;
 		std::vector<Material::Ptr> materials;
+		std::vector<Renderable::Ptr> renderables;
+		std::vector<Texture2D::Ptr> textures;
 		std::vector<Animation::Ptr> animations;
 		std::vector<MorphAnimation::Ptr> morphAnims;
+		std::vector<Entity::Ptr> entities;
 
 		GLTFImporter(const GLTFImporter&) = delete;
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
@@ -60,6 +75,10 @@ namespace IO
 		void loadBuffers(const json::Document& doc, const std::string& path);
 		void loadAnimations(const json::Document& doc);
 		void loadMeshes(const json::Document& doc);
+		void loadMaterials(const json::Document& doc);
+		void loadTextures(const json::Document& doc, const std::string& path);
+		Entity::Ptr loadScene(const json::Document& doc);
+		Entity::Ptr traverse(int nodeIndex, glm::mat4 parentTransform);
 
 		template<typename T>
 		void loadData(int accIndex, std::vector<T>& data)
@@ -76,6 +95,7 @@ namespace IO
 		GLTFImporter() {}
 
 		Entity::Ptr importModel(const std::string& filename);
+		std::vector<Entity::Ptr> getEntities();
 	};
 }
 

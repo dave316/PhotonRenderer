@@ -2,11 +2,19 @@
 
 #include <iostream>
 
-Renderable::Renderable(Mesh::Ptr mesh, Material::Ptr material) : 
-	mesh(mesh),
-	material(material)
-{
+//Renderable::Renderable(Mesh::Ptr mesh, Material::Ptr material) : 
+//	mesh(mesh),
+//	material(material)
+//{
+//
+//}
 
+void Renderable::addMesh(Mesh::Ptr mesh, Material::Ptr material)
+{
+	Primitive p;
+	p.mesh = mesh;
+	p.material = material;
+	primitives.push_back(p);
 }
 
 Renderable::~Renderable()
@@ -48,8 +56,11 @@ void Renderable::render(GL::Program& program)
 	//	mesh->draw();
 	//}
 
-	material->setUniforms(program);
-	mesh->draw();
+	for (auto& p : primitives)
+	{
+		p.material->setUniforms(program);
+		p.mesh->draw();
+	}
 }
 
 void Renderable::print()

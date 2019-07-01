@@ -1,5 +1,8 @@
 #include "GLTFImporter.h"
 
+#include <IO/ImageLoader.h>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -40,38 +43,15 @@ namespace IO
 		json::Document doc;
 		doc.Parse(content.c_str());
 
-		auto sceneNode = doc.FindMember("scenes");
-		//for (auto& scene : sceneNode->value.GetArray())
-		//{
-		//	for (auto& nodes : scene.FindMember("nodes")->value.GetArray())
-		//	{
-		//		std::cout <<  "root node: " << nodes.GetInt() << std::endl;
-		//	}
-		//}
-
 		loadBuffers(doc, path);
-
+		loadTextures(doc, path);
+		loadMaterials(doc);
+		loadMeshes(doc);
 		if(doc.HasMember("animations"))
 			loadAnimations(doc);
+		auto root = loadScene(doc);
 
-		loadMeshes(doc);
-
-		auto material = Material::create();
-		material->setColor(glm::vec3(0.5f));
-
-		// TODO: parse scene graphs 
-		// TODO: add meshes/animations to corresponding nodes
-		glm::mat4 M = glm::mat4(1.0f);
-		auto entity = Entity::create("blub", M);
-		auto r = Renderable::create(meshes[0], material);
-
-		// TODO handle multiple animations!
-		if(animations.size() > 0)
-			r->setAnimation(animations[0]);
-		if (morphAnims.size() > 0)
-			r->setMorphAnim(morphAnims[0]);
-		entity->addComponent(r);
-		return entity;
+		return root;
 	}
 
 	void GLTFImporter::loadBuffers(const json::Document& doc, const std::string& path)
@@ -230,15 +210,28 @@ namespace IO
 
 	void GLTFImporter::loadMeshes(const json::Document& doc)
 	{
-		TriangleSurface surface;
+		int primitivNum = 0;
+
 		auto meshesNode = doc.FindMember("meshes");
 		for (auto& meshNode : meshesNode->value.GetArray())
 		{
+			auto renderable = Renderable::create();
+			auto nameNode = meshNode.FindMember("name");
+			std::string name = "";
+			if(meshNode.HasMember("name"))
+				name = nameNode->value.GetString();
 			auto primitvesNode = meshNode.FindMember("primitives");
 			for (auto& primitiveNode : primitvesNode->value.GetArray())
 			{
+				TriangleSurface surface;
+				unsigned int materialIndex = 0;
+
+				primitivNum++;
+				
 				std::vector<glm::vec3> positions;
+				std::vector<glm::vec4> colors;
 				std::vector<glm::vec3> normals;
+				std::vector<glm::vec2> texCoords;
 				std::vector<GLushort> indices; // TODO check other index types!
 
 				auto attributesNode = primitiveNode.FindMember("attributes");
@@ -249,11 +242,25 @@ namespace IO
 					loadData(accIndex, positions);
 				}
 
+				if (attributesNode->value.HasMember("COLOR_0"))
+				{
+					auto colorNode = attributesNode->value.FindMember("COLOR_0");
+					int accIndex = colorNode->value.GetInt();
+					loadData(accIndex, colors);
+				}
+
 				if (attributesNode->value.HasMember("NORMAL"))
 				{
 					auto normalNode = attributesNode->value.FindMember("NORMAL");
 					int accIndex = normalNode->value.GetInt();
 					loadData(accIndex, normals);
+				}
+				
+				if (attributesNode->value.HasMember("TEXCOORD_0"))
+				{
+					auto texCoordNode = attributesNode->value.FindMember("TEXCOORD_0");
+					int accIndex = texCoordNode->value.GetInt();
+					loadData(accIndex, texCoords);
 				}
 
 				if (primitiveNode.HasMember("indices"))
@@ -261,6 +268,11 @@ namespace IO
 					auto indicesNode = primitiveNode.FindMember("indices");
 					int accIndex = indicesNode->value.GetInt();
 					loadData(accIndex, indices);
+				}
+
+				if (primitiveNode.HasMember("material"))
+				{
+					materialIndex = primitiveNode["material"].GetInt();
 				}
 
 				struct Target
@@ -301,8 +313,12 @@ namespace IO
 				{
 					Vertex v;
 					v.position = positions[i];
+					if (i < colors.size())
+						v.color = colors[i];
 					if (i < normals.size())
 						v.normal = normals[i];
+					if (i < texCoords.size())
+						v.texCoord = texCoords[i];
 
 					if (morphTargets.size() == 2) // TODO: add support for more thant 2...
 					{
@@ -330,10 +346,233 @@ namespace IO
 					Triangle t(indices[i], indices[i + 1], indices[i + 2]);
 					surface.addTriangle(t);
 				}
-			}			
+
+				auto defaultMaterial = Material::create();
+				defaultMaterial->setColor(glm::vec3(0.5f));
+
+				Material::Ptr material = defaultMaterial;
+				if (materialIndex < materials.size())
+					material = materials[materialIndex];
+
+				auto mesh = Mesh::create("blub", surface, 0);
+				renderable->addMesh(mesh, material);
+
+				std::cout << "added primitives to mesh " << name << " with material index " << materialIndex << std::endl;
+			}
+			renderables.push_back(renderable);
 		}
 
-		auto mesh = Mesh::create("blub", surface, 0);
-		meshes.push_back(mesh);
+		std::cout << "loaded " << renderables.size() << " meshes" << std::endl;
+		//std::cout << "loaded " << primitivNum << " primitives" << std::endl;
+	}
+
+	void GLTFImporter::loadMaterials(const json::Document& doc)
+	{
+		if (!doc.HasMember("materials"))
+			return;
+
+		for (auto& materialNode : doc["materials"].GetArray())
+		{
+			auto material = Material::create();
+			if (materialNode.HasMember("pbrMetallicRoughness"))
+			{
+				const auto& pbrNode = materialNode["pbrMetallicRoughness"];
+
+				if (pbrNode.HasMember("baseColorFactor"))
+				{
+					const auto& baseColorNode = pbrNode["baseColorFactor"];
+					auto array = baseColorNode.GetArray();
+					glm::vec3 color;
+					color.r = array[0].GetFloat();
+					color.g = array[1].GetFloat();
+					color.b = array[2].GetFloat();
+					material->setColor(color);
+				}
+				else if(pbrNode.HasMember("baseColorTexture"))
+				{
+					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
+					if (texIndex < textures.size())
+						material->addTexture(textures[texIndex]);
+					else
+						std::cout << "texture index " << texIndex << " not found" << std::endl;
+				}
+			}
+			materials.push_back(material);
+		}
+	}
+
+	void GLTFImporter::loadTextures(const json::Document& doc, const std::string& path)
+	{
+		if (!doc.HasMember("images"))
+			return;
+
+		for (auto& imagesNode : doc["images"].GetArray())
+		{
+			if (imagesNode.HasMember("uri"))
+			{
+				std::string filename = imagesNode["uri"].GetString();
+				std::cout << "loading texture " << filename << std::endl;
+				auto tex = IO::loadTexture(path + "/" + filename);
+				textures.push_back(tex);
+			}
+		}
+	}
+
+	glm::vec3 toVec3(const json::Value& value)
+	{
+		glm::vec3 v(0.0f);
+		if (value.IsArray() && value.Size() == 3)
+		{
+			auto array = value.GetArray();
+			v.x = array[0].GetFloat();
+			v.y = array[1].GetFloat();
+			v.z = array[2].GetFloat();
+		}
+		else
+		{
+			std::cout << "error parsing json array to vec3" << std::endl;
+		}
+		return v;
+	}
+
+	glm::quat toQuat(const json::Value& value)
+	{
+		glm::quat q = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+		if (value.IsArray() && value.Size() == 4)
+		{
+			auto array = value.GetArray();
+			q.x = array[0].GetFloat();
+			q.y = array[1].GetFloat();
+			q.z = array[2].GetFloat();
+			q.w = array[3].GetFloat();
+		}
+		else
+		{
+			std::cout << "error parsing json array to vec3" << std::endl;
+		}
+		return q;
+	}
+
+	glm::mat4 toMat4(const json::Value& value)
+	{
+		glm::mat4 m(0.0f);
+		if (value.IsArray() && value.Size() == 16)
+		{
+			float* values = glm::value_ptr<float>(m);
+			for (int i = 0; i < value.GetArray().Size(); i++)
+				values[i] = value[i].GetFloat();
+		}
+		else
+		{
+			std::cout << "error parsing json array to vec3" << std::endl;
+		}
+		return m;
+	}
+
+	Entity::Ptr GLTFImporter::traverse(int nodeIndex, glm::mat4 parentTransform)
+	{
+		auto node = nodes[nodeIndex];
+		//glm::mat4 M = parentTransform * glm::translate(glm::mat4(1.0f), node.translation);
+		glm::mat4 M = parentTransform * node.transform;
+
+		auto entity = Entity::create(node.name, M);
+		auto t = entity->getComponent<Transform>();
+
+		if (node.meshIndex >= 0)
+		{
+			auto r = renderables[node.meshIndex];
+
+			//auto defaultMaterial = Material::create();
+			//defaultMaterial->setColor(glm::vec3(0.5f));
+
+			//Material::Ptr material = defaultMaterial;
+			//unsigned matIndex = mesh->getMaterialIndex();
+			//if (matIndex < materials.size())
+			//	material = materials[matIndex];
+
+			//auto r = Renderable::create();
+			//r->addMesh(mesh, material);
+			entity->addComponent(r);
+		}
+		
+		if (node.name.empty())
+			node.name = "node_" + std::to_string(nodeIndex);
+
+		for (auto& index : node.children)
+		{
+			auto childEntity = traverse(index, M);
+			t->addChild(childEntity->getComponent<Transform>());
+		}
+
+		entities.push_back(entity);
+
+		return entity;
+	}
+
+	Entity::Ptr GLTFImporter::loadScene(const json::Document& doc)
+	{
+		if (doc.HasMember("nodes")) // TODO: maybe check the libraries first before parsing the json at all
+		{
+			for (auto& node : doc["nodes"].GetArray())
+			{
+				GLTFNode gltfNode;
+				if (node.HasMember("mesh"))
+					gltfNode.meshIndex = node["mesh"].GetInt();
+				glm::vec3 t(0.0f);
+				glm::vec3 s(1.0f);
+				glm::quat r(1.0f, 0.0f, 0.0f, 0.0f);
+
+				if (node.HasMember("translation"))
+					t = toVec3(node["translation"]);
+				if (node.HasMember("rotation"))
+					r = toQuat(node["rotation"]);
+				if (node.HasMember("scale"))
+					s = toVec3(node["scale"]);
+				
+				glm::mat4 T = glm::translate(glm::mat4(1.0f), t);
+				glm::mat4 R = glm::mat4_cast(r);
+				glm::mat4 S = glm::scale(glm::mat4(1.0f), s);
+				gltfNode.transform = S * R * T;
+
+				//for (int row = 0; row < 4; row++)
+				//{
+				//	for (int col = 0; col < 4; col++)
+				//	{
+				//		std::cout << R[row][col] << " ";
+				//	}
+				//	std::cout << std::endl;
+				//}
+
+				if (node.HasMember("matrix"))
+					gltfNode.transform = toMat4(node["matrix"]);
+				if (node.HasMember("children"))
+				{
+					for (auto& nodeIndex : node["children"].GetArray())
+					{
+						gltfNode.children.push_back(nodeIndex.GetInt());
+					}
+				}
+				nodes.push_back(gltfNode);
+			}
+		}
+
+		glm::mat4 M(1.0f);
+		auto root = Entity::create("root", M);
+		auto rootTransform = root->getComponent<Transform>();
+		if (doc.HasMember("scenes") && doc["scenes"][0].HasMember("nodes"))
+		{
+			for (auto& nodeIndex : doc["scenes"][0]["nodes"].GetArray())
+			{
+				auto childEntity = traverse(nodeIndex.GetInt(), M);
+				rootTransform->addChild(childEntity->getComponent<Transform>());
+			}
+		}
+
+		return root;
+	}
+
+	std::vector<Entity::Ptr> GLTFImporter::getEntities()
+	{
+		return entities;
 	}
 }
