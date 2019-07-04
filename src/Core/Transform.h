@@ -32,6 +32,8 @@ public:
 	~Transform();
 	void setRotation(glm::quat q);
 	void update(glm::mat4 parentTransform);
+	void localTransformation(glm::mat4 T);
+	void reset();
 	void addChild(Transform::Ptr child);
 	int getNumChildren();
 	Transform::Ptr getChild(int index);

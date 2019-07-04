@@ -20,13 +20,17 @@ class Animation
 
 	float currentTime;
 	float ticksPerSecond;
+	float startTime;
+	float endTime;
 	float duration;
+
+	unsigned int nodeIndex;
 
 	Animation(const Animation&) = delete;
 	Animation& operator=(const Animation&) = delete;
 public:
 	Animation();
-	Animation(const std::string& name, float ticksPerSecond, float duration);
+	Animation(const std::string& name, float ticksPerSecond, float startTime, float endTime, float duration, unsigned int nodeIndex);
 
 	void setPositions(std::vector<std::pair<float, glm::vec3>>& positions);
 	void setRotations(std::vector<std::pair<float, glm::quat>>& positions);
@@ -43,6 +47,7 @@ public:
 	void update(float time);
 	glm::mat4 getTransform();
 	std::string getName();
+	unsigned int getNodeIndex();
 
 	typedef std::shared_ptr<Animation> Ptr;
 	static Ptr create()

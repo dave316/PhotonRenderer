@@ -15,6 +15,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
+#include <filesystem>
+
 namespace json = rapidjson;
 
 std::string loadTxtFile(const std::string& fileName)
@@ -40,6 +42,7 @@ Renderer::Renderer(unsigned int width, unsigned int height)
 
 bool Renderer::init()
 {
+	glEnable(GL_FRAMEBUFFER_SRGB);
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -84,7 +87,7 @@ bool Renderer::init()
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
 	std::string path = "../assets/glTF-Sample-Models/2.0";
-	std::string name = "Buggy";
+	std::string name = "RiggedSimple";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
@@ -160,13 +163,24 @@ void Renderer::loadGLTFModels(std::string path)
 
 void Renderer::updateAnimations(float dt)
 {
-	auto e = rootEntitis[modelIndex];
-	auto renderables = e->getComponentsInChildren<Renderable>();
-	auto rootRenderable = e->getComponent<Renderable>();
-	if (rootRenderable)
-		renderables.push_back(rootRenderable);
-	for (auto r : renderables)
-		r->update(dt);
+	// reset current transformations
+	for (auto e : entities)
+		e->getComponent<Transform>()->reset();
+
+	// apply transformations from animations
+	auto rootEntity = rootEntitis[modelIndex];
+	auto animators = rootEntity->getChildrenWithComponent<Animator>();
+	for (auto e : animators)
+	{
+		auto a = e->getComponent<Animator>();
+		auto t = e->getComponent<Transform>();
+
+		a->update(dt);
+		t->localTransformation(a->getAnimationTransform());
+	}
+
+	// propagate the transformations trough the scene hirarchy
+	rootEntity->getComponent<Transform>()->update(glm::mat4(1.0f));
 }
 
 void Renderer::updateCamera(Camera& camera)
@@ -215,32 +229,39 @@ void Renderer::render()
 		auto models = e->getChildrenWithComponent<Renderable>();
 		for (auto m : models)
 		{
-			glm::mat4 A(1.0f);
+			//glm::mat4 A(1.0f);
 			auto r = m->getComponent<Renderable>();
 
 			if (r)
 			{
-				if (r->hasAnimations())
-					A = r->getTransform();
-				else if (r->hasMorphAnim())
-				{
-					glm::vec2 weights = r->getWeights();
-					program.setUniform("w0", weights.x);
-					program.setUniform("w1", weights.y);
-				}
-				else
-				{
-					program.setUniform("w0", 0.0f);
-					program.setUniform("w1", 0.0f);
-				}
+				//if (r->hasAnimations())
+				//	A = r->getTransform();
+				//else if (r->hasMorphAnim())
+				//{
+				//	glm::vec2 weights = r->getWeights();
+				//	program.setUniform("w0", weights.x);
+				//	program.setUniform("w1", weights.y);
+				//}
+				//else
+				//{
+				program.setUniform("w0", 0.0f);
+				program.setUniform("w1", 0.0f);
+				//}
 
 				glm::mat4 M = *(m->getComponent<Transform>());
+
+				//auto a = m->getComponent<Animator>();
+				//if (a)
+				//{
+				//	M *= a->getAnimationTransform();
+				//}
+					
 				//glm::mat4 M = glm::scale(glm::mat4(1.0f), glm::vec3(0.001f));
 
 
 				//for (int row = 0; row < 4; row++)
 				//{
-				//	for (int col = 0; col < 4; col++)
+				//	for (int col = 0; col < 4; col++) 
 				//	{
 				//		std::cout << M[row][col] << " ";
 				//	}

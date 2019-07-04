@@ -47,8 +47,8 @@ namespace IO
 		loadTextures(doc, path);
 		loadMaterials(doc);
 		loadMeshes(doc);
-		if(doc.HasMember("animations"))
-			loadAnimations(doc);
+		loadAnimations(doc);
+
 		auto root = loadScene(doc);
 
 		return root;
@@ -103,8 +103,11 @@ namespace IO
 
 	void GLTFImporter::loadAnimations(const json::Document& doc)
 	{
-		auto animationsNode = doc.FindMember("animations");
-		for (auto& animationNode : animationsNode->value.GetArray())
+		// TODO there has to be a sepperation of node animations and skin animations
+		if (!doc.HasMember("animations"))
+			return;
+
+		for (auto& animationNode : doc["animations"].GetArray())
 		{
 			std::vector<Sampler> samplers;
 			auto samplersNode = animationNode.FindMember("samplers");
@@ -117,18 +120,22 @@ namespace IO
 				samplers.push_back(sampler);
 			}
 
-			std::vector<std::pair<float, glm::vec3>> positionKeys;
-			std::vector<std::pair<float, glm::quat>> rotationKeys;
-			std::vector<std::pair<float, glm::vec3>> scaleKeys;
-			std::vector<std::pair<float, std::pair<float, float>>> timeWeights;
-			bool isMorphAnim = false;
-			float maxTime = 0.0f;
+			// TODO: this needs to be changed since a node can be target of multiple channels (translation, rotation,...)
 			auto channelsNode = animationNode.FindMember("channels");
 			for (auto& channelNode : channelsNode->value.GetArray())
 			{
+				std::vector<std::pair<float, glm::vec3>> positionKeys;
+				std::vector<std::pair<float, glm::quat>> rotationKeys;
+				std::vector<std::pair<float, glm::vec3>> scaleKeys;
+				std::vector<std::pair<float, std::pair<float, float>>> timeWeights;
+				bool isMorphAnim = false;
+				float minTime = 1000.0f;
+				float maxTime = 0.0f;
+				int tartetNodeIndex = -1;
+
 				int samplerIndex = channelNode.FindMember("sampler")->value.GetInt();
 				auto targetNode = channelNode.FindMember("target")->value.GetObject();
-				int tartetNodeIndex = targetNode.FindMember("node")->value.GetInt();
+				tartetNodeIndex = targetNode.FindMember("node")->value.GetInt();
 				std::string targetPath = targetNode.FindMember("path")->value.GetString();
 
 				int input = samplers[samplerIndex].input;
@@ -142,8 +149,11 @@ namespace IO
 					loadData(output, translations);
 
 					for (int i = 0; i < times.size(); i++)
+					{
+						minTime = std::min(minTime, times[i]);
+						maxTime = std::max(maxTime, times[i]);
 						positionKeys.push_back(std::make_pair(times[i], translations[i]));
-
+					}
 				}
 				else if (targetPath.compare("rotation") == 0)
 				{
@@ -153,8 +163,11 @@ namespace IO
 					loadData(output, rotations);
 
 					for (int i = 0; i < times.size(); i++)
+					{
+						minTime = std::min(minTime, times[i]);
+						maxTime = std::max(maxTime, times[i]);
 						rotationKeys.push_back(std::make_pair(times[i], rotations[i]));
-
+					}
 				}
 				else if (targetPath.compare("scale") == 0)
 				{
@@ -164,8 +177,11 @@ namespace IO
 					loadData(output, scales);
 
 					for (int i = 0; i < times.size(); i++)
+					{
+						minTime = std::min(minTime, times[i]);
+						maxTime = std::max(maxTime, times[i]);
 						scaleKeys.push_back(std::make_pair(times[i], scales[i]));
-
+					}
 				}
 				else if (targetPath.compare("weights") == 0)
 				{
@@ -181,6 +197,7 @@ namespace IO
 
 					for (int i = 0; i < times.size(); i++)
 					{
+						minTime = std::min(minTime, times[i]);
 						maxTime = std::max(maxTime, times[i]);
 						auto weight = std::make_pair(weights[i * 2], weights[i * 2 + 1]);
 						timeWeights.push_back(std::make_pair(times[i], weight));
@@ -190,20 +207,21 @@ namespace IO
 				{
 					std::cout << "ERROR: animation path " << targetPath << " not implemented!!!" << std::endl;
 				}
-			}
 
-			if (isMorphAnim)
-			{
-				MorphAnimation::Ptr anim(new MorphAnimation("morph", 0.0f, maxTime, timeWeights));
-				morphAnims.push_back(anim);
-			}
-			else
-			{
-				Animation::Ptr anim(new Animation("blub", 0, 1.0f));
-				anim->setPositions(positionKeys);
-				anim->setRotations(rotationKeys);
-				anim->setPositions(scaleKeys);
-				animations.push_back(anim);
+				if (isMorphAnim)
+				{
+					//MorphAnimation::Ptr anim(new MorphAnimation("morph", 0.0f, maxTime, timeWeights));
+					//morphAnims.push_back(anim);
+				}
+				else
+				{
+					// TODO figure out how to deal with different start/end times
+					Animation::Ptr anim(new Animation("blub", 0, minTime, maxTime, 3.708329916000366, tartetNodeIndex));
+					anim->setPositions(positionKeys);
+					anim->setRotations(rotationKeys);
+					anim->setScales(scaleKeys);
+					animations.push_back(anim);
+				}
 			}
 		}
 	}
@@ -311,15 +329,14 @@ namespace IO
 
 				for (int i = 0; i < positions.size(); i++)
 				{
-					Vertex v;
-					v.position = positions[i];
+					Vertex v(positions[i]);
 					if (i < colors.size())
 						v.color = colors[i];
 					if (i < normals.size())
 						v.normal = normals[i];
 					if (i < texCoords.size())
 						v.texCoord = texCoords[i];
-
+					
 					if (morphTargets.size() == 2) // TODO: add support for more thant 2...
 					{
 						v.targetPosition0 = morphTargets[0].positions[i];
@@ -390,7 +407,8 @@ namespace IO
 				}
 				else if(pbrNode.HasMember("baseColorTexture"))
 				{
-					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
+					//unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
+					unsigned int texIndex = 0;
 					if (texIndex < textures.size())
 						material->addTexture(textures[texIndex]);
 					else
@@ -473,7 +491,7 @@ namespace IO
 	{
 		auto node = nodes[nodeIndex];
 		//glm::mat4 M = parentTransform * glm::translate(glm::mat4(1.0f), node.translation);
-		glm::mat4 M = parentTransform * node.transform;
+		glm::mat4 M = node.transform;
 
 		auto entity = Entity::create(node.name, M);
 		auto t = entity->getComponent<Transform>();
@@ -481,22 +499,29 @@ namespace IO
 		if (node.meshIndex >= 0)
 		{
 			auto r = renderables[node.meshIndex];
-
-			//auto defaultMaterial = Material::create();
-			//defaultMaterial->setColor(glm::vec3(0.5f));
-
-			//Material::Ptr material = defaultMaterial;
-			//unsigned matIndex = mesh->getMaterialIndex();
-			//if (matIndex < materials.size())
-			//	material = materials[matIndex];
-
-			//auto r = Renderable::create();
-			//r->addMesh(mesh, material);
 			entity->addComponent(r);
+		}
+
+		if (node.animIndex >= 0)
+		{
+			auto anim = Animator::create();
+			anim->addAnimation(animations[node.animIndex]);
+			entity->addComponent(anim);
 		}
 		
 		if (node.name.empty())
 			node.name = "node_" + std::to_string(nodeIndex);
+
+		std::cout << "node " << node.name << std::endl;
+		std::cout << "transformation:" << std::endl;
+		for (int row = 0; row < 4; row++)
+		{
+			for (int col = 0; col < 4; col++) 
+			{
+				std::cout << M[row][col] << " ";
+			}
+			std::cout << std::endl;
+		}
 
 		for (auto& index : node.children)
 		{
@@ -534,17 +559,9 @@ namespace IO
 				glm::mat4 S = glm::scale(glm::mat4(1.0f), s);
 				gltfNode.transform = S * R * T;
 
-				//for (int row = 0; row < 4; row++)
-				//{
-				//	for (int col = 0; col < 4; col++)
-				//	{
-				//		std::cout << R[row][col] << " ";
-				//	}
-				//	std::cout << std::endl;
-				//}
-
 				if (node.HasMember("matrix"))
 					gltfNode.transform = toMat4(node["matrix"]);
+
 				if (node.HasMember("children"))
 				{
 					for (auto& nodeIndex : node["children"].GetArray())
@@ -554,6 +571,12 @@ namespace IO
 				}
 				nodes.push_back(gltfNode);
 			}
+		}
+
+ 		for (int i = 0; i < animations.size(); i++)
+		{
+			unsigned int nodeIndex = animations[i]->getNodeIndex();
+			nodes[nodeIndex].animIndex = i;
 		}
 
 		glm::mat4 M(1.0f);

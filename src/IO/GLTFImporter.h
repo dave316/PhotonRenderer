@@ -5,6 +5,7 @@
 
 #include <Core/Entity.h>
 #include <Core/Renderable.h>
+#include <Core/Animator.h>
 
 #include <rapidjson/document.h>
 
@@ -47,6 +48,7 @@ namespace IO
 		struct GLTFNode
 		{
 			int meshIndex = -1;
+			int animIndex = -1;
 			std::string name;
 			std::vector<int> children;
 			//glm::vec3 translation = glm::vec3(0.0f);
@@ -64,9 +66,10 @@ namespace IO
 		//std::vector<Mesh::Ptr> meshes;
 		std::vector<Material::Ptr> materials;
 		std::vector<Renderable::Ptr> renderables;
+		std::vector<Animator::Ptr> animators;
 		std::vector<Texture2D::Ptr> textures;
 		std::vector<Animation::Ptr> animations;
-		std::vector<MorphAnimation::Ptr> morphAnims;
+		//std::vector<MorphAnimation::Ptr> morphAnims;
 		std::vector<Entity::Ptr> entities;
 
 		GLTFImporter(const GLTFImporter&) = delete;

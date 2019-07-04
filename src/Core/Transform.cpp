@@ -20,11 +20,21 @@ void Transform::update(glm::mat4 parentTransform)
 	//glm::mat4 R = glm::mat4_cast(rotation);
 	//glm::mat4 S = glm::scale(glm::mat4(), scale);
 	//transform = parentTransform * (S * R * T);
-	transform = parentTransform * localTransform;
+	transform = parentTransform * transform;
 	for (auto c : children)
 		c->update(transform);
 }
 
+void Transform::localTransformation(glm::mat4 T)
+{
+	transform = localTransform * T;
+}
+
+void Transform::reset()
+{
+	transform = localTransform;
+}
+ 
 void Transform::setRotation(glm::quat q)
 {
 	rotation = q;

@@ -4,7 +4,7 @@
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
 
-#include <Graphics/Animation.h>
+//#include <Graphics/Animation.h>
 #include <Graphics/MorphAnimation.h>
 #include <Core/Entity.h>
 #include <Core/Renderable.h>
@@ -14,7 +14,7 @@
 namespace IO
 {
 	MorphAnimation::Ptr loadMorphAnim(const std::string& path, const std::string& filename);
-	Animation::Ptr loadAnimation(const aiAnimation* pAnimation);
+	//Animation::Ptr loadAnimation(const aiAnimation* pAnimation);
 	Material::Ptr loadMaterial(const std::string& path, const aiScene* pScene, const aiMaterial* pMaterial);
 	Mesh::Ptr loadMesh(const aiMesh* pMesh, glm::mat4 M = glm::mat4(1.0f));
 	

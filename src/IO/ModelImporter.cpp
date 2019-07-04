@@ -136,7 +136,7 @@ namespace IO
 		for (size_t i = 0; i < pScene->mNumAnimations; i++)
 		{
 			const aiAnimation* pAnimation = pScene->mAnimations[i];
-			loadAnimation(pAnimation);
+			//loadAnimation(pAnimation);
 		}
 
 		for (size_t i = 0; i < pScene->mNumMeshes; i++)
@@ -170,11 +170,11 @@ namespace IO
 			auto r = Renderable::create();
 			r->addMesh(mesh, materials[mesh->getMaterialIndex()]);
 			//std::cout << "added mesh " << mesh->getName() << " index: " << pNode->mMeshes[0] << " mat index: " << mesh->getMaterialIndex() << std::endl;
-			if (animations.find(name) != animations.end())
-			{
-				std::cout << "adding animation to node " << name << std::endl;
-				r->setAnimation(animations[name]);
-			}
+			//if (animations.find(name) != animations.end())
+			//{
+			//	std::cout << "adding animation to node " << name << std::endl;
+			//	r->setAnimation(animations[name]);
+			//}
 
 			entity->addComponent(r);
 		}
@@ -188,56 +188,56 @@ namespace IO
 		return entity;
 	}
 
-	void ModelImporter::loadAnimation(const aiAnimation* pAnimation)
-	{
-		std::string name(pAnimation->mName.C_Str());
-		float ticksPerSecond = pAnimation->mTicksPerSecond;
-		float duration = pAnimation->mDuration;
+	//void ModelImporter::loadAnimation(const aiAnimation* pAnimation)
+	//{
+	//	std::string name(pAnimation->mName.C_Str());
+	//	float ticksPerSecond = pAnimation->mTicksPerSecond;
+	//	float duration = pAnimation->mDuration;
 
-		std::cout << "loading animation " << pAnimation->mName.C_Str()
-			<< " ticks per second: " << ticksPerSecond
-			<< " duration: " << duration
-			<< std::endl;
+	//	std::cout << "loading animation " << pAnimation->mName.C_Str()
+	//		<< " ticks per second: " << ticksPerSecond
+	//		<< " duration: " << duration
+	//		<< std::endl;
 
-		//std::cout << "animation " << pAnimation->mName.C_Str() << " channel: " << pAnimation->mChannels[0]->mNodeName.C_Str() << std::endl;
+	//	//std::cout << "animation " << pAnimation->mName.C_Str() << " channel: " << pAnimation->mChannels[0]->mNodeName.C_Str() << std::endl;
 
-		//std::cout << "animation " << pAnimation->mName.C_Str()
-		//	<< " channels: " << pAnimation->mNumChannels
-		//	<< " mesh channels: " << pAnimation->mNumMeshChannels
-		//	<< " morph mesh channels: " << pAnimation->mNumMorphMeshChannels
-		//	<< std::endl;
-		std::vector<std::pair<float, glm::vec3>> positions;
-		std::vector<std::pair<float, glm::quat>> rotations;
-		std::vector<std::pair<float, glm::vec3>> scales;
-		const aiNodeAnim* animNode = pAnimation->mChannels[0];
-		for (int i = 0; i < animNode->mNumPositionKeys; i++)
-		{
-			float time = (float)animNode->mPositionKeys[i].mTime;
-			glm::vec3 pos = toVec3(animNode->mPositionKeys[i].mValue);
-			//std::cout << "position key " << i << " time: " << time << " pos: " << pos.x << " " << pos.y << " " << pos.z << std::endl;
-			positions.push_back(std::pair<float, glm::vec3>(time, pos));
-		}
-		for (int i = 0; i < animNode->mNumRotationKeys; i++)
-		{
-			float time = (float)animNode->mRotationKeys[i].mTime;
-			aiQuaternion aiQuat = animNode->mRotationKeys[i].mValue;
-			glm::quat q(aiQuat.w, aiQuat.x, aiQuat.y, aiQuat.z);
-			rotations.push_back(std::pair<float, glm::quat>(time, q));
-		}
-		for (int i = 0; i < animNode->mNumScalingKeys; i++)
-		{
-			float time = (float)animNode->mScalingKeys[i].mTime;
-			glm::vec3 scale = toVec3(animNode->mScalingKeys[i].mValue);
-			scales.push_back(std::pair<float, glm::vec3>(time, scale));
-		}
+	//	//std::cout << "animation " << pAnimation->mName.C_Str()
+	//	//	<< " channels: " << pAnimation->mNumChannels
+	//	//	<< " mesh channels: " << pAnimation->mNumMeshChannels
+	//	//	<< " morph mesh channels: " << pAnimation->mNumMorphMeshChannels
+	//	//	<< std::endl;
+	//	std::vector<std::pair<float, glm::vec3>> positions;
+	//	std::vector<std::pair<float, glm::quat>> rotations;
+	//	std::vector<std::pair<float, glm::vec3>> scales;
+	//	const aiNodeAnim* animNode = pAnimation->mChannels[0];
+	//	for (int i = 0; i < animNode->mNumPositionKeys; i++)
+	//	{
+	//		float time = (float)animNode->mPositionKeys[i].mTime;
+	//		glm::vec3 pos = toVec3(animNode->mPositionKeys[i].mValue);
+	//		//std::cout << "position key " << i << " time: " << time << " pos: " << pos.x << " " << pos.y << " " << pos.z << std::endl;
+	//		positions.push_back(std::pair<float, glm::vec3>(time, pos));
+	//	}
+	//	for (int i = 0; i < animNode->mNumRotationKeys; i++)
+	//	{
+	//		float time = (float)animNode->mRotationKeys[i].mTime;
+	//		aiQuaternion aiQuat = animNode->mRotationKeys[i].mValue;
+	//		glm::quat q(aiQuat.w, aiQuat.x, aiQuat.y, aiQuat.z);
+	//		rotations.push_back(std::pair<float, glm::quat>(time, q));
+	//	}
+	//	for (int i = 0; i < animNode->mNumScalingKeys; i++)
+	//	{
+	//		float time = (float)animNode->mScalingKeys[i].mTime;
+	//		glm::vec3 scale = toVec3(animNode->mScalingKeys[i].mValue);
+	//		scales.push_back(std::pair<float, glm::vec3>(time, scale));
+	//	}
 
-		Animation::Ptr anim(new Animation(name, ticksPerSecond, duration));
-		anim->setPositions(positions);
-		anim->setRotations(rotations);
-		anim->setScales(scales);
-		
-		animations[animNode->mNodeName.C_Str()] = anim;
-	}
+	//	//Animation::Ptr anim(new Animation(name, ticksPerSecond, duration, 0));
+	//	//anim->setPositions(positions);
+	//	//anim->setRotations(rotations);
+	//	//anim->setScales(scales);
+	//	//
+	//	//animations[animNode->mNodeName.C_Str()] = anim;
+	//}
 
 	Material::Ptr ModelImporter::loadMaterial(const std::string& path, const aiScene* pScene, const aiMaterial* pMaterial)
 	{
@@ -394,6 +394,6 @@ namespace IO
 		entities.clear();
 		meshes.clear();
 		materials.clear();
-		animations.clear();
+		//animations.clear();
 	}
 }

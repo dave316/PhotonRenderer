@@ -136,30 +136,30 @@ namespace IO
 		return rootEntity;
 	}
 
-	Animation::Ptr loadAnimation(const aiAnimation* pAnimation)
-	{
-		std::string name(pAnimation->mName.C_Str());
-		float ticksPerSecond = pAnimation->mTicksPerSecond;
-		float duration = pAnimation->mDuration;
+	//Animation::Ptr loadAnimation(const aiAnimation* pAnimation)
+	//{
+	//	std::string name(pAnimation->mName.C_Str());
+	//	float ticksPerSecond = pAnimation->mTicksPerSecond;
+	//	float duration = pAnimation->mDuration;
 
-		std::cout << "loading animation " << pAnimation->mName.C_Str()
-			<< " ticks per second: " << ticksPerSecond
-			<< " duration: " << duration
-			<< std::endl;
+	//	std::cout << "loading animation " << pAnimation->mName.C_Str()
+	//		<< " ticks per second: " << ticksPerSecond
+	//		<< " duration: " << duration
+	//		<< std::endl;
 
-		std::vector<std::pair<float, glm::quat>> rotations;
-		const aiNodeAnim* animNode = pAnimation->mChannels[0];
-		for (int i = 0; i < animNode->mNumRotationKeys; i++)
-		{
-			float time = (float)animNode->mRotationKeys[i].mTime;
-			aiQuaternion aiQuat = animNode->mRotationKeys[i].mValue;
-			glm::quat q(aiQuat.w, aiQuat.x, aiQuat.y, aiQuat.z);
-			rotations.push_back(std::pair<float, glm::quat>(time, q));
-		}
+	//	std::vector<std::pair<float, glm::quat>> rotations;
+	//	const aiNodeAnim* animNode = pAnimation->mChannels[0];
+	//	for (int i = 0; i < animNode->mNumRotationKeys; i++)
+	//	{
+	//		float time = (float)animNode->mRotationKeys[i].mTime;
+	//		aiQuaternion aiQuat = animNode->mRotationKeys[i].mValue;
+	//		glm::quat q(aiQuat.w, aiQuat.x, aiQuat.y, aiQuat.z);
+	//		rotations.push_back(std::pair<float, glm::quat>(time, q));
+	//	}
 
-		Animation::Ptr anim(new Animation(name, ticksPerSecond, duration));
-		return anim;
-	}
+	//	Animation::Ptr anim(new Animation(name, ticksPerSecond, duration, 0));
+	//	return anim;
+	//}
 
 	MorphAnimation::Ptr loadMorphAnim(const std::string& path, const std::string& filename)
 	{

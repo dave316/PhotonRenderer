@@ -22,24 +22,24 @@ Renderable::~Renderable()
 	//std::cout << "renderable: " << mesh->getName() << " destroyed" << std::endl;
 }
 
-void Renderable::setAnimation(Animation::Ptr anim)
-{
-	this->animation = anim;
-}
+//void Renderable::setAnimation(Animation::Ptr anim)
+//{
+//	this->animation = anim;
+//}
 
-void Renderable::setMorphAnim(MorphAnimation::Ptr anim)
-{
-	this->morphAnim = anim;
-}
+//void Renderable::setMorphAnim(MorphAnimation::Ptr anim)
+//{
+//	this->morphAnim = anim;
+//}
 
-void Renderable::update(float dt)
-{
-	if (animation != nullptr)
-		animation->update(dt);
-
-	if (morphAnim != nullptr)
-		morphAnim->update(dt);
-}
+//void Renderable::update(float dt)
+//{
+//	if (animation != nullptr)
+//		animation->update(dt);
+//
+//	if (morphAnim != nullptr)
+//		morphAnim->update(dt);
+//}
 
 void Renderable::render(GL::Program& program)
 {
@@ -68,27 +68,27 @@ void Renderable::print()
 	//std::cout << "meshes: " << meshes.size() << std::endl;
 }
 
-bool Renderable::hasAnimations()
-{
-	return (animation != nullptr);
-}
-
-bool Renderable::hasMorphAnim()
-{
-	return (morphAnim != nullptr);
-}
-
-glm::vec2 Renderable::getWeights()
-{
-	if (morphAnim != nullptr)
-		return morphAnim->getWeights();
-	return glm::vec2();
-}
-
-glm::mat4 Renderable::getTransform()
-{
-	if (animation != nullptr)
-		return animation->getTransform();
-	   		
-	return glm::mat4();
-}
+//bool Renderable::hasAnimations()
+//{
+//	return (animation != nullptr);
+//}
+//
+//bool Renderable::hasMorphAnim()
+//{
+//	return (morphAnim != nullptr);
+//}
+//
+//glm::vec2 Renderable::getWeights()
+//{
+//	if (morphAnim != nullptr)
+//		return morphAnim->getWeights();
+//	return glm::vec2();
+//}
+//
+//glm::mat4 Renderable::getTransform()
+//{
+//	if (animation != nullptr)
+//		return animation->getTransform();
+//	   		
+//	return glm::mat4();
+//}

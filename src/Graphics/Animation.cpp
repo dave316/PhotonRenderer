@@ -6,17 +6,23 @@ Animation::Animation() :
 	currentTransform(1.0f),
 	currentTime(0.0f),
 	ticksPerSecond(0.0f),
-	duration(0.0f)
+	startTime(0.0f),
+	endTime(0.0f),
+	duration(0.0f),
+	nodeIndex(0)
 {
 
 }
 
-Animation::Animation(const std::string& name, float ticksPerSecond, float duration) :
+Animation::Animation(const std::string& name, float ticksPerSecond, float startTime, float endTime, float duration, unsigned int nodeIndex) :
 	name(name),
 	currentTransform(1.0f),
 	currentTime(0.0f),
 	ticksPerSecond(ticksPerSecond),
-	duration(duration)
+	startTime(startTime),
+	endTime(endTime),
+	duration(duration),
+	nodeIndex(nodeIndex)
 {
 
 }
@@ -74,12 +80,12 @@ unsigned int Animation::findScaling(float currentTime)
 
 glm::mat4 Animation::calcInterpPosition()
 {
-	glm::vec3 result;
+	glm::vec3 result(0.0f);
 	if (positions.size() == 1)
 	{
 		result = positions[0].second;
 	}
-	else
+	else if(positions.size() > 1)
 	{
 		unsigned int positionIndex = findPosition(currentTime);
 		unsigned int nextPositionIndex = positionIndex + 1;
@@ -94,12 +100,12 @@ glm::mat4 Animation::calcInterpPosition()
 
 glm::mat4 Animation::calcInterpRotation()
 {
-	glm::quat result;
+	glm::quat result(1.0f, 0.0f, 0.0f, 0.0f);
 	if (rotations.size() == 1)
 	{
 		result = rotations[0].second;
 	}
-	else
+	else if(rotations.size() > 1)
 	{
 		unsigned int rotationIndex = findRotation(currentTime);
 		unsigned int nextRotationIndex = rotationIndex + 1;
@@ -114,12 +120,12 @@ glm::mat4 Animation::calcInterpRotation()
 
 glm::mat4 Animation::calcInterpScaling()
 {
-	glm::vec3 result;
+	glm::vec3 result(1.0f);
 	if (scales.size() == 1)
 	{
 		result = scales[0].second;
 	}
-	else
+	else if(scales.size() > 1)
 	{
 		unsigned int scaleIndex = findScaling(currentTime);
 		unsigned int nextScaleIndex = scaleIndex + 1;
@@ -135,15 +141,22 @@ glm::mat4 Animation::calcInterpScaling()
 void Animation::update(float time)
 {
 	currentTime = fmodf(time, duration);
-	//glm::mat4 translation = calcInterpPosition();
+	if (currentTime < startTime || currentTime > endTime)
+		currentTime = 0.0f;
+	glm::mat4 translation = calcInterpPosition();
 	glm::mat4 rotation = calcInterpRotation();
-	//glm::mat4 scale = calcInterpScaling();
-	currentTransform = rotation;
+	glm::mat4 scale = calcInterpScaling();
+	currentTransform = translation * rotation * scale;
 }
 
 std::string Animation::getName()
 {
 	return name;
+}
+
+unsigned int Animation::getNodeIndex()
+{
+	return nodeIndex;
 }
 
 glm::mat4 Animation::getTransform()

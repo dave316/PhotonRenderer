@@ -28,7 +28,7 @@ namespace GL
 		void upload(const void* data, int width, int height)
 		{
 			bind();
-			glTexImage2D(Target, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			glTexImage2D(Target, 0, GL_SRGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 			glTexParameteri(Target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(Target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			//glTexParameteri(Target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
