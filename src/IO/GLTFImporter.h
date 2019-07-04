@@ -51,10 +51,10 @@ namespace IO
 			int animIndex = -1;
 			std::string name;
 			std::vector<int> children;
-			//glm::vec3 translation = glm::vec3(0.0f);
-			//glm::quat rotation;
-			//glm::vec3 scale = glm::vec3(1.0f);
-			glm::mat4 transform = glm::mat4(1.0f);
+			glm::vec3 translation = glm::vec3(0.0f);
+			glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+			glm::vec3 scale = glm::vec3(1.0f);
+			//glm::mat4 transform = glm::mat4(1.0f);
 		};
 
 		// GLTF related data
@@ -81,7 +81,7 @@ namespace IO
 		void loadMaterials(const json::Document& doc);
 		void loadTextures(const json::Document& doc, const std::string& path);
 		Entity::Ptr loadScene(const json::Document& doc);
-		Entity::Ptr traverse(int nodeIndex, glm::mat4 parentTransform);
+		Entity::Ptr traverse(int nodeIndex);
 
 		template<typename T>
 		void loadData(int accIndex, std::vector<T>& data)

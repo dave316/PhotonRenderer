@@ -103,7 +103,7 @@ namespace IO
 		//	}
 		//}
 
-		auto rootEntity = Entity::create(pScene->mRootNode->mName.C_Str(), glm::mat4());
+		auto rootEntity = Entity::create(pScene->mRootNode->mName.C_Str());
 		auto rootTransform = rootEntity->getComponent<Transform>();
 
 		std::vector<Mesh::Ptr> meshes;
@@ -122,7 +122,7 @@ namespace IO
 
 		for (auto& m : meshes)
 		{
-			auto childEntity = Entity::create("blub", glm::mat4()); // TODO get mesh name
+			auto childEntity = Entity::create("blub"); // TODO get mesh name
 			entities.push_back(childEntity);
 			auto r = Renderable::create();
 			r->addMesh(m, materials[m->getMaterialIndex()]);
@@ -407,7 +407,7 @@ namespace IO
 			traverse(pScene, pNode->mChildren[i]);
 		}
 
-		return Entity::create("", glm::mat4());
+		return Entity::create("");
 	}
 
 	glm::vec3 toVec3(const aiColor4D& aiCol4)

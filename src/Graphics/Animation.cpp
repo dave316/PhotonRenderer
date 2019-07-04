@@ -3,7 +3,6 @@
 
 Animation::Animation() :
 	name(""),
-	currentTransform(1.0f),
 	currentTime(0.0f),
 	ticksPerSecond(0.0f),
 	startTime(0.0f),
@@ -16,7 +15,6 @@ Animation::Animation() :
 
 Animation::Animation(const std::string& name, float ticksPerSecond, float startTime, float endTime, float duration, unsigned int nodeIndex) :
 	name(name),
-	currentTransform(1.0f),
 	currentTime(0.0f),
 	ticksPerSecond(ticksPerSecond),
 	startTime(startTime),
@@ -95,6 +93,7 @@ glm::mat4 Animation::calcInterpPosition()
 		glm::vec3 end = positions[nextPositionIndex].second;
 		result = glm::mix(start, end, factor);
 	}
+	pos = result;
 	return glm::translate(glm::mat4(1.0f), result);
 }
 
@@ -115,6 +114,7 @@ glm::mat4 Animation::calcInterpRotation()
 		const glm::quat& end = rotations[nextRotationIndex].second;
 		result = glm::slerp(start, end, factor);
 	}
+	rot = result;
 	return glm::mat4_cast(result);
 }
 
@@ -135,6 +135,7 @@ glm::mat4 Animation::calcInterpScaling()
 		glm::vec3 end = scales[nextScaleIndex].second;
 		result = glm::mix(start, end, factor);
 	}
+	scale = result;
 	return glm::scale(glm::mat4(1.0f), result);
 }
 
@@ -146,7 +147,37 @@ void Animation::update(float time)
 	glm::mat4 translation = calcInterpPosition();
 	glm::mat4 rotation = calcInterpRotation();
 	glm::mat4 scale = calcInterpScaling();
-	currentTransform = translation * rotation * scale;
+	//currentTransform = translation * rotation * scale;
+}
+
+bool Animation::hasPositions()
+{
+	return (!positions.empty());
+}
+
+bool Animation::hasRotations()
+{
+	return (!rotations.empty());
+}
+
+bool Animation::hasScale()
+{
+	return (!scales.empty());
+}
+
+glm::vec3 Animation::getPos()
+{
+	return pos;
+}
+
+glm::quat Animation::getRot()
+{
+	return rot;
+}
+
+glm::vec3 Animation::getScale()
+{
+	return scale;
 }
 
 std::string Animation::getName()
@@ -159,7 +190,7 @@ unsigned int Animation::getNodeIndex()
 	return nodeIndex;
 }
 
-glm::mat4 Animation::getTransform()
-{
-	return currentTransform;
-}
+//glm::mat4 Animation::getTransform()
+//{
+//	return currentTransform;
+//}

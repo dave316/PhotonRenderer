@@ -1,12 +1,12 @@
 #include "Transform.h"
 #include <iostream>
 
-Transform::Transform(Entity* entity, glm::mat4 transform) :
+Transform::Transform(Entity* entity) :
 	entity(entity),
 	position(0.0f),
+	rotation(1.0f, 0.0f, 0.0f, 0.0f),
 	scale(1.0f),
-	transform(transform),
-	localTransform(transform)
+	transform(1.0f)
 {}
 
 Transform::~Transform()
@@ -14,31 +14,41 @@ Transform::~Transform()
 	//std::cout << "Transform: destroyed" << std::endl;
 }
 
+void Transform::setPosition(glm::vec3 p)
+{
+	this->position = p;
+}
+
+void Transform::setRotation(glm::quat q)
+{
+	this->rotation = q;
+}
+
+void Transform::setScale(glm::vec3 s)
+{
+	this->scale = s;
+}
+
+void Transform::setTransform(glm::mat4 T)
+{
+	transform = T;
+}
+
 void Transform::update(glm::mat4 parentTransform)
 {
-	//glm::mat4 T = glm::translate(glm::mat4(), position);
-	//glm::mat4 R = glm::mat4_cast(rotation);
-	//glm::mat4 S = glm::scale(glm::mat4(), scale);
-	//transform = parentTransform * (S * R * T);
-	transform = parentTransform * transform;
+	glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
+	glm::mat4 R = glm::mat4_cast(rotation);
+	glm::mat4 S = glm::scale(glm::mat4(1.0f), scale);
+	transform = parentTransform * (T * R * S);
 	for (auto c : children)
 		c->update(transform);
 }
 
-void Transform::localTransformation(glm::mat4 T)
+void Transform::updateTransform(glm::mat4 parentTransform)
 {
-	transform = localTransform * T;
-}
-
-void Transform::reset()
-{
-	transform = localTransform;
-}
- 
-void Transform::setRotation(glm::quat q)
-{
-	rotation = q;
-	update(glm::mat4());
+	transform = parentTransform * transform;
+	for (auto c : children)
+		c->updateTransform(transform);
 }
 
 void Transform::addChild(Transform::Ptr child)

@@ -5,6 +5,7 @@
 
 #include <Core/Entity.h>
 #include <Core/Renderable.h>
+#include <Core/Animator.h>
 
 #pragma once
 
@@ -16,7 +17,7 @@ namespace IO
 		std::vector<Entity::Ptr> entities;
 		std::vector<Mesh::Ptr> meshes;
 		std::vector<Material::Ptr> materials;
-		//std::map<std::string, Animation::Ptr> animations;
+		std::map<std::string, Animation::Ptr> animations;
 
 		ModelImporter(const ModelImporter&) = delete;
 		ModelImporter& operator=(const ModelImporter&) = delete;
@@ -24,7 +25,7 @@ namespace IO
 		Entity::Ptr traverse(const aiScene* pScene, const aiNode* pNode, glm::mat4 parentTransform);
 		Material::Ptr loadMaterial(const std::string& path, const aiScene* pScene, const aiMaterial* pMaterial);
 		Mesh::Ptr loadMesh(const aiMesh* pMesh);
-		//void loadAnimation(const aiAnimation* pAnimation);
+		void loadAnimation(const aiAnimation* pAnimation);
 
 		glm::vec3 toVec3(const aiColor4D& aiCol4);
 		glm::vec3 toVec3(const aiVector3D& aiVec3);

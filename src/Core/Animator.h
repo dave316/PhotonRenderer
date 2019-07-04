@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Component.h"
+#include "Transform.h"
 
 #include <Graphics/Animation.h>
 
@@ -17,7 +18,8 @@ public:
 	void addAnimation(Animation::Ptr animation);
 	void update(float dt);
 	void switchAnimation(unsigned int index);
-	glm::mat4 getAnimationTransform();
+	void transform(Transform::Ptr transform);
+
 	typedef std::shared_ptr<Animator> Ptr;
 	static Ptr create()
 	{

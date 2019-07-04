@@ -18,9 +18,9 @@ private:
 	std::map<std::type_index, Component::Ptr> components;
 
 public:
-	Entity(const std::string& name, glm::mat4 transform) : name(name)
+	Entity(const std::string& name) : name(name)
 	{
-		auto t = Transform::Ptr(new Transform(this, transform));
+		auto t = Transform::Ptr(new Transform(this));
 		addComponent(t);
 	}
 
@@ -110,9 +110,9 @@ public:
 	}
 
 	typedef std::shared_ptr<Entity> Ptr;
-	static Ptr create(const std::string& name, glm::mat4 transform)
+	static Ptr create(const std::string& name)
 	{
-		return std::make_shared<Entity>(name, transform);
+		return std::make_shared<Entity>(name);
 	}
 };
 

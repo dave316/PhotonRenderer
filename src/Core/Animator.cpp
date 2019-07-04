@@ -17,7 +17,13 @@ void Animator::switchAnimation(unsigned int index)
 		currentAnimation = index;
 }
 
-glm::mat4 Animator::getAnimationTransform()
+void Animator::transform(Transform::Ptr transform)
 {
-	return animations[currentAnimation]->getTransform();
+	auto anim = animations[currentAnimation];
+	if (anim->hasPositions())
+		transform->setPosition(anim->getPos());
+	if (anim->hasRotations())
+		transform->setRotation(anim->getRot());
+	if (anim->hasScale())
+		transform->setScale(anim->getScale());
 }

@@ -16,7 +16,10 @@ class Animation
 	std::vector<std::pair<float, glm::vec3>> positions;
 	std::vector<std::pair<float, glm::quat>> rotations;
 	std::vector<std::pair<float, glm::vec3>> scales;
-	glm::mat4 currentTransform;
+
+	glm::vec3 pos = glm::vec3(0.0f);
+	glm::quat rot = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+	glm::vec3 scale = glm::vec3(1.0f);
 
 	float currentTime;
 	float ticksPerSecond;
@@ -45,7 +48,12 @@ public:
 	glm::mat4 calcInterpScaling();
 
 	void update(float time);
-	glm::mat4 getTransform();
+	bool hasPositions();
+	bool hasRotations();
+	bool hasScale();
+	glm::vec3 getPos();
+	glm::quat getRot();
+	glm::vec3 getScale();
 	std::string getName();
 	unsigned int getNodeIndex();
 

@@ -1,6 +1,7 @@
 #include "GLTFImporter.h"
 
 #include <IO/ImageLoader.h>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <algorithm>
@@ -216,7 +217,7 @@ namespace IO
 				else
 				{
 					// TODO figure out how to deal with different start/end times
-					Animation::Ptr anim(new Animation("blub", 0, minTime, maxTime, 3.708329916000366, tartetNodeIndex));
+					Animation::Ptr anim(new Animation("blub", 0, minTime, maxTime, maxTime, tartetNodeIndex));
 					anim->setPositions(positionKeys);
 					anim->setRotations(rotationKeys);
 					anim->setScales(scaleKeys);
@@ -250,7 +251,7 @@ namespace IO
 				std::vector<glm::vec4> colors;
 				std::vector<glm::vec3> normals;
 				std::vector<glm::vec2> texCoords;
-				std::vector<GLushort> indices; // TODO check other index types!
+				std::vector<GLubyte> indices; // TODO check other index types!
 
 				auto attributesNode = primitiveNode.FindMember("attributes");
 				if (attributesNode->value.HasMember("POSITION"))
@@ -487,14 +488,20 @@ namespace IO
 		return m;
 	}
 
-	Entity::Ptr GLTFImporter::traverse(int nodeIndex, glm::mat4 parentTransform)
+	Entity::Ptr GLTFImporter::traverse(int nodeIndex)
 	{
 		auto node = nodes[nodeIndex];
 		//glm::mat4 M = parentTransform * glm::translate(glm::mat4(1.0f), node.translation);
-		glm::mat4 M = node.transform;
+		//glm::mat4 M = node.transform;
 
-		auto entity = Entity::create(node.name, M);
+		if (node.name.empty())
+			node.name = "node_" + std::to_string(nodeIndex);
+
+		auto entity = Entity::create(node.name);
 		auto t = entity->getComponent<Transform>();
+		t->setPosition(node.translation);
+		t->setRotation(node.rotation);
+		t->setScale(node.scale);
 
 		if (node.meshIndex >= 0)
 		{
@@ -508,24 +515,21 @@ namespace IO
 			anim->addAnimation(animations[node.animIndex]);
 			entity->addComponent(anim);
 		}
-		
-		if (node.name.empty())
-			node.name = "node_" + std::to_string(nodeIndex);
 
-		std::cout << "node " << node.name << std::endl;
-		std::cout << "transformation:" << std::endl;
-		for (int row = 0; row < 4; row++)
-		{
-			for (int col = 0; col < 4; col++) 
-			{
-				std::cout << M[row][col] << " ";
-			}
-			std::cout << std::endl;
-		}
+		//std::cout << "node " << node.name << std::endl;
+		//std::cout << "transformation:" << std::endl;
+		//for (int row = 0; row < 4; row++)
+		//{
+		//	for (int col = 0; col < 4; col++) 
+		//	{
+		//		std::cout << M[row][col] << " ";
+		//	}
+		//	std::cout << std::endl;
+		//}
 
 		for (auto& index : node.children)
 		{
-			auto childEntity = traverse(index, M);
+			auto childEntity = traverse(index);
 			t->addChild(childEntity->getComponent<Transform>());
 		}
 
@@ -543,24 +547,30 @@ namespace IO
 				GLTFNode gltfNode;
 				if (node.HasMember("mesh"))
 					gltfNode.meshIndex = node["mesh"].GetInt();
-				glm::vec3 t(0.0f);
-				glm::vec3 s(1.0f);
-				glm::quat r(1.0f, 0.0f, 0.0f, 0.0f);
+				//glm::vec3 t(0.0f);
+				//glm::vec3 s(1.0f);
+				//glm::quat r(1.0f, 0.0f, 0.0f, 0.0f);
 
 				if (node.HasMember("translation"))
-					t = toVec3(node["translation"]);
+					gltfNode.translation = toVec3(node["translation"]);
 				if (node.HasMember("rotation"))
-					r = toQuat(node["rotation"]);
+					gltfNode.rotation = toQuat(node["rotation"]);
 				if (node.HasMember("scale"))
-					s = toVec3(node["scale"]);
+					gltfNode.scale = toVec3(node["scale"]);
 				
-				glm::mat4 T = glm::translate(glm::mat4(1.0f), t);
-				glm::mat4 R = glm::mat4_cast(r);
-				glm::mat4 S = glm::scale(glm::mat4(1.0f), s);
-				gltfNode.transform = S * R * T;
+				//glm::mat4 T = glm::translate(glm::mat4(1.0f), t);
+				//glm::mat4 R = glm::mat4_cast(r);
+				//glm::mat4 S = glm::scale(glm::mat4(1.0f), s);
+				//gltfNode.transform = T * R * S;
 
 				if (node.HasMember("matrix"))
-					gltfNode.transform = toMat4(node["matrix"]);
+				{
+					
+					glm::mat4 M = toMat4(node["matrix"]);
+					glm::vec3 skew;
+					glm::vec4 persp;
+					glm::decompose(M, gltfNode.scale, gltfNode.rotation, gltfNode.translation, skew, persp);
+				}					
 
 				if (node.HasMember("children"))
 				{
@@ -579,14 +589,13 @@ namespace IO
 			nodes[nodeIndex].animIndex = i;
 		}
 
-		glm::mat4 M(1.0f);
-		auto root = Entity::create("root", M);
+		auto root = Entity::create("root");
 		auto rootTransform = root->getComponent<Transform>();
 		if (doc.HasMember("scenes") && doc["scenes"][0].HasMember("nodes"))
 		{
 			for (auto& nodeIndex : doc["scenes"][0]["nodes"].GetArray())
 			{
-				auto childEntity = traverse(nodeIndex.GetInt(), M);
+				auto childEntity = traverse(nodeIndex.GetInt());
 				rootTransform->addChild(childEntity->getComponent<Transform>());
 			}
 		}

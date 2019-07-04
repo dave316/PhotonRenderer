@@ -87,7 +87,7 @@ bool Renderer::init()
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
 	std::string path = "../assets/glTF-Sample-Models/2.0";
-	std::string name = "RiggedSimple";
+	std::string name = "InterpolationTest";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
@@ -95,6 +95,8 @@ bool Renderer::init()
 	auto root = importer.importModel(path + "/" + fn);
 	rootEntitis.push_back(root);
 	entities = importer.getEntities();
+
+	//root->getComponent<Transform>()->update(glm::mat4(1.0f));
 
 	//IO::ModelImporter importer;
 	//auto rootEntity = importer.importModel(path + "/" + fn);
@@ -163,10 +165,6 @@ void Renderer::loadGLTFModels(std::string path)
 
 void Renderer::updateAnimations(float dt)
 {
-	// reset current transformations
-	for (auto e : entities)
-		e->getComponent<Transform>()->reset();
-
 	// apply transformations from animations
 	auto rootEntity = rootEntitis[modelIndex];
 	auto animators = rootEntity->getChildrenWithComponent<Animator>();
@@ -176,7 +174,7 @@ void Renderer::updateAnimations(float dt)
 		auto t = e->getComponent<Transform>();
 
 		a->update(dt);
-		t->localTransformation(a->getAnimationTransform());
+		a->transform(t);
 	}
 
 	// propagate the transformations trough the scene hirarchy

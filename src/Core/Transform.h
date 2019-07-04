@@ -21,19 +21,20 @@ private:
 	glm::vec3 position;
 	glm::quat rotation;
 	glm::vec3 scale;
-	glm::mat4 localTransform;
 	glm::mat4 transform;
 	
 	Transform::Ptr parent;
 	std::vector<Transform::Ptr> children;
 
 public:
-	Transform(Entity* entity, glm::mat4 transform);
+	Transform(Entity* entity);
 	~Transform();
+	void setPosition(glm::vec3 p);
 	void setRotation(glm::quat q);
+	void setScale(glm::vec3 s);
+	void setTransform(glm::mat4 T);
 	void update(glm::mat4 parentTransform);
-	void localTransformation(glm::mat4 T);
-	void reset();
+	void updateTransform(glm::mat4 parentTransform);
 	void addChild(Transform::Ptr child);
 	int getNumChildren();
 	Transform::Ptr getChild(int index);
