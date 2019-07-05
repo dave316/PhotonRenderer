@@ -87,7 +87,7 @@ bool Renderer::init()
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
 	std::string path = "../assets/glTF-Sample-Models/2.0";
-	std::string name = "InterpolationTest";
+	std::string name = "Sponza";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 

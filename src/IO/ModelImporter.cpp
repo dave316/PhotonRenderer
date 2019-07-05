@@ -238,10 +238,10 @@ namespace IO
 			scales.push_back(std::pair<float, glm::vec3>(time, scale));
 		}
 
-		Animation::Ptr anim(new Animation(name, ticksPerSecond, 0.0, duration, duration, 0));
-		anim->setPositions(positions);
-		anim->setRotations(rotations);
-		anim->setScales(scales);
+		Animation::Ptr anim(new Animation(name, Animation::Interpolation::LINEAR, ticksPerSecond, 0.0, duration, duration, 0));
+		//anim->setPositions(positions);
+		//anim->setRotations(rotations);
+		//anim->setScales(scales);
 		
 		animations[animNode->mNodeName.C_Str()] = anim;
 	}

@@ -125,9 +125,9 @@ namespace IO
 			auto channelsNode = animationNode.FindMember("channels");
 			for (auto& channelNode : channelsNode->value.GetArray())
 			{
-				std::vector<std::pair<float, glm::vec3>> positionKeys;
-				std::vector<std::pair<float, glm::quat>> rotationKeys;
-				std::vector<std::pair<float, glm::vec3>> scaleKeys;
+				//std::vector<std::pair<float, glm::vec3>> positionKeys;
+				//std::vector<std::pair<float, glm::quat>> rotationKeys;
+				//std::vector<std::pair<float, glm::vec3>> scaleKeys;
 				std::vector<std::pair<float, std::pair<float, float>>> timeWeights;
 				bool isMorphAnim = false;
 				float minTime = 1000.0f;
@@ -141,11 +141,28 @@ namespace IO
 
 				int input = samplers[samplerIndex].input;
 				int output = samplers[samplerIndex].output;
+				std::string interpolation = samplers[samplerIndex].interpolation;
+
+				Animation::Interpolation interp;
+				if (interpolation.compare("STEP") == 0)
+					interp = Animation::Interpolation::STEP;
+				else if (interpolation.compare("LINEAR") == 0)
+					interp = Animation::Interpolation::LINEAR;
+				else if (interpolation.compare("CUBICSPLINE") == 0)
+					interp = Animation::Interpolation::CUBIC;
+				else
+					interp = Animation::Interpolation::LINEAR;
+
+				std::vector<float> times;
+				std::vector<glm::vec3> translations;
+				std::vector<glm::quat> rotations;
+				std::vector<glm::vec3> scales;
 
 				if (targetPath.compare("translation") == 0)
 				{
-					std::vector<float> times;
-					std::vector<glm::vec3> translations;
+					//std::vector<float> times;
+					//std::vector<glm::vec3> translations;
+					times.clear();
 					loadData(input, times);
 					loadData(output, translations);
 
@@ -153,13 +170,14 @@ namespace IO
 					{
 						minTime = std::min(minTime, times[i]);
 						maxTime = std::max(maxTime, times[i]);
-						positionKeys.push_back(std::make_pair(times[i], translations[i]));
+						//positionKeys.push_back(std::make_pair(times[i], translations[i]));
 					}
 				}
 				else if (targetPath.compare("rotation") == 0)
 				{
-					std::vector<float> times;
-					std::vector<glm::quat> rotations;
+					//std::vector<float> times;
+					//std::vector<glm::quat> rotations;
+					times.clear();
 					loadData(input, times);
 					loadData(output, rotations);
 
@@ -167,21 +185,24 @@ namespace IO
 					{
 						minTime = std::min(minTime, times[i]);
 						maxTime = std::max(maxTime, times[i]);
-						rotationKeys.push_back(std::make_pair(times[i], rotations[i]));
+						//rotationKeys.push_back(std::make_pair(times[i], rotations[i]));
 					}
 				}
 				else if (targetPath.compare("scale") == 0)
 				{
-					std::vector<float> times;
-					std::vector<glm::vec3> scales;
+					//std::vector<float> times;
+					//std::vector<glm::vec3> scales;
+					times.clear();
 					loadData(input, times);
 					loadData(output, scales);
+
+					//std::cout << "times: " << times.size() << " scales: " << scales.size() << std::endl;
 
 					for (int i = 0; i < times.size(); i++)
 					{
 						minTime = std::min(minTime, times[i]);
 						maxTime = std::max(maxTime, times[i]);
-						scaleKeys.push_back(std::make_pair(times[i], scales[i]));
+						//scaleKeys.push_back(std::make_pair(times[i], scales[i]));
 					}
 				}
 				else if (targetPath.compare("weights") == 0)
@@ -217,10 +238,11 @@ namespace IO
 				else
 				{
 					// TODO figure out how to deal with different start/end times
-					Animation::Ptr anim(new Animation("blub", 0, minTime, maxTime, maxTime, tartetNodeIndex));
-					anim->setPositions(positionKeys);
-					anim->setRotations(rotationKeys);
-					anim->setScales(scaleKeys);
+					Animation::Ptr anim(new Animation("blub", interp, 0, minTime, maxTime, maxTime, tartetNodeIndex));
+					anim->setTimes(times);
+					anim->setPositions(translations);
+					anim->setRotations(rotations);
+					anim->setScales(scales);
 					animations.push_back(anim);
 				}
 			}
@@ -251,7 +273,7 @@ namespace IO
 				std::vector<glm::vec4> colors;
 				std::vector<glm::vec3> normals;
 				std::vector<glm::vec2> texCoords;
-				std::vector<GLubyte> indices; // TODO check other index types!
+				std::vector<GLuint> indices; // TODO check other index types!
 
 				auto attributesNode = primitiveNode.FindMember("attributes");
 				if (attributesNode->value.HasMember("POSITION"))
@@ -286,7 +308,33 @@ namespace IO
 				{
 					auto indicesNode = primitiveNode.FindMember("indices");
 					int accIndex = indicesNode->value.GetInt();
-					loadData(accIndex, indices);
+					int type = accessors[accIndex].componentType;
+					switch (type)
+					{
+					case GL_UNSIGNED_BYTE:
+					{
+						std::vector<GLubyte> byteIndices;
+						loadData(accIndex, byteIndices);
+						for (auto i : byteIndices)
+							indices.push_back(i);
+						break;
+					}
+					case GL_UNSIGNED_SHORT:
+					{
+						std::vector<GLushort> shortIndices;
+						loadData(accIndex, shortIndices);
+						for (auto i : shortIndices)
+							indices.push_back(i);
+						break;
+					}
+					case GL_UNSIGNED_INT:
+						loadData(accIndex, indices);
+						break;
+					default:
+						std::cout << "index type not supported!!!" << std::endl;
+						break;
+					}
+					
 				}
 
 				if (primitiveNode.HasMember("material"))
@@ -361,7 +409,7 @@ namespace IO
 
 				for (int i = 0; i < indices.size(); i += 3)
 				{
-					Triangle t(indices[i], indices[i + 1], indices[i + 2]);
+					Triangle t(indices[i], indices[(int64_t)i + 1], indices[(int64_t)i + 2]);
 					surface.addTriangle(t);
 				}
 
