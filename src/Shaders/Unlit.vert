@@ -27,6 +27,7 @@ out vec2 texCoord;
 
 uniform mat4 VP;
 uniform mat4 M;
+uniform mat3 N;
 uniform float w0;
 uniform float w1;
 
@@ -39,7 +40,7 @@ void main()
 	//vec3 mPosition = vPosition;
 
 	wPosition = vec3(M * vec4(mPosition, 1.0));
-	wNormal = inverse(transpose(mat3(M))) * mNormal;
+	wNormal = N * mNormal;
 	color = vColor;
 	texCoord = vTexCoord;
 	gl_Position = VP * vec4(wPosition, 1.0);

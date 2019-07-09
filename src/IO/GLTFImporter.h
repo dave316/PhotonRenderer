@@ -69,7 +69,7 @@ namespace IO
 		std::vector<Animator::Ptr> animators;
 		std::vector<Texture2D::Ptr> textures;
 		std::vector<Animation::Ptr> animations;
-		//std::vector<MorphAnimation::Ptr> morphAnims;
+		std::vector<MorphAnimation::Ptr> morphAnims;
 		std::vector<Entity::Ptr> entities;
 
 		GLTFImporter(const GLTFImporter&) = delete;

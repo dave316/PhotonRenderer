@@ -19,18 +19,21 @@ class MorphAnimation
 	float currentTime;
 	float ticksPerSecond;
 	float duration;
+	unsigned int nodeIndex;
 
 	MorphAnimation(const MorphAnimation&) = delete;
 	MorphAnimation& operator=(const MorphAnimation&) = delete;
 public:
 	MorphAnimation();
-	MorphAnimation(const std::string& name, float ticksPerSecond, float duration, std::vector<std::pair<float, std::pair<float, float>>> weights);
+	MorphAnimation(const std::string& name, float ticksPerSecond, float duration, unsigned int nodeIndex, std::vector<std::pair<float, std::pair<float, float>>> weights);
 
 	unsigned int findWeights(float currentTime);
 	glm::vec2 calcInterpWeight();
 
 	void update(float time);
 	glm::vec2 getWeights();
+
+	unsigned int getNodeIndex();
 
 	typedef std::shared_ptr<MorphAnimation> Ptr;
 	static Ptr create()

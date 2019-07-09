@@ -11,7 +11,7 @@
 
 namespace IO
 {
-	Texture2D::Ptr loadTexture(const std::string& filename)
+	Texture2D::Ptr loadTexture(const std::string& filename, bool sRGB)
 	{
 		int w, h, c;
 		std::unique_ptr<unsigned char> data(stbi_load(filename.c_str(), &w, &h, &c, 3));
@@ -23,7 +23,7 @@ namespace IO
 
 		std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
 
-		auto tex = Texture2D::create(w, h);
+		auto tex = Texture2D::create(w, h, sRGB);
 		tex->upload(data.get());
 
 		//delete[] output;

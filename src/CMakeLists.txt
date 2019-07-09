@@ -13,7 +13,7 @@ set(SRC_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 file(GLOB_RECURSE SRC_LIST LIST_DIRECTORIES false "${SRC_ROOT_DIR}/*.cpp" "${SRC_ROOT_DIR}/*.h")
-file(GLOB SHADER_LIST "${SRC_ROOT_DIR}/Shaders/*.glsl")
+file(GLOB SHADER_LIST "${SRC_ROOT_DIR}/Shaders/*.glsl" "${SRC_ROOT_DIR}/Shaders/*.vert" "${SRC_ROOT_DIR}/Shaders/*.frag")
 
 foreach(SRC IN ITEMS ${SRC_LIST})
 	get_filename_component(SRC_PATH "${SRC}" PATH)

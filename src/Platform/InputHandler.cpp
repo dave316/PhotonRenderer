@@ -10,7 +10,7 @@ void InputHandler::keyboardCB(GLFWwindow* window, int key, int scancode, int act
 	KeyEvent keyEvent(key, action);
 	InputData* data = (InputData*)glfwGetWindowUserPointer(window);
 	auto& keyMapping = data->keyMapping;
-	if (action == GLFW_PRESS || action == GLFW_RELEASE || GLFW_REPEAT)
+	if (action == GLFW_PRESS || action == GLFW_RELEASE || action == GLFW_REPEAT)
 	{
 		if (keyMapping.find(keyEvent) != keyMapping.end())
 		{
@@ -24,7 +24,7 @@ void InputHandler::mouseButtonCB(GLFWwindow* window, int button, int action, int
 	KeyEvent keyEvent(button, action);
 	InputData* data = (InputData*)glfwGetWindowUserPointer(window);
 	auto& keyMapping = data->keyMapping;
-	if (action == GLFW_PRESS || action == GLFW_RELEASE || GLFW_REPEAT)
+	if (action == GLFW_PRESS || action == GLFW_RELEASE || action == GLFW_REPEAT)
 	{
 		if (button == GLFW_MOUSE_BUTTON_2)
 		{

@@ -20,14 +20,14 @@ Mesh::Mesh(const std::string& name, TriangleSurface& surface, unsigned int mater
 	vao.addAttrib(1, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, color));
 	vao.addAttrib(2, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, normal));
 	vao.addAttrib(3, 2, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, texCoord));
-	vao.addAttrib(4, 2, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
-	vao.addAttrib(5, 2, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, bitangent));
-	vao.addAttrib(6, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition0));
-	vao.addAttrib(7, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetNormal0));
-	vao.addAttrib(8, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetTangent0));
-	vao.addAttrib(9, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition1));
-	vao.addAttrib(10, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetNormal1));
-	vao.addAttrib(11, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetTangent1));
+	vao.addAttrib(4, 4, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
+	//vao.addAttrib(5, 2, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, bitangent));
+	//vao.addAttrib(6, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition0));
+	//vao.addAttrib(7, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetNormal0));
+	//vao.addAttrib(8, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetTangent0));
+	//vao.addAttrib(9, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition1));
+	//vao.addAttrib(10, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetNormal1));
+	//vao.addAttrib(11, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetTangent1));
 
 	vao.bind();
 	indexBuffer.bind();

@@ -5,6 +5,8 @@
 
 #include "Component.h"
 
+#include <GL/GLProgram.h>
+
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <vector>
@@ -22,6 +24,7 @@ private:
 	glm::quat rotation;
 	glm::vec3 scale;
 	glm::mat4 transform;
+	glm::mat3 normalTransform;
 	
 	Transform::Ptr parent;
 	std::vector<Transform::Ptr> children;
@@ -39,10 +42,14 @@ public:
 	int getNumChildren();
 	Transform::Ptr getChild(int index);
 	Entity* getEntity();
-	operator glm::mat4() const
-	{
-		return transform;
-	}
+
+	void setUniforms(GL::Program& program);
+
+
+	//operator glm::mat4() const
+	//{
+	//	return transform;
+	//}
 };
 
 #endif // INCLUDED_TRANSFORM

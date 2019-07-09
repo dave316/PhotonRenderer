@@ -9,7 +9,7 @@
 
 namespace IO
 {
-	Texture2D::Ptr loadTexture(const std::string& filename);
+	Texture2D::Ptr loadTexture(const std::string& filename, bool sRGB);
 }
 
 #endif // INCLUDED_IMAGELOADER

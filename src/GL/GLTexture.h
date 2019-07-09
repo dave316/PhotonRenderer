@@ -25,10 +25,14 @@ namespace GL
 			glDeleteTextures(1, &id);
 		}
 
-		void upload(const void* data, int width, int height)
+		void upload(const void* data, int width, int height, bool convertToLinear)
 		{
 			bind();
-			glTexImage2D(Target, 0, GL_SRGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+			GLint internalFormat = GL_RGB;
+			if (convertToLinear)
+				internalFormat = GL_SRGB8_ALPHA8;
+
+			glTexImage2D(Target, 0, internalFormat, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
 			glTexParameteri(Target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 			glTexParameteri(Target, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			//glTexParameteri(Target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);

@@ -249,7 +249,7 @@ namespace IO
 			timeWeights.push_back(std::make_pair(times[i], weights[i]));
 		}
 
-		MorphAnimation::Ptr anim(new MorphAnimation("morph", 0.0f, maxTime, timeWeights));
+		MorphAnimation::Ptr anim(new MorphAnimation("morph", 0.0f, maxTime, 0, timeWeights));
 		return anim;
 	}
 
@@ -269,7 +269,7 @@ namespace IO
 		aiColor4D color;
 		if (pMaterial->Get("$mat.gltf.pbrMetallicRoughness.baseColorFactor", 0, 0, color) == AI_SUCCESS)
 		{
-			material->setColor(toVec3(color));
+			material->setColor(glm::vec4(toVec3(color), 1.0f));
 		}		
 
 /*		for (int i = 0; i <= AI_TEXTURE_TYPE_MAX; i++)
@@ -302,7 +302,7 @@ namespace IO
 					const aiTexture* pTexture = pScene->mTextures[texIndex];
 					std::string format(pTexture->achFormatHint);
 					//std::cout << "loading tex size: " << pTexture->mWidth << "x" << pTexture->mHeight << " format: " << format << std::endl;
-					auto tex = Texture2D::create(pTexture->mWidth, pTexture->mHeight);
+					auto tex = Texture2D::create(pTexture->mWidth, pTexture->mHeight, true);
 					tex->upload((void*)pScene->mTextures[texIndex]->pcData);
 					material->addTexture(tex);
 				}
@@ -314,7 +314,7 @@ namespace IO
 			else
 			{
 				std::string filename = path + "/" + texFilename.C_Str();
-				material->addTexture(IO::loadTexture(filename));
+				material->addTexture(IO::loadTexture(filename, true));
 			}
 		}
 

@@ -5,7 +5,7 @@ struct Material
 	vec3 diffuseColor;
 	vec3 specularColor;
 	float shininess;
-
+	
 	sampler2D diffuseTexture;
 };
 uniform Material material;
@@ -21,16 +21,17 @@ layout(location = 0) out vec4 fragColor;
 
 void main()
 {
-	vec3 diffColor = material.diffuseColor;
+	vec3 diffMat = material.diffuseColor;
 	if(useTexture)
-		diffColor = texture2D(material.diffuseTexture, texCoord).rgb;
+		diffMat = texture2D(material.diffuseTexture, texCoord).rgb;
 	
 	vec3 lightPos = vec3(15, 100, 50);
 	vec3 l = normalize(lightPos - wPosition);
 	vec3 n = normalize(wNormal);
 
-	float lambert = max(dot(n,l),0.0);
-	vec3 radiance = 0.1 * diffColor + diffColor * lambert;
-
+	vec3 diffColor = diffMat * max(dot(n,l),0.0);
+	vec3 ambColor = diffMat * 0.1;
+	vec3 radiance = ambColor + diffColor;
+	 
 	fragColor = vec4(radiance, 1.0);
 }

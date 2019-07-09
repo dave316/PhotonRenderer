@@ -1,5 +1,6 @@
 #include "Transform.h"
 #include <iostream>
+#include <glm/gtc/matrix_inverse.hpp>
 
 Transform::Transform(Entity* entity) :
 	entity(entity),
@@ -42,6 +43,8 @@ void Transform::update(glm::mat4 parentTransform)
 	transform = parentTransform * (T * R * S);
 	for (auto c : children)
 		c->update(transform);
+
+	normalTransform = glm::inverseTranspose(glm::mat3(transform));
 }
 
 void Transform::updateTransform(glm::mat4 parentTransform)
@@ -73,5 +76,11 @@ int Transform::getNumChildren()
 Entity* Transform::getEntity()
 {
 	return entity;
+}
+
+void Transform::setUniforms(GL::Program& program)
+{
+	program.setUniform("M", transform);
+	program.setUniform("N", normalTransform);
 }
 

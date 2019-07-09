@@ -12,8 +12,8 @@ struct Vertex
 	glm::vec3 color;
 	glm::vec3 normal;
 	glm::vec2 texCoord;
-	glm::vec3 tangent;
-	glm::vec3 bitangent;
+	glm::vec4 tangent;
+	//glm::vec3 bitangent;
 	glm::vec3 targetPosition0;
 	glm::vec3 targetNormal0;
 	glm::vec3 targetTangent0;
@@ -21,11 +21,12 @@ struct Vertex
 	glm::vec3 targetNormal1;
 	glm::vec3 targetTangent1;
 	Vertex() {}
-	Vertex(glm::vec3 position, glm::vec3 color = glm::vec3(0.5f), glm::vec3 normal = glm::vec3(0), glm::vec2 texCoord = glm::vec2(0)) :
+	Vertex(glm::vec3 position, glm::vec3 color = glm::vec3(0.5f), glm::vec3 normal = glm::vec3(0), glm::vec2 texCoord = glm::vec2(0), glm::vec4 tangent = glm::vec4(0)) :
 		position(position),
 		color(color),
 		normal(normal),
-		texCoord(texCoord)
+		texCoord(texCoord),
+		tangent(tangent)
 	{
 
 	}

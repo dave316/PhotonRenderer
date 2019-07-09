@@ -20,7 +20,7 @@ class Material
 {
 	//std::string name;
 	std::vector<Texture2D::Ptr> textures;
-	glm::vec3 color;
+	glm::vec4 color;
 
 	Material(const Material&) = delete;
 	Material& operator=(const Material&) = delete;
@@ -28,7 +28,7 @@ public:
 	Material();
 	~Material();
 
-	void setColor(glm::vec3& color);
+	void setColor(glm::vec4& color);
 	void addTexture(Texture2D::Ptr texture);
 	void setUniforms(GL::Program& program);
 

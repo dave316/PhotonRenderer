@@ -11,12 +11,13 @@ MorphAnimation::MorphAnimation() :
 
 }
 
-MorphAnimation::MorphAnimation(const std::string& name, float ticksPerSecond, float duration, std::vector<std::pair<float, std::pair<float, float>>> weights) :
+MorphAnimation::MorphAnimation(const std::string& name, float ticksPerSecond, float duration, unsigned int nodeIndex, std::vector<std::pair<float, std::pair<float, float>>> weights) :
 	name(name),
 	currentWeight(0.0f),
 	currentTime(0.0f),
 	ticksPerSecond(ticksPerSecond),
 	duration(duration),
+	nodeIndex(nodeIndex),
 	weights(weights)
 {
 }
@@ -66,4 +67,9 @@ void MorphAnimation::update(float time)
 glm::vec2 MorphAnimation::getWeights()
 {
 	return currentWeight;
+}
+
+unsigned int MorphAnimation::getNodeIndex()
+{
+	return nodeIndex;
 }

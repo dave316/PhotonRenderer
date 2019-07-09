@@ -49,8 +49,8 @@ bool Renderer::init()
 	glViewport(0, 0, 1920, 1080);
 
 	std::string shaderPath = "../src/Shaders";
-	auto vsCode = loadTxtFile(shaderPath + "/Unlit.vs.glsl");
-	auto fsCode = loadTxtFile(shaderPath + "/Unlit.fs.glsl");
+	auto vsCode = loadTxtFile(shaderPath + "/Default.vert");
+	auto fsCode = loadTxtFile(shaderPath + "/Default.frag");
 
 	if (!vs.compile(vsCode.c_str()))
 	{
@@ -73,8 +73,13 @@ bool Renderer::init()
 	}
 	program.loadUniforms();
 
-	program.setUniform("material.diffuseColor", glm::vec3(0.5f));
-	program.setUniform("material.diffuseTexture", 0);
+	program.setUniform("material.baseColorFactor", glm::vec4(1.0f));
+	program.setUniform("material.baseColorTex", 0);
+	program.setUniform("material.normalTex", 2);
+	program.setUniform("material.pbrTex", 1);
+	program.setUniform("material.emissiveTex", 3);
+	//program.setUniform("w0", 0.0f);
+	//program.setUniform("w1", 0.0f);
 
 	//std::string path = "D:/Assets/Models/sponza/sponza.obj";
 	//std::string basePath = "D:/glTF-Sample-Models/2.0";
@@ -87,7 +92,7 @@ bool Renderer::init()
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
 	std::string path = "../assets/glTF-Sample-Models/2.0";
-	std::string name = "Sponza";
+	std::string name = "DamagedHelmet";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
@@ -174,7 +179,15 @@ void Renderer::updateAnimations(float dt)
 		auto t = e->getComponent<Transform>();
 
 		a->update(dt);
-		a->transform(t);
+
+		if (a->hasMorphAnim())
+		{
+			glm::vec2 weights = a->getWeights();
+			program.setUniform("w0", weights.x);
+			program.setUniform("w1", weights.y);
+		}
+		else
+			a->transform(t);
 	}
 
 	// propagate the transformations trough the scene hirarchy
@@ -183,7 +196,11 @@ void Renderer::updateAnimations(float dt)
 
 void Renderer::updateCamera(Camera& camera)
 {
-	program.setUniform("VP", camera.getViewProjectionMatrix());
+	Camera::UniformData cameraData;
+	camera.writeUniformData(cameraData);
+
+	program.setUniform("VP", cameraData.VP);
+	program.setUniform("cameraPos", glm::vec3(cameraData.position));
 }
 
 void Renderer::nextModel()
@@ -199,76 +216,14 @@ void Renderer::render()
 	
 	auto e = rootEntitis[modelIndex];
 	{
-		//auto rootRenderable = e->getComponent<Renderable>();
-		//if (rootRenderable)
-		//{
-		//	glm::mat4 A(1.0f);
-		//	if (rootRenderable->hasAnimations())
-		//		A = rootRenderable->getTransform();
-		//	else if (rootRenderable->hasMorphAnim())
-		//	{
-		//		glm::vec2 weights = rootRenderable->getWeights();
-		//		program.setUniform("w0", weights.x);
-		//		program.setUniform("w1", weights.y);
-
-		//		//std::cout << "w: " << weights.x << " " << weights.y << std::endl;
-		//	}
-		//	else
-		//	{
-		//		program.setUniform("w0", 0.0f);
-		//		program.setUniform("w1", 0.0f);
-		//	}
-
-		//	glm::mat4 M = *(e->getComponent<Transform>());
-		//	program.setUniform("M", M * A);
-		//	rootRenderable->render(program);
-		//}
-			
 		auto models = e->getChildrenWithComponent<Renderable>();
 		for (auto m : models)
 		{
-			//glm::mat4 A(1.0f);
 			auto r = m->getComponent<Renderable>();
+			auto t = m->getComponent<Transform>();
 
-			if (r)
-			{
-				//if (r->hasAnimations())
-				//	A = r->getTransform();
-				//else if (r->hasMorphAnim())
-				//{
-				//	glm::vec2 weights = r->getWeights();
-				//	program.setUniform("w0", weights.x);
-				//	program.setUniform("w1", weights.y);
-				//}
-				//else
-				//{
-				program.setUniform("w0", 0.0f);
-				program.setUniform("w1", 0.0f);
-				//}
-
-				glm::mat4 M = *(m->getComponent<Transform>());
-
-				//auto a = m->getComponent<Animator>();
-				//if (a)
-				//{
-				//	M *= a->getAnimationTransform();
-				//}
-					
-				//glm::mat4 M = glm::scale(glm::mat4(1.0f), glm::vec3(0.001f));
-
-
-				//for (int row = 0; row < 4; row++)
-				//{
-				//	for (int col = 0; col < 4; col++) 
-				//	{
-				//		std::cout << M[row][col] << " ";
-				//	}
-				//	std::cout << std::endl;
-				//}
-
-				program.setUniform("M", M);
-				r->render(program);
-			}
+			t->setUniforms(program);
+			r->render(program);
 		}
 	}
 }

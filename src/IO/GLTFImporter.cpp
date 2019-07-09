@@ -232,8 +232,8 @@ namespace IO
 
 				if (isMorphAnim)
 				{
-					//MorphAnimation::Ptr anim(new MorphAnimation("morph", 0.0f, maxTime, timeWeights));
-					//morphAnims.push_back(anim);
+					MorphAnimation::Ptr anim(new MorphAnimation("morph", 0.0f, maxTime, tartetNodeIndex, timeWeights));
+					morphAnims.push_back(anim);
 				}
 				else
 				{
@@ -270,9 +270,10 @@ namespace IO
 				primitivNum++;
 				
 				std::vector<glm::vec3> positions;
-				std::vector<glm::vec4> colors;
+				std::vector<glm::vec4> colors; // TODO colors can be RGB or RGBA!!!
 				std::vector<glm::vec3> normals;
 				std::vector<glm::vec2> texCoords;
+				std::vector<glm::vec4> tangets;
 				std::vector<GLuint> indices; // TODO check other index types!
 
 				auto attributesNode = primitiveNode.FindMember("attributes");
@@ -302,6 +303,13 @@ namespace IO
 					auto texCoordNode = attributesNode->value.FindMember("TEXCOORD_0");
 					int accIndex = texCoordNode->value.GetInt();
 					loadData(accIndex, texCoords);
+				}
+
+				if (attributesNode->value.HasMember("TANGENT"))
+				{
+					auto tangentNode = attributesNode->value.FindMember("TANGENT");
+					int accIndex = tangentNode->value.GetInt();
+					loadData(accIndex, tangets);
 				}
 
 				if (primitiveNode.HasMember("indices"))
@@ -385,6 +393,8 @@ namespace IO
 						v.normal = normals[i];
 					if (i < texCoords.size())
 						v.texCoord = texCoords[i];
+					if (i < tangets.size())
+						v.tangent = tangets[i];
 					
 					if (morphTargets.size() == 2) // TODO: add support for more thant 2...
 					{
@@ -414,7 +424,7 @@ namespace IO
 				}
 
 				auto defaultMaterial = Material::create();
-				defaultMaterial->setColor(glm::vec3(0.5f));
+				defaultMaterial->setColor(glm::vec4(1.0f));
 
 				Material::Ptr material = defaultMaterial;
 				if (materialIndex < materials.size())
@@ -448,22 +458,65 @@ namespace IO
 				{
 					const auto& baseColorNode = pbrNode["baseColorFactor"];
 					auto array = baseColorNode.GetArray();
-					glm::vec3 color;
+					glm::vec4 color;
 					color.r = array[0].GetFloat();
 					color.g = array[1].GetFloat();
 					color.b = array[2].GetFloat();
+					color.a = array[3].GetFloat();
 					material->setColor(color);
 				}
 				else if(pbrNode.HasMember("baseColorTexture"))
 				{
-					//unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
-					unsigned int texIndex = 0;
+					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
+					//unsigned int texIndex = 0;
 					if (texIndex < textures.size())
 						material->addTexture(textures[texIndex]);
 					else
 						std::cout << "texture index " << texIndex << " not found" << std::endl;
 				}
+				else
+				{
+					material->setColor(glm::vec4(1.0f));
+				}
+
+				if (pbrNode.HasMember("metallicRoughnessTexture"))
+				{
+					unsigned int texIndex = pbrNode["metallicRoughnessTexture"]["index"].GetInt();
+					if (texIndex < textures.size())
+						material->addTexture(textures[texIndex]);
+					else
+						std::cout << "texture index " << texIndex << " not found" << std::endl;
+					//std::cout << "implement loading of metallicRoughnessTexture" << std::endl;
+				}
 			}
+
+			if (materialNode.HasMember("normalTexture"))
+			{
+				unsigned int texIndex = materialNode["normalTexture"]["index"].GetInt();
+				if (texIndex < textures.size())
+					material->addTexture(textures[texIndex]);
+				else
+					std::cout << "texture index " << texIndex << " not found" << std::endl;
+			}
+
+			//if (materialNode.HasMember("occlusionTexture"))
+			//{
+			//	unsigned int texIndex = materialNode["occlusionTexture"]["index"].GetInt();
+			//	if (texIndex < textures.size())
+			//		material->addTexture(textures[texIndex]);
+			//	else
+			//		std::cout << "texture index " << texIndex << " not found" << std::endl;
+			//}
+
+			if (materialNode.HasMember("emissiveTexture"))
+			{
+				unsigned int texIndex = materialNode["emissiveTexture"]["index"].GetInt();
+				if (texIndex < textures.size())
+					material->addTexture(textures[texIndex]);
+				else
+					std::cout << "texture index " << texIndex << " not found" << std::endl;
+			}
+
 			materials.push_back(material);
 		}
 	}
@@ -479,7 +532,21 @@ namespace IO
 			{
 				std::string filename = imagesNode["uri"].GetString();
 				std::cout << "loading texture " << filename << std::endl;
-				auto tex = IO::loadTexture(path + "/" + filename);
+
+				int i0 = filename.find_first_of("_") + 1;
+				int i1 = filename.find_first_of(".");
+				int len = i1 - i0;
+
+				std::string mapType = filename.substr(i0, len);
+
+				bool sRGB = false;
+				if (mapType.compare("baseColor") == 0 || mapType.compare("albedo") == 0)
+				{
+					std::cout << "SRGB: true" << std::endl;
+					sRGB = true;
+				}				
+
+				auto tex = IO::loadTexture(path + "/" + filename, sRGB);
 				textures.push_back(tex);
 			}
 		}
@@ -560,7 +627,11 @@ namespace IO
 		if (node.animIndex >= 0)
 		{
 			auto anim = Animator::create();
-			anim->addAnimation(animations[node.animIndex]);
+
+			if (node.animIndex < animations.size())
+				anim->addAnimation(animations[node.animIndex]);
+			else if (node.animIndex < morphAnims.size())
+				anim->addMorphAnim(morphAnims[node.animIndex]);
 			entity->addComponent(anim);
 		}
 
@@ -634,6 +705,12 @@ namespace IO
  		for (int i = 0; i < animations.size(); i++)
 		{
 			unsigned int nodeIndex = animations[i]->getNodeIndex();
+			nodes[nodeIndex].animIndex = i;
+		}
+
+		for (int i = 0; i < morphAnims.size(); i++)
+		{
+			unsigned int nodeIndex = morphAnims[i]->getNodeIndex();
 			nodes[nodeIndex].animIndex = i;
 		}
 
