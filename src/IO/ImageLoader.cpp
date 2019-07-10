@@ -13,8 +13,9 @@ namespace IO
 {
 	Texture2D::Ptr loadTexture(const std::string& filename, bool sRGB)
 	{
+		// TODO: check number of channels etc.
 		int w, h, c;
-		std::unique_ptr<unsigned char> data(stbi_load(filename.c_str(), &w, &h, &c, 3));
+		std::unique_ptr<unsigned char> data(stbi_load(filename.c_str(), &w, &h, &c, 0));
 
 		//int size = 256;
 		//unsigned int memSize = size * size * c;
@@ -23,10 +24,28 @@ namespace IO
 
 		std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
 
-		auto tex = Texture2D::create(w, h, sRGB);
+		GL::TextureFormat format = GL::RGB8;
+		if (sRGB)
+		{
+			if (c == 3)
+				format = GL::SRGB8;
+			else if (c == 4)
+				format = GL::SRGBA8;
+			else
+				std::cout << "error: no format for " << c << " channels" << std::endl;
+		}
+		else
+		{
+			if (c == 3)
+				format = GL::RGB8;
+			else if (c == 4)
+				format = GL::RGBA8;
+			else
+				std::cout << "error: no format for " << c << " channels" << std::endl;
+		}
+	
+		auto tex = Texture2D::create(w, h, format);
 		tex->upload(data.get());
-
-		//delete[] output;
 
 		return tex;
 	}

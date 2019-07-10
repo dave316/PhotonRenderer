@@ -75,8 +75,8 @@ bool Renderer::init()
 
 	program.setUniform("material.baseColorFactor", glm::vec4(1.0f));
 	program.setUniform("material.baseColorTex", 0);
-	program.setUniform("material.normalTex", 2);
 	program.setUniform("material.pbrTex", 1);
+	program.setUniform("material.normalTex", 2);
 	program.setUniform("material.emissiveTex", 3);
 	//program.setUniform("w0", 0.0f);
 	//program.setUniform("w1", 0.0f);
@@ -92,7 +92,7 @@ bool Renderer::init()
 	//loadGLTFModels("D:/glTF-Sample-Models/2.0");
 
 	std::string path = "../assets/glTF-Sample-Models/2.0";
-	std::string name = "DamagedHelmet";
+	std::string name = "BoomBox";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 

@@ -262,7 +262,8 @@ namespace IO
 		aiColor4D color;
 		if (pMaterial->Get("$mat.gltf.pbrMetallicRoughness.baseColorFactor", 0, 0, color) == AI_SUCCESS)
 		{
-			material->setColor(glm::vec4(toVec3(color), 1.0f));
+			//material->setColor(glm::vec4(toVec3(color), 1.0f));
+			material->addProperty("material.baseColorFactor", glm::vec4(toVec3(color), 1.0f));
 		}
 		
 		if (pMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0)
@@ -284,9 +285,9 @@ namespace IO
 					const aiTexture* pTexture = pScene->mTextures[texIndex];
 					std::string format(pTexture->achFormatHint);
 					//std::cout << "loading tex size: " << pTexture->mWidth << "x" << pTexture->mHeight << " format: " << format << std::endl;
-					auto tex = Texture2D::create(pTexture->mWidth, pTexture->mHeight, true);
+					auto tex = Texture2D::create(pTexture->mWidth, pTexture->mHeight, GL::RGBA8);
 					tex->upload((void*)pScene->mTextures[texIndex]->pcData);
-					material->addTexture(tex);
+					material->addTexture("material.baseColorTex", tex);
 				}
 				else
 				{
@@ -296,7 +297,7 @@ namespace IO
 			else
 			{
 				std::string filename = path + "/" + texFilename.C_Str();
-				material->addTexture(IO::loadTexture(filename, true));
+				material->addTexture("material.baseColorTex", IO::loadTexture(filename, true));
 			}
 		}
 

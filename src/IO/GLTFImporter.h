@@ -38,7 +38,7 @@ namespace IO
 			std::string type;
 		};
 
-		struct Sampler
+		struct AnimationSampler
 		{
 			int input;
 			int output;

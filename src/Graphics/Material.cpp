@@ -5,24 +5,37 @@ Material::Material()
 
 }
 
-Material::~Material()
-{
-	//std::cout << "material destroyed" << std::endl;
-}
+//Material::~Material()
+//{
+//	//std::cout << "material destroyed" << std::endl;
+//}
 
-void Material::setColor(glm::vec4& color)
-{
-	this->color = color;
-}
-
-void Material::addTexture(Texture2D::Ptr texture)
-{
-	textures.push_back(texture);
-}
+//void Material::setColor(glm::vec4& color)
+//{
+//	this->color = color;
+//}
+//
+//void Material::addTexture(Texture2D::Ptr texture)
+//{
+//	textures.push_back(texture);
+//}
 
 void Material::setUniforms(GL::Program& program)
 {
-	if (textures.size() == 1)
+	int numTextures = 0;
+	for (auto& prop : properties)
+	{
+		if (prop.second->isTexture())
+		{
+			textures[numTextures]->use(numTextures);
+			numTextures++;
+		}
+
+		prop.second->setUniform(program);
+	}
+
+
+/*	if (textures.size() == 1)
 	{
 		program.setUniform("material.useBaseColorTex", true);
 		textures[0]->use(0);
@@ -67,5 +80,5 @@ void Material::setUniforms(GL::Program& program)
 		program.setUniform("material.usePbrTex", false);
 		program.setUniform("material.useEmissiveTex", false);
 		program.setUniform("material.baseColorFactor", color);
-	}		
+	}	*/	
 }

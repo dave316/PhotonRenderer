@@ -110,11 +110,11 @@ namespace IO
 
 		for (auto& animationNode : doc["animations"].GetArray())
 		{
-			std::vector<Sampler> samplers;
+			std::vector<AnimationSampler> samplers;
 			auto samplersNode = animationNode.FindMember("samplers");
 			for (auto& samplerNode : samplersNode->value.GetArray())
 			{
-				Sampler sampler;
+				AnimationSampler sampler;
 				sampler.input = samplerNode.FindMember("input")->value.GetInt();
 				sampler.output = samplerNode.FindMember("output")->value.GetInt();
 				sampler.interpolation = samplerNode.FindMember("interpolation")->value.GetString();
@@ -424,7 +424,7 @@ namespace IO
 				}
 
 				auto defaultMaterial = Material::create();
-				defaultMaterial->setColor(glm::vec4(1.0f));
+				//defaultMaterial->setColor(glm::vec4(1.0f));
 
 				Material::Ptr material = defaultMaterial;
 				if (materialIndex < materials.size())
@@ -463,30 +463,45 @@ namespace IO
 					color.g = array[1].GetFloat();
 					color.b = array[2].GetFloat();
 					color.a = array[3].GetFloat();
-					material->setColor(color);
+					material->addProperty("material.baseColorFactor", color);
+					material->addProperty("material.useBaseColorTex", false);
 				}
-				else if(pbrNode.HasMember("baseColorTexture"))
+				if(pbrNode.HasMember("baseColorTexture"))
 				{
 					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
-					//unsigned int texIndex = 0;
 					if (texIndex < textures.size())
-						material->addTexture(textures[texIndex]);
+					{
+						std::cout << "added baseColorTexture texture index " << texIndex << std::endl;
+						material->addTexture("material.baseColorTex", textures[texIndex]);
+						material->addProperty("material.useBaseColorTex", true);
+					}
 					else
 						std::cout << "texture index " << texIndex << " not found" << std::endl;
 				}
 				else
 				{
-					material->setColor(glm::vec4(1.0f));
+					//material->setColor(glm::vec4(1.0f));
 				}
 
 				if (pbrNode.HasMember("metallicRoughnessTexture"))
 				{
 					unsigned int texIndex = pbrNode["metallicRoughnessTexture"]["index"].GetInt();
 					if (texIndex < textures.size())
-						material->addTexture(textures[texIndex]);
+					{
+						std::cout << "added metallicRoughnessTexture texture index " << texIndex << std::endl;
+						material->addTexture("material.pbrTex", textures[texIndex]);
+						material->addProperty("material.usePbrTex", true);
+					}						
 					else
 						std::cout << "texture index " << texIndex << " not found" << std::endl;
 					//std::cout << "implement loading of metallicRoughnessTexture" << std::endl;
+				}
+				else
+				{
+					// TODO: read these values from GLTF
+					material->addProperty("material.roughnessFactor", 1.0f);
+					material->addProperty("material.metallicFactor", 0.0f);
+					material->addProperty("material.usePbrTex", false);
 				}
 			}
 
@@ -494,10 +509,16 @@ namespace IO
 			{
 				unsigned int texIndex = materialNode["normalTexture"]["index"].GetInt();
 				if (texIndex < textures.size())
-					material->addTexture(textures[texIndex]);
+				{
+					std::cout << "added normalTexture texture index " << texIndex << std::endl;
+					material->addTexture("material.normalTex", textures[texIndex]);
+					material->addProperty("material.useNormalTex", true);
+				}					
 				else
 					std::cout << "texture index " << texIndex << " not found" << std::endl;
 			}
+
+			// TODO: check for occlusion texture (can be packed with metalRough tex)
 
 			//if (materialNode.HasMember("occlusionTexture"))
 			//{
@@ -512,7 +533,11 @@ namespace IO
 			{
 				unsigned int texIndex = materialNode["emissiveTexture"]["index"].GetInt();
 				if (texIndex < textures.size())
-					material->addTexture(textures[texIndex]);
+				{
+					std::cout << "added emissiveTexture texture index " << texIndex << std::endl;
+					material->addTexture("material.emissiveTex", textures[texIndex]);
+					material->addProperty("material.useEmissiveTex", true);
+				}
 				else
 					std::cout << "texture index " << texIndex << " not found" << std::endl;
 			}
@@ -526,11 +551,51 @@ namespace IO
 		if (!doc.HasMember("images"))
 			return;
 
+		std::vector<std::string> imageFiles;
 		for (auto& imagesNode : doc["images"].GetArray())
 		{
 			if (imagesNode.HasMember("uri"))
 			{
 				std::string filename = imagesNode["uri"].GetString();
+				imageFiles.push_back(filename);
+			}
+			else
+			{
+				std::cout << "loading images from binary buffer not supported!" << std::endl;
+			}
+		}
+
+		struct Sampler
+		{
+			int minFilter;
+			int magFilter;
+			int wrapS;
+			int wrapT;
+		};
+		//std::vector<Sampler> samplers;
+		//if (doc.HasMember("samplers")) 
+		//{
+		//	for (auto& samplerNode : doc["samplers"].GetArray())
+		//	{
+		//		if (samplerNode.HasMember("minFilter")) // TODO: check this properly
+		//		{
+		//			Sampler s;
+		//			s.minFilter = samplerNode["minFilter"].GetInt();
+		//			s.magFilter = samplerNode["magFilter"].GetInt();
+		//			s.wrapS = samplerNode["wrapS"].GetInt();
+		//			s.wrapT = samplerNode["wrapT"].GetInt();
+		//			samplers.push_back(s);
+		//		}
+		//	}
+		//}
+
+		if (doc.HasMember("textures"))
+		{
+			for (auto& textureNode : doc["textures"].GetArray())
+			{
+				int imageIndex = textureNode["source"].GetInt();
+
+				std::string filename = imageFiles[imageIndex];
 				std::cout << "loading texture " << filename << std::endl;
 
 				int i0 = filename.find_first_of("_") + 1;
@@ -540,13 +605,25 @@ namespace IO
 				std::string mapType = filename.substr(i0, len);
 
 				bool sRGB = false;
-				if (mapType.compare("baseColor") == 0 || mapType.compare("albedo") == 0)
+				if (mapType.compare("baseColor") == 0 || mapType.compare("albedo") == 0 || mapType.compare("emissive") == 0)
 				{
 					std::cout << "SRGB: true" << std::endl;
 					sRGB = true;
 				}				
 
 				auto tex = IO::loadTexture(path + "/" + filename, sRGB);
+				//if (textureNode.HasMember("sampler"))
+				//{
+				//	int samplerIndex = textureNode["sampler"].GetInt();
+				//	if (samplerIndex < samplers.size())
+				//	{
+				//		Sampler& sampler = samplers[samplerIndex];
+				//		if (sampler.minFilter >= 9984 && sampler.minFilter <= 9987)
+				//			tex->generateMipmaps();
+				//		tex->setFilter(GL::TextureFilter(sampler.minFilter));
+				//		tex->setWrap(GL::TextureWrap(sampler.wrapS));
+				//	}
+				//}
 				textures.push_back(tex);
 			}
 		}
