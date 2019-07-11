@@ -22,6 +22,7 @@ struct PBRMaterial
 	sampler2D normalTex;
 	sampler2D pbrTex;
 	sampler2D emissiveTex;
+	sampler2D occlusionTex;
 
 	bool useBaseColorTex;
 	bool useNormalTex;
@@ -58,6 +59,10 @@ struct PBRMaterial
 };
 uniform PBRMaterial material;
 uniform vec3 cameraPos;
+
+uniform samplerCube irradianceMap;
+uniform samplerCube specularMap;
+uniform sampler2D brdfLUT;
 
 float D_GGX_TR(float NdotH, float alpha)
 {
@@ -114,7 +119,7 @@ void main()
 	vec3 baseColor = material.getBaseColor(texCoord).rgb;
 	vec3 emission = material.getEmission(texCoord);
 	vec3 pbrValues = material.getPBRValues(texCoord);
-	float ao = 1.0;
+	float ao = texture(material.occlusionTex, texCoord).r;
 	float roughness = pbrValues.g;
 	float metallic = pbrValues.b;
 
@@ -125,13 +130,15 @@ void main()
 		n = normalize(wTBN * tNormal);
 	}
 
-	//vec3 lightPos = vec3(-1, 2, 0);
-	vec3 lightPos = cameraPos;
+	//vec3 lightPos = cameraPos;
+	vec3 lightPos = vec3(0,100,0);
 	vec3 l = normalize(lightPos - wPosition);
 	vec3 v = normalize(cameraPos - wPosition);
 	vec3 h = normalize(l + v);
+	vec3 r = normalize(reflect(-v, n));
 	
 	float NdotL = max(dot(n, l), 0.0);
+	float NdotV = max(dot(n, v), 0.0);
 	float HdotV = max(dot(h, v), 0.0);
 	
 	vec3 c_diff = mix(baseColor * 0.96, vec3(0.0), metallic);
@@ -142,12 +149,24 @@ void main()
 	vec3 f_diff  = (vec3(1.0) - F) * lambert;
 	vec3 f_spec = CookTorrance(F0, n, l, v, roughness);
 	vec3 lo = (f_diff + f_spec) * NdotL;
+		
+	vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
+	vec3 kD = (vec3(1.0) - F_ambient);
+
+	vec3 irradiance = texture(irradianceMap, n).rgb;
+	vec3 diffuse = irradiance * c_diff;
+
+	const float MAX_REFLECTION_LOD = 7.0;
+	vec3 specularColor = textureLod(specularMap, r, roughness * MAX_REFLECTION_LOD).rgb;
+	vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+	vec3 specular = specularColor * (F * brdf.x + brdf.y);
+
+	vec3 ambient = (kD * diffuse + specular) * ao;
 	
-	vec3 ambientLight = vec3(0.1);
-	vec3 ambColor = baseColor * ambientLight * ao;
-	
-	vec3 color  = emission + ambColor + lo;
+	vec3 color = emission + ambient;
 	float exposure = 1.0;
-	//color = vec3(1.0) - exp(-color * exposure);
+	color = vec3(1.0) - exp(-color * exposure);
+	//color = color / (1.0 + color);
+	color = pow(color, vec3(1.0 / 2.2));
 	fragColor = vec4(color, 1.0);
 }

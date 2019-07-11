@@ -423,6 +423,10 @@ namespace IO
 					surface.addTriangle(t);
 				}
 
+				// TODO calculate tangent space
+
+				surface.calcTangentSpace();
+
 				auto defaultMaterial = Material::create();
 				//defaultMaterial->setColor(glm::vec4(1.0f));
 
@@ -439,7 +443,6 @@ namespace IO
 		}
 
 		std::cout << "loaded " << renderables.size() << " meshes" << std::endl;
-		//std::cout << "loaded " << primitivNum << " primitives" << std::endl;
 	}
 
 	void GLTFImporter::loadMaterials(const json::Document& doc)
@@ -520,14 +523,17 @@ namespace IO
 
 			// TODO: check for occlusion texture (can be packed with metalRough tex)
 
-			//if (materialNode.HasMember("occlusionTexture"))
-			//{
-			//	unsigned int texIndex = materialNode["occlusionTexture"]["index"].GetInt();
-			//	if (texIndex < textures.size())
-			//		material->addTexture(textures[texIndex]);
-			//	else
-			//		std::cout << "texture index " << texIndex << " not found" << std::endl;
-			//}
+			if (materialNode.HasMember("occlusionTexture"))
+			{
+				unsigned int texIndex = materialNode["occlusionTexture"]["index"].GetInt();
+				if (texIndex < textures.size())
+				{
+					material->addTexture("material.occlusionTex", textures[texIndex]);
+					//material->addProperty("material.useEmissiveTex", true);
+				}					
+				else
+					std::cout << "texture index " << texIndex << " not found" << std::endl;
+			}
 
 			if (materialNode.HasMember("emissiveTexture"))
 			{
@@ -612,6 +618,8 @@ namespace IO
 				}				
 
 				auto tex = IO::loadTexture(path + "/" + filename, sRGB);
+				tex->generateMipmaps();
+				tex->setFilter(GL::LINEAR_MIPMAP_LINEAR);
 				//if (textureNode.HasMember("sampler"))
 				//{
 				//	int samplerIndex = textureNode["sampler"].GetInt();
@@ -743,9 +751,6 @@ namespace IO
 				GLTFNode gltfNode;
 				if (node.HasMember("mesh"))
 					gltfNode.meshIndex = node["mesh"].GetInt();
-				//glm::vec3 t(0.0f);
-				//glm::vec3 s(1.0f);
-				//glm::quat r(1.0f, 0.0f, 0.0f, 0.0f);
 
 				if (node.HasMember("translation"))
 					gltfNode.translation = toVec3(node["translation"]);
@@ -753,11 +758,6 @@ namespace IO
 					gltfNode.rotation = toQuat(node["rotation"]);
 				if (node.HasMember("scale"))
 					gltfNode.scale = toVec3(node["scale"]);
-				
-				//glm::mat4 T = glm::translate(glm::mat4(1.0f), t);
-				//glm::mat4 R = glm::mat4_cast(r);
-				//glm::mat4 S = glm::scale(glm::mat4(1.0f), s);
-				//gltfNode.transform = T * R * S;
 
 				if (node.HasMember("matrix"))
 				{
@@ -808,5 +808,20 @@ namespace IO
 	std::vector<Entity::Ptr> GLTFImporter::getEntities()
 	{
 		return entities;
+	}
+
+	void GLTFImporter::clear()
+	{
+		buffers.clear();
+		bufferViews.clear();
+		accessors.clear();
+		nodes.clear();
+		materials.clear();
+		renderables.clear();
+		animators.clear();
+		textures.clear();
+		animations.clear();
+		morphAnims.clear();
+		entities.clear();
 	}
 }

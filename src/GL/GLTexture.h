@@ -13,6 +13,8 @@ namespace GL
 		RGBA8,
 		SRGB8,
 		SRGBA8,
+		RGB32F,
+		RG16F
 	};
 
 	enum TextureFilter
@@ -32,6 +34,16 @@ namespace GL
 		CLAMP_TO_EDGE = GL_CLAMP_TO_EDGE,
 		CLAMP_TO_BORDER = GL_CLAMP_TO_BORDER
 	};
+	
+	enum CupeMapFace
+	{
+		POS_X = GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+		NEG_X = GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+		POS_Y = GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+		NEG_Y = GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+		POS_Z = GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+		NEG_Z = GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+	};
 
 	static GLint getInternalFormat(TextureFormat format)
 	{
@@ -42,6 +54,8 @@ namespace GL
 		case RGBA8:	internalFormat = GL_RGBA8; break;
 		case SRGB8:	internalFormat = GL_SRGB8; break;
 		case SRGBA8:internalFormat = GL_SRGB8_ALPHA8; break;
+		case RGB32F: internalFormat = GL_RGB32F; break;
+		case RG16F: internalFormat = GL_RG16F; break;
 		default:	internalFormat = GL_RGBA8; break;
 		}
 		return internalFormat;
@@ -52,7 +66,11 @@ namespace GL
 		GLenum dataFormat = GL_RGB;
 		switch (format)
 		{
+		case RG16F:
+			dataFormat = GL_RG;
+			break;
 		case RGB8:
+		case RGB32F:
 		case SRGB8:
 			dataFormat = GL_RGB;
 			break;
@@ -78,7 +96,13 @@ namespace GL
 		case SRGBA8:
 			dataType = GL_UNSIGNED_BYTE;
 			break;
-		default:		
+		case RG16F:
+			dataType = GL_HALF_FLOAT;
+			break;
+		case RGB32F:
+			dataType = GL_FLOAT;
+			break;
+		default:
 			dataType = GL_UNSIGNED_BYTE; 
 			break;
 		}
@@ -103,7 +127,7 @@ namespace GL
 			glDeleteTextures(1, &id);
 		}
 
-		void upload(const void* data, int width, int height, TextureFormat format)
+		void upload(const void* data, int width, int height, TextureFormat format, GLenum target = Target)
 		{
 			GLint internalFormat = getInternalFormat(format);
 			GLenum dataFormat = getDataFormat(format);
@@ -111,7 +135,7 @@ namespace GL
 
 			// TODO: add wrap & filtering methods
 			bind(); 
-			glTexImage2D(Target, 0, internalFormat, width, height, 0, dataFormat, dataType, data);
+			glTexImage2D(target, 0, internalFormat, width, height, 0, dataFormat, dataType, data);
 			unbind();
 		}
 
@@ -156,20 +180,20 @@ namespace GL
 
 		void setWrap(TextureWrap wrap)
 		{
-			GLint wrapMode;
+			//GLint wrapMode;
 
-			switch (wrap)
-			{
-			case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
-			case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
-			case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
-			case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
-			}
+			//switch (wrap)
+			//{
+			//case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
+			//case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
+			//case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
+			//case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
+			//}
 
-			bind();
-			glTexParameteri(Target, GL_TEXTURE_WRAP_S, wrapMode);
-			glTexParameteri(Target, GL_TEXTURE_WRAP_T, wrapMode);
-			unbind();
+			//bind();
+			//glTexParameteri(Target, GL_TEXTURE_WRAP_S, wrapMode);
+			//glTexParameteri(Target, GL_TEXTURE_WRAP_T, wrapMode);
+			//unbind();
 		}
 
 		void generateMipmaps()
@@ -194,9 +218,55 @@ namespace GL
 			glActiveTexture(GL_TEXTURE0 + unit);
 			bind();
 		}
+
+		operator GLuint() const
+		{
+			return id;
+		}
 	};
 
 	typedef Texture<GL_TEXTURE_2D> Texture2D;
+	typedef Texture<GL_TEXTURE_CUBE_MAP> TextureCubeMap;
+
+	template<>
+	void Texture2D::setWrap(TextureWrap wrap)
+	{
+		GLint wrapMode;
+
+		switch (wrap)
+		{
+		case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
+		case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
+		case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
+		case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
+		}
+
+		glBindTexture(GL_TEXTURE_2D, id);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	template<>
+	void TextureCubeMap::setWrap(TextureWrap wrap)
+	{
+		GLint wrapMode;
+
+		switch (wrap)
+		{
+		case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
+		case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
+		case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
+		case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
+		}
+
+		glBindTexture(GL_TEXTURE_CUBE_MAP, id);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, wrapMode);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, wrapMode);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, wrapMode);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	}
+
 }
 
 #endif // INCLUDED_GLTEXTURE

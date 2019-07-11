@@ -99,6 +99,8 @@ namespace IO
 
 		Entity::Ptr importModel(const std::string& filename);
 		std::vector<Entity::Ptr> getEntities();
+
+		void clear();
 	};
 }
 

@@ -15,6 +15,7 @@ namespace IO
 	{
 		// TODO: check number of channels etc.
 		int w, h, c;
+		stbi_set_flip_vertically_on_load(false);
 		std::unique_ptr<unsigned char> data(stbi_load(filename.c_str(), &w, &h, &c, 0));
 
 		//int size = 256;
@@ -45,6 +46,21 @@ namespace IO
 		}
 	
 		auto tex = Texture2D::create(w, h, format);
+		tex->upload(data.get());
+
+		return tex;
+	}
+
+	Texture2D::Ptr loadTextureHDR(const std::string& filename)
+	{
+		// TODO: check number of channels etc.
+		int w, h, c;
+		stbi_set_flip_vertically_on_load(true);
+		std::unique_ptr<float> data(stbi_loadf(filename.c_str(), &w, &h, &c, 0));
+
+		std::cout << "loaded HDR texture: " << w << "x" << h << "x" << c << std::endl;
+
+		auto tex = Texture2D::create(w, h, GL::RGB32F);
 		tex->upload(data.get());
 
 		return tex;
