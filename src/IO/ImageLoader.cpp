@@ -23,7 +23,7 @@ namespace IO
 		//unsigned char* output = new unsigned char[memSize];
 		//stbir_resize_uint8(data.get(), w, h, 0, output, size, size, 0, c);
 
-		std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
+		//std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
 
 		GL::TextureFormat format = GL::RGB8;
 		if (sRGB)

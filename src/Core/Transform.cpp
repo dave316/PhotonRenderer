@@ -7,7 +7,8 @@ Transform::Transform(Entity* entity) :
 	position(0.0f),
 	rotation(1.0f, 0.0f, 0.0f, 0.0f),
 	scale(1.0f),
-	transform(1.0f)
+	transform(1.0f),
+	normalTransform(1.0f)
 {}
 
 Transform::~Transform()

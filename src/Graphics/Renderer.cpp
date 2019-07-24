@@ -47,6 +47,7 @@ Renderer::Renderer(unsigned int width, unsigned int height)
 bool Renderer::init()
 {
 	//glEnable(GL_FRAMEBUFFER_SRGB);
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
@@ -58,15 +59,19 @@ bool Renderer::init()
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "DamagedHelmet";
+	std::string name = "SpecGlossVsMetalRough";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
 	IO::GLTFImporter importer;
 	auto root = importer.importModel(path + "/" + fn);
+	//root->getComponent<Transform>()->setRotation(glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 1, 0)));
+	//root->getComponent<Transform>()->setScale(glm::vec3(0.01f));
 	rootEntitis.push_back(root);
 	entities = importer.getEntities();
 	importer.clear();
+
+	//loadGLTFModels(path);
 
 	//root->getComponent<Transform>()->update(glm::mat4(1.0f));
 
@@ -111,6 +116,7 @@ void Renderer::initShader()
 		defaultProgram.loadUniforms();
 
 		defaultProgram.setUniform("material.baseColorFactor", glm::vec4(1.0f));
+		defaultProgram.setUniform("material.alphaCutOff", 0.0f);
 		defaultProgram.setUniform("material.baseColorTex", 0);
 		defaultProgram.setUniform("material.pbrTex", 1);
 		defaultProgram.setUniform("material.normalTex", 2);
@@ -308,6 +314,8 @@ void Renderer::initEnvMaps()
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
 	std::string assetPath = "../assets";
+	//std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
+	//auto pano = IO::loadTextureHDR(assetPath + "/Brooklyn_Bridge_Planks/Brooklyn_Bridge_Planks_2k.hdr");
 	auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
 
 	glm::vec3 position = glm::vec3(0);
@@ -502,11 +510,30 @@ void Renderer::render()
 	irradianceMap->use(5);
 	specularMap->use(6);
 	brdfLUT->use(7);
-	
+
 	auto e = rootEntitis[modelIndex];
 	{
+		// TODO: do depth/tansparent sorting
 		auto models = e->getChildrenWithComponent<Renderable>();
+		std::vector<Entity*> transparentEntities;
+		std::vector<Entity*> opaqueEntities;
 		for (auto m : models)
+		{
+			auto r = m->getComponent<Renderable>();
+			if (r->useBlending())
+				transparentEntities.push_back(m);
+			else
+				opaqueEntities.push_back(m);
+		}
+		for (auto m : opaqueEntities)
+		{
+			auto r = m->getComponent<Renderable>();
+			auto t = m->getComponent<Transform>();
+
+			t->setUniforms(defaultProgram);
+			r->render(defaultProgram);
+		}
+		for (auto m : transparentEntities)
 		{
 			auto r = m->getComponent<Renderable>();
 			auto t = m->getComponent<Transform>();

@@ -315,7 +315,7 @@ namespace IO
 				//v.position = glm::vec3(glm::vec4(pos, 1.0f));
 
 			if (pMesh->HasVertexColors(0))
-				v.color = toVec3(pMesh->mColors[0][i]);
+				v.color = toVec4(pMesh->mColors[0][i]);
 
 			if (pMesh->HasNormals())
 				v.normal = glm::normalize(toVec3(pMesh->mNormals[i]));
@@ -365,6 +365,11 @@ namespace IO
 		//std::cout << "new mesh " << surface.vertices.size() << " " << surface.triangles.size() << std::endl;
 
 		return Mesh::create(pMesh->mName.C_Str(), surface, pMesh->mMaterialIndex);
+	}
+
+	glm::vec4 ModelImporter::toVec4(const aiColor4D& aiCol4)
+	{
+		return glm::vec4(aiCol4.r, aiCol4.g, aiCol4.b, aiCol4.a);
 	}
 
 	glm::vec3 ModelImporter::toVec3(const aiColor4D& aiCol4)

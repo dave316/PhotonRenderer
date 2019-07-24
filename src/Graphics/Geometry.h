@@ -9,7 +9,7 @@
 struct Vertex
 {
 	glm::vec3 position;
-	glm::vec3 color;
+	glm::vec4 color;
 	glm::vec3 normal;
 	glm::vec2 texCoord;
 	glm::vec4 tangent;
@@ -21,7 +21,7 @@ struct Vertex
 	glm::vec3 targetNormal1;
 	glm::vec3 targetTangent1;
 	Vertex() {}
-	Vertex(glm::vec3 position, glm::vec3 color = glm::vec3(0.5f), glm::vec3 normal = glm::vec3(0), glm::vec2 texCoord = glm::vec2(0), glm::vec4 tangent = glm::vec4(0)) :
+	Vertex(glm::vec3 position, glm::vec4 color = glm::vec4(1.0f), glm::vec3 normal = glm::vec3(0), glm::vec2 texCoord = glm::vec2(0), glm::vec4 tangent = glm::vec4(0)) :
 		position(position),
 		color(color),
 		normal(normal),
@@ -66,6 +66,31 @@ struct TriangleSurface
 		triangles.push_back(t);
 	}
 
+	void calcNormals()
+	{
+		for (auto& t : triangles)
+		{
+			Vertex& v0 = vertices[t.v0];
+			Vertex& v1 = vertices[t.v1];
+			Vertex& v2 = vertices[t.v2];
+
+			glm::vec3 p0 = v0.position;
+			glm::vec3 p1 = v1.position;
+			glm::vec3 p2 = v2.position;
+
+			glm::vec3 e1 = p1 - p0;
+			glm::vec3 e2 = p2 - p0;
+			glm::vec3 normal = glm::normalize(cross(e1, e2));
+
+			v0.normal += normal;
+			v1.normal += normal;
+			v2.normal += normal;
+		}
+
+		for (auto& v : vertices)
+			v.normal = glm::normalize(v.normal);
+	}
+
 	void calcTangentSpace()
 	{
 		for (auto& t : triangles)
@@ -96,9 +121,9 @@ struct TriangleSurface
 			tangent = glm::normalize(tangent);
 
 			glm::vec3 bitangent;
-			bitangent.x = f * (-deltaUV2.x * e1.x + deltaUV1.x * e2.x);
-			bitangent.y = f * (-deltaUV2.x * e1.y + deltaUV1.x * e2.y);
-			bitangent.z = f * (-deltaUV2.x * e1.z + deltaUV1.x * e2.z);
+			bitangent.x = f * (deltaUV2.x * e1.x - deltaUV1.x * e2.x);
+			bitangent.y = f * (deltaUV2.x * e1.y - deltaUV1.x * e2.y);
+			bitangent.z = f * (deltaUV2.x * e1.z - deltaUV1.x * e2.z);
 			bitangent = glm::normalize(bitangent);
 
 			float handeness = glm::sign(glm::dot(normal, glm::cross(tangent, bitangent)));

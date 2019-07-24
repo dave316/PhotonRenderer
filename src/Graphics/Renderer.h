@@ -12,6 +12,12 @@
 
 #include <IO/ModelImporter.h>
 
+class Shader
+{
+	
+
+};
+
 class Renderer
 {
 	GL::Program defaultProgram;

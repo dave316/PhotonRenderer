@@ -4,9 +4,9 @@
 
 in vec3 wPosition;
 in vec3 wNormal;
-in vec3 color;
-in vec2 texCoord;
 in mat3 wTBN;
+in vec4 vertexColor;
+in vec2 texCoord;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -17,6 +17,8 @@ struct PBRMaterial
 	float metallicFactor;
 	float occlusionFactor;
 	vec3 emissiveFactor;
+	int alphaMode;
+	float alphaCutOff;
 
 	sampler2D baseColorTex;
 	sampler2D normalTex;
@@ -34,8 +36,8 @@ struct PBRMaterial
 		vec4 baseColor = baseColorFactor;
 		if (useBaseColorTex)
 		{
-			vec4 texColor = texture2D(baseColorTex, uv);
-			baseColor = vec4(pow(texColor.rgb, vec3(2.2)), texColor.a);
+			baseColor = texture2D(baseColorTex, uv);
+			//baseColor = vec4(pow(texColor.rgb, vec3(2.2)), texColor.a);
 		}
 			
 		return baseColor;
@@ -107,7 +109,7 @@ vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float roughness)
 	float HdotV = max(dot(h, v), 0.0);
 	 
 	float D = D_GGX_TR(NdotH, alpha);
-	float G = G_Smith(NdotV, NdotL, k);
+	float G = G_Smith(NdotV, NdotL, alpha);
 	vec3 F = F_Schlick(HdotV, F0);
 	
 	vec3 f_spec = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
@@ -116,11 +118,16 @@ vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float roughness)
 
 void main()
 {
-	vec3 baseColor = material.getBaseColor(texCoord).rgb;
+	vec4 baseColor = vertexColor * material.getBaseColor(texCoord);
+	float alpha = baseColor.a;
+	if(material.alphaMode == 1)
+		if(alpha < material.alphaCutOff)
+			discard;
 	vec3 emission = material.getEmission(texCoord);
 	vec3 pbrValues = material.getPBRValues(texCoord);
 	float ao = texture(material.occlusionTex, texCoord).r;
-	float roughness = pbrValues.g;
+	//float ao = 1.0;
+	float roughness = clamp(pbrValues.g, 0.1, 1.0);
 	float metallic = pbrValues.b;
 
 	vec3 n = normalize(wNormal);
@@ -130,8 +137,8 @@ void main()
 		n = normalize(wTBN * tNormal);
 	}
 
-	//vec3 lightPos = cameraPos;
-	vec3 lightPos = vec3(0,100,0);
+	vec3 lightPos = cameraPos;
+//	vec3 lightPos = vec3(0,100,0);
 	vec3 l = normalize(lightPos - wPosition);
 	vec3 v = normalize(cameraPos - wPosition);
 	vec3 h = normalize(l + v);
@@ -141,11 +148,11 @@ void main()
 	float NdotV = max(dot(n, v), 0.0);
 	float HdotV = max(dot(h, v), 0.0);
 	
-	vec3 c_diff = mix(baseColor * 0.96, vec3(0.0), metallic);
-	vec3 F0 = mix(vec3(0.04), baseColor, metallic);
+	vec3 c_diff = mix(baseColor.rgb * 0.96, vec3(0.0), metallic);
+	vec3 F0 = mix(vec3(0.04), baseColor.rgb, metallic);
 	vec3 F = F_Schlick(HdotV, F0);
 
-	vec3 lambert = c_diff / PI;
+	vec3 lambert = c_diff;
 	vec3 f_diff  = (vec3(1.0) - F) * lambert;
 	vec3 f_spec = CookTorrance(F0, n, l, v, roughness);
 	vec3 lo = (f_diff + f_spec) * NdotL;
@@ -159,14 +166,18 @@ void main()
 	const float MAX_REFLECTION_LOD = 7.0;
 	vec3 specularColor = textureLod(specularMap, r, roughness * MAX_REFLECTION_LOD).rgb;
 	vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
-	vec3 specular = specularColor * (F * brdf.x + brdf.y);
+	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
 
 	vec3 ambient = (kD * diffuse + specular) * ao;
 	
-	vec3 color = emission + ambient;
+	vec3 intensity = emission + ambient + lo;
 	float exposure = 1.0;
-	color = vec3(1.0) - exp(-color * exposure);
+	intensity = vec3(1.0) - exp(-intensity * exposure);
 	//color = color / (1.0 + color);
-	color = pow(color, vec3(1.0 / 2.2));
-	fragColor = vec4(color, 1.0);
+	intensity = pow(intensity, vec3(1.0 / 2.2));
+
+	if(material.alphaMode == 0 || material.alphaMode == 1)
+		fragColor = vec4(intensity, 1.0);
+	else
+		fragColor = vec4(intensity * alpha, alpha);
 }

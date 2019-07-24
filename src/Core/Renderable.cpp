@@ -58,9 +58,28 @@ void Renderable::render(GL::Program& program)
 
 	for (auto& p : primitives)
 	{
+		if (p.material->blend())
+		{
+			glEnable(GL_BLEND);
+			//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+			glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		}
+
 		p.material->setUniforms(program);
 		p.mesh->draw();
+
+		if (p.material->blend())
+			glDisable(GL_BLEND);
 	}
+}
+
+bool Renderable::useBlending()
+{
+	for (auto& p : primitives)
+		if (p.material->blend())
+			return true;
+	return false;
 }
 
 void Renderable::print()

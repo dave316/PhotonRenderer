@@ -3,7 +3,7 @@
 //#define MORPH_TARGETS
 
 layout(location = 0) in vec3 vPosition;
-layout(location = 1) in vec3 vColor;
+layout(location = 1) in vec4 vColor;
 layout(location = 2) in vec3 vNormal;
 layout(location = 3) in vec2 vTexCoord;
 layout(location = 4) in vec4 vTangent;
@@ -22,9 +22,9 @@ layout(location = 4) in vec4 vTangent;
 
 out vec3 wPosition;
 out vec3 wNormal;
-out vec3 color;
-out vec2 texCoord;
 out mat3 wTBN;
+out vec4 vertexColor;
+out vec2 texCoord;
 
 uniform mat4 VP;
 uniform mat4 M;
@@ -38,9 +38,9 @@ void main()
 	vec3 t = normalize(N * vTangent.xyz);
 	vec3 b = normalize(N * vbitangent); 
 	wTBN = mat3(t,b,wNormal);
-
+	
 	wPosition = vec3(M * vec4(vPosition, 1.0));
-	color = vColor;
+	vertexColor = vColor;
 	texCoord = vTexCoord;
 	gl_Position = VP * vec4(wPosition, 1.0);
 }

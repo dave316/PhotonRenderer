@@ -35,6 +35,7 @@ public:
 	//void update(float dt);
 	void render(GL::Program& program);
 	void print();
+	bool useBlending();
 	//bool hasAnimations();
 	//bool hasMorphAnim();
 	//glm::vec2 getWeights();

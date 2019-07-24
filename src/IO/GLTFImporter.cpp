@@ -275,7 +275,8 @@ namespace IO
 				std::vector<glm::vec2> texCoords;
 				std::vector<glm::vec4> tangets;
 				std::vector<GLuint> indices; // TODO check other index types!
-
+				bool calcNormals = true;
+				bool calcTangentSpace = true;
 				auto attributesNode = primitiveNode.FindMember("attributes");
 				if (attributesNode->value.HasMember("POSITION"))
 				{
@@ -296,6 +297,7 @@ namespace IO
 					auto normalNode = attributesNode->value.FindMember("NORMAL");
 					int accIndex = normalNode->value.GetInt();
 					loadData(accIndex, normals);
+					calcNormals = false;
 				}
 				
 				if (attributesNode->value.HasMember("TEXCOORD_0"))
@@ -310,6 +312,7 @@ namespace IO
 					auto tangentNode = attributesNode->value.FindMember("TANGENT");
 					int accIndex = tangentNode->value.GetInt();
 					loadData(accIndex, tangets);
+					calcTangentSpace = false;
 				}
 
 				if (primitiveNode.HasMember("indices"))
@@ -423,12 +426,22 @@ namespace IO
 					surface.addTriangle(t);
 				}
 
-				// TODO calculate tangent space
+				if (calcNormals)
+					surface.calcNormals();
 
-				surface.calcTangentSpace();
+				if(calcTangentSpace)
+					surface.calcTangentSpace();
 
 				auto defaultMaterial = Material::create();
-				//defaultMaterial->setColor(glm::vec4(1.0f));
+				defaultMaterial->addProperty("material.baseColorFactor", glm::vec4(1.0));
+				defaultMaterial->addProperty("material.roughnessFactor", 1.0f);
+				defaultMaterial->addProperty("material.metallicFactor", 0.0f);
+				defaultMaterial->addProperty("material.occlusionFactor", 0.0f);
+				defaultMaterial->addProperty("material.emissiveFactor", glm::vec3(0.0));
+				defaultMaterial->addProperty("material.useBaseColorTex", false);
+				defaultMaterial->addProperty("material.usePbrTex", false);
+				defaultMaterial->addProperty("material.useNormalTex", false);
+				defaultMaterial->addProperty("material.useEmissiveTex", false);
 
 				Material::Ptr material = defaultMaterial;
 				if (materialIndex < materials.size())
@@ -437,7 +450,7 @@ namespace IO
 				auto mesh = Mesh::create("blub", surface, 0);
 				renderable->addMesh(mesh, material);
 
-				std::cout << "added primitives to mesh " << name << " with material index " << materialIndex << std::endl;
+				//std::cout << "added primitives to mesh " << name << " with material index " << materialIndex << std::endl;
 			}
 			renderables.push_back(renderable);
 		}
@@ -453,6 +466,48 @@ namespace IO
 		for (auto& materialNode : doc["materials"].GetArray())
 		{
 			auto material = Material::create();
+			if (materialNode.HasMember("name"))
+			{
+				std::string name = materialNode["name"].GetString();
+				std::cout << "loading material " << name << std::endl;
+			}
+			std::string alphaMode = "OPAQUE";
+			int alphaModeEnum = 0;
+			if (materialNode.HasMember("alphaMode"))
+			{
+				alphaMode = materialNode["alphaMode"].GetString();
+				std::cout << "alpha mode: " << alphaMode << std::endl;
+			}
+
+			float cutOff = 0.0f;
+			if (alphaMode.compare("MASK") == 0)
+			{
+				alphaModeEnum = 1;
+				if (materialNode.HasMember("alphaCutoff"))
+				{
+					cutOff = materialNode["alphaCutoff"].GetFloat();
+					std::cout << "alpha cut off: " << cutOff << std::endl;
+				}
+				else
+				{
+					cutOff = 0.5f;
+				}
+			}
+
+			if (alphaMode.compare("BLEND") == 0)
+			{
+				alphaModeEnum = 2;
+				material->setBlending(true);
+			}
+
+			material->addProperty("material.alphaMode", alphaModeEnum);
+			material->addProperty("material.alphaCutOff", cutOff);
+				
+			if (materialNode.HasMember("doubleSided"))
+			{
+				bool doubleSided = materialNode["doubleSided"].GetBool();
+				std::cout << "doubleSided: " << doubleSided << std::endl;
+			}
 			if (materialNode.HasMember("pbrMetallicRoughness"))
 			{
 				const auto& pbrNode = materialNode["pbrMetallicRoughness"];
@@ -469,12 +524,12 @@ namespace IO
 					material->addProperty("material.baseColorFactor", color);
 					material->addProperty("material.useBaseColorTex", false);
 				}
-				if(pbrNode.HasMember("baseColorTexture"))
+				else if (pbrNode.HasMember("baseColorTexture"))
 				{
 					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
 					if (texIndex < textures.size())
 					{
-						std::cout << "added baseColorTexture texture index " << texIndex << std::endl;
+						//std::cout << "added baseColorTexture texture index " << texIndex << std::endl;
 						material->addTexture("material.baseColorTex", textures[texIndex]);
 						material->addProperty("material.useBaseColorTex", true);
 					}
@@ -483,7 +538,7 @@ namespace IO
 				}
 				else
 				{
-					//material->setColor(glm::vec4(1.0f));
+					material->addProperty("material.baseColorFactor", glm::vec4(1.0f));
 				}
 
 				if (pbrNode.HasMember("metallicRoughnessTexture"))
@@ -491,7 +546,7 @@ namespace IO
 					unsigned int texIndex = pbrNode["metallicRoughnessTexture"]["index"].GetInt();
 					if (texIndex < textures.size())
 					{
-						std::cout << "added metallicRoughnessTexture texture index " << texIndex << std::endl;
+						//std::cout << "added metallicRoughnessTexture texture index " << texIndex << std::endl;
 						material->addTexture("material.pbrTex", textures[texIndex]);
 						material->addProperty("material.usePbrTex", true);
 					}						
@@ -513,12 +568,16 @@ namespace IO
 				unsigned int texIndex = materialNode["normalTexture"]["index"].GetInt();
 				if (texIndex < textures.size())
 				{
-					std::cout << "added normalTexture texture index " << texIndex << std::endl;
+					//std::cout << "added normalTexture texture index " << texIndex << std::endl;
 					material->addTexture("material.normalTex", textures[texIndex]);
 					material->addProperty("material.useNormalTex", true);
 				}					
 				else
 					std::cout << "texture index " << texIndex << " not found" << std::endl;
+			}
+			else
+			{
+				material->addProperty("material.useNormalTex", false);
 			}
 
 			// TODO: check for occlusion texture (can be packed with metalRough tex)
@@ -540,7 +599,7 @@ namespace IO
 				unsigned int texIndex = materialNode["emissiveTexture"]["index"].GetInt();
 				if (texIndex < textures.size())
 				{
-					std::cout << "added emissiveTexture texture index " << texIndex << std::endl;
+					//std::cout << "added emissiveTexture texture index " << texIndex << std::endl;
 					material->addTexture("material.emissiveTex", textures[texIndex]);
 					material->addProperty("material.useEmissiveTex", true);
 				}
@@ -578,22 +637,22 @@ namespace IO
 			int wrapS;
 			int wrapT;
 		};
-		//std::vector<Sampler> samplers;
-		//if (doc.HasMember("samplers")) 
-		//{
-		//	for (auto& samplerNode : doc["samplers"].GetArray())
-		//	{
-		//		if (samplerNode.HasMember("minFilter")) // TODO: check this properly
-		//		{
-		//			Sampler s;
-		//			s.minFilter = samplerNode["minFilter"].GetInt();
-		//			s.magFilter = samplerNode["magFilter"].GetInt();
-		//			s.wrapS = samplerNode["wrapS"].GetInt();
-		//			s.wrapT = samplerNode["wrapT"].GetInt();
-		//			samplers.push_back(s);
-		//		}
-		//	}
-		//}
+		std::vector<Sampler> samplers;
+		if (doc.HasMember("samplers")) 
+		{
+			for (auto& samplerNode : doc["samplers"].GetArray())
+			{
+				if (samplerNode.HasMember("minFilter")) // TODO: check this properly
+				{
+					Sampler s;
+					s.minFilter = samplerNode["minFilter"].GetInt();
+					s.magFilter = samplerNode["magFilter"].GetInt();
+					s.wrapS = samplerNode["wrapS"].GetInt();
+					s.wrapT = samplerNode["wrapT"].GetInt();
+					samplers.push_back(s);
+				}
+			}
+		}
 
 		if (doc.HasMember("textures"))
 		{
@@ -611,27 +670,27 @@ namespace IO
 				std::string mapType = filename.substr(i0, len);
 
 				bool sRGB = false;
-				if (mapType.compare("baseColor") == 0 || mapType.compare("albedo") == 0 || mapType.compare("emissive") == 0)
+				if (mapType.substr(0, 9).compare("baseColor") == 0 || mapType.compare("albedo") == 0 || mapType.compare("emissive") == 0)
 				{
 					std::cout << "SRGB: true" << std::endl;
 					sRGB = true;
 				}				
 
 				auto tex = IO::loadTexture(path + "/" + filename, sRGB);
-				tex->generateMipmaps();
-				tex->setFilter(GL::LINEAR_MIPMAP_LINEAR);
-				//if (textureNode.HasMember("sampler"))
-				//{
-				//	int samplerIndex = textureNode["sampler"].GetInt();
-				//	if (samplerIndex < samplers.size())
-				//	{
-				//		Sampler& sampler = samplers[samplerIndex];
-				//		if (sampler.minFilter >= 9984 && sampler.minFilter <= 9987)
-				//			tex->generateMipmaps();
-				//		tex->setFilter(GL::TextureFilter(sampler.minFilter));
-				//		tex->setWrap(GL::TextureWrap(sampler.wrapS));
-				//	}
-				//}
+				//tex->generateMipmaps();
+				//tex->setFilter(GL::LINEAR_MIPMAP_LINEAR);
+				if (textureNode.HasMember("sampler"))
+				{
+					int samplerIndex = textureNode["sampler"].GetInt();
+					if (samplerIndex < samplers.size())
+					{
+						Sampler& sampler = samplers[samplerIndex];
+						if (sampler.minFilter >= 9984 && sampler.minFilter <= 9987)
+							tex->generateMipmaps();
+						tex->setFilter(GL::TextureFilter(sampler.minFilter));
+						tex->setWrap(GL::TextureWrap(sampler.wrapS));
+					}
+				}
 				textures.push_back(tex);
 			}
 		}

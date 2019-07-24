@@ -27,6 +27,7 @@ namespace IO
 		Mesh::Ptr loadMesh(const aiMesh* pMesh);
 		void loadAnimation(const aiAnimation* pAnimation);
 
+		glm::vec4 toVec4(const aiColor4D& aiCol4);
 		glm::vec3 toVec3(const aiColor4D& aiCol4);
 		glm::vec3 toVec3(const aiVector3D& aiVec3);
 		glm::vec2 toVec2(const aiVector3D& aiVec3);

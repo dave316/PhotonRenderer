@@ -58,6 +58,7 @@ class Material
 	//std::string name;
 	std::vector<Texture2D::Ptr> textures;
 	std::map<std::string, IProperty::Ptr> properties;
+	bool useBlending = false;
 
 	Material(const Material&) = delete;
 	Material& operator=(const Material&) = delete;
@@ -75,6 +76,14 @@ public:
 		int index = (int)textures.size();
 		textures.push_back(texture);
 		properties[name] = Property<int>::create(name, index, true);
+	}
+	void setBlending(bool useBlending)
+	{
+		this->useBlending = useBlending;
+	}
+	bool blend()
+	{
+		return useBlending;
 	}
 
 	//void setColor(glm::vec4& color);
