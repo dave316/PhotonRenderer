@@ -581,17 +581,22 @@ namespace IO
 			}
 
 			// TODO: check for occlusion texture (can be packed with metalRough tex)
-
 			if (materialNode.HasMember("occlusionTexture"))
 			{
 				unsigned int texIndex = materialNode["occlusionTexture"]["index"].GetInt();
 				if (texIndex < textures.size())
 				{
 					material->addTexture("material.occlusionTex", textures[texIndex]);
-					//material->addProperty("material.useEmissiveTex", true);
+					material->addProperty("material.useOcclusionTex", true);
 				}					
 				else
+				{
 					std::cout << "texture index " << texIndex << " not found" << std::endl;
+				}
+			}
+			else
+			{
+				material->addProperty("material.useOcclusionTex", false);
 			}
 
 			if (materialNode.HasMember("emissiveTexture"))
@@ -606,6 +611,91 @@ namespace IO
 				else
 					std::cout << "texture index " << texIndex << " not found" << std::endl;
 			}
+
+			if (materialNode.HasMember("extensions"))
+			{
+				material->addProperty("useSpecGlossMat", true);
+				const auto& extensionNode = materialNode["extensions"];
+				{
+					if (extensionNode.HasMember("KHR_materials_pbrSpecularGlossiness"))
+					{
+						const auto& pbrSpecGlossNode = extensionNode["KHR_materials_pbrSpecularGlossiness"];
+						if (pbrSpecGlossNode.HasMember("diffuseFactor"))
+						{
+							const auto& baseColorNode = pbrSpecGlossNode["diffuseFactor"];
+							auto array = baseColorNode.GetArray();
+							glm::vec4 color;
+							color.r = array[0].GetFloat();
+							color.g = array[1].GetFloat();
+							color.b = array[2].GetFloat();
+							color.a = array[3].GetFloat();
+							material->addProperty("material2.diffuseFactor", color);
+							material->addProperty("material2.useDiffuseTex", false);
+						}
+						if (pbrSpecGlossNode.HasMember("diffuseTexture")) 
+						{
+							unsigned int texIndex = pbrSpecGlossNode["diffuseTexture"]["index"].GetInt();
+							if (texIndex < textures.size())
+							{
+								//std::cout << "added normalTexture texture index " << texIndex << std::endl;
+								material->addTexture("material2.diffuseTex", textures[texIndex]);
+								material->addProperty("material2.useDiffuseTex", true);
+							}
+							else
+								std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+						if (pbrSpecGlossNode.HasMember("specularFactor"))
+						{
+							const auto& baseColorNode = pbrSpecGlossNode["specularFactor"];
+							auto array = baseColorNode.GetArray();
+							glm::vec3 color;
+							color.r = array[0].GetFloat();
+							color.g = array[1].GetFloat();
+							color.b = array[2].GetFloat();
+							material->addProperty("material2.specularFactor", color);
+							material->addProperty("material2.useSpecularTex", false);
+						}
+						if (pbrSpecGlossNode.HasMember("glossinessFactor"))
+						{
+							float glossiness = pbrSpecGlossNode["glossinessFactor"].GetFloat();
+							material->addProperty("material2.glossFactor", glossiness);
+							material->addProperty("material2.useSpecularTex", false);
+						}
+						if (pbrSpecGlossNode.HasMember("diffuseFactor"))
+						{
+							bool ishas = pbrSpecGlossNode.HasMember("specular value");
+
+							const auto& baseColorNode = pbrSpecGlossNode["diffuseFactor"];
+							auto array = baseColorNode.GetArray();
+							glm::vec4 color;
+							color.r = array[0].GetFloat();
+							color.g = array[1].GetFloat();
+							color.b = array[2].GetFloat();
+							color.a = array[3].GetFloat();
+							material->addProperty("material2.diffuseFactor", color);
+							material->addProperty("material2.useDiffuseTex", false);
+						}
+						if (pbrSpecGlossNode.HasMember("specularGlossinessTexture"))
+						{
+							unsigned int texIndex = pbrSpecGlossNode["specularGlossinessTexture"]["index"].GetInt();
+							if (texIndex < textures.size())
+							{
+								//std::cout << "added normalTexture texture index " << texIndex << std::endl;
+								material->addTexture("material2.specGlossTex", textures[texIndex]);
+								material->addProperty("material2.useSpecularTex", true);
+							}
+							else
+								std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+					else
+					{
+						std::cout << "extension not supported!" << std::endl;
+					}
+				}
+			}
+			else
+				material->addProperty("useSpecGlossMat", false);
 
 			materials.push_back(material);
 		}
@@ -670,7 +760,11 @@ namespace IO
 				std::string mapType = filename.substr(i0, len);
 
 				bool sRGB = false;
-				if (mapType.substr(0, 9).compare("baseColor") == 0 || mapType.compare("albedo") == 0 || mapType.compare("emissive") == 0)
+				if (mapType.substr(0, 9).compare("baseColor") == 0 || 
+					mapType.compare("albedo") == 0 || 
+					mapType.compare("emissive") == 0 ||
+					mapType.compare("diffuse") == 0 ||
+					mapType.compare("specularGlossiness") == 0)
 				{
 					std::cout << "SRGB: true" << std::endl;
 					sRGB = true;

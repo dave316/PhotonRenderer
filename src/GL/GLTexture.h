@@ -71,7 +71,7 @@ namespace GL
 			break;
 		case RGB8:
 		case RGB32F:
-		case SRGB8:
+		case SRGB8:  
 			dataFormat = GL_RGB;
 			break;
 		case RGBA8:

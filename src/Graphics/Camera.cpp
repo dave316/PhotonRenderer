@@ -29,7 +29,7 @@ void Camera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov, f
 
 	yaw = -90.0f;
 	pitch = 0.0f;
-	movementSpeed = 10.0f;
+	movementSpeed = 1.0f;
 	rotationSpeed = 0.1f;
 }
 

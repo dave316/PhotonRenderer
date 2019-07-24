@@ -10,7 +10,7 @@ in vec2 texCoord;
 
 layout(location = 0) out vec4 fragColor;
 
-struct PBRMaterial
+struct PBRMetalRoughMaterial
 {
 	vec4 baseColorFactor;
 	float roughnessFactor;
@@ -30,6 +30,7 @@ struct PBRMaterial
 	bool useNormalTex;
 	bool usePbrTex;
 	bool useEmissiveTex;
+	bool useOcclusionTex;
 
 	vec4 getBaseColor(vec2 uv)
 	{
@@ -59,12 +60,47 @@ struct PBRMaterial
 		return pbrValues;
 	}
 };
-uniform PBRMaterial material;
+uniform PBRMetalRoughMaterial material;
+
+struct PBRSpecGlossMaterial
+{
+	vec4 diffuseFactor;
+	vec3 specularFactor;
+	float glossFactor;
+	int alphaMode;
+	float alphaCutOff;
+
+	sampler2D diffuseTex;
+	sampler2D specGlossTex;
+
+	bool useDiffuseTex;
+	bool useSpecularTex;
+
+	vec4 getDiffuseColor(vec2 uv)
+	{
+		vec4 diffuseColor = diffuseFactor;
+		if (useDiffuseTex)
+			diffuseColor = texture2D(diffuseTex, uv);
+		return diffuseColor;
+	}
+
+	vec4 getSpecularColor(vec2 uv)
+	{
+		vec4 specGlossColor = vec4(specularFactor, glossFactor);
+		if (useSpecularTex)
+			specGlossColor = texture2D(specGlossTex, uv);
+		return specGlossColor;
+	}
+};
+uniform PBRSpecGlossMaterial material2;
+
 uniform vec3 cameraPos;
 
 uniform samplerCube irradianceMap;
 uniform samplerCube specularMap;
 uniform sampler2D brdfLUT;
+
+uniform bool useSpecGlossMat;
 
 float D_GGX_TR(float NdotH, float alpha)
 {
@@ -96,12 +132,11 @@ vec3 F_Schlick_Rough(float HdotV, vec3 F0, float roughness)
 	return max(F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - HdotV, 5.0), F0);
 }
 
-vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float roughness)
+vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha)
 {
-	float r = roughness + 1.0;
-	float k = (r * r) / 8.0;
-	float alpha = roughness * roughness;
-
+	//float r = roughness + 1.0;
+	//float k = (r * r) / 8.0;
+	
 	vec3 h = normalize(l + v);
 	float NdotL = max(dot(n, l), 0.0);
 	float NdotV = max(dot(n, v), 0.0);
@@ -118,17 +153,50 @@ vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float roughness)
 
 void main()
 {
-	vec4 baseColor = vertexColor * material.getBaseColor(texCoord);
-	float alpha = baseColor.a;
-	if(material.alphaMode == 1)
-		if(alpha < material.alphaCutOff)
-			discard;
+	// main material parameters
+	vec3 c_diff = vec3(1.0);
+	vec3 F0 = vec3(0.0);
+	float roughness = 0.0;
+	float alpha = 0.0;
+	float transparency = 1.0;
+	if(useSpecGlossMat)
+	{
+		vec4 diffuseColor = material2.getDiffuseColor(texCoord);
+		float transparency = diffuseColor.a;
+		if(material2.alphaMode == 1)
+			if(alpha < material2.alphaCutOff)
+				discard;
+
+		vec4 specGlossColor = material2.getSpecularColor(texCoord);
+		vec3 specularColor = specGlossColor.rgb;
+		float glossiness = specGlossColor.a;
+		roughness = 1.0 - glossiness;
+
+		c_diff = diffuseColor.rgb * (1.0 - max(max(specularColor.r, specularColor.g), specularColor.b));
+		F0 = specularColor;
+		alpha = roughness * roughness;
+	}
+	else
+	{
+		vec4 baseColor = vertexColor * material.getBaseColor(texCoord);
+		transparency = baseColor.a;
+		if(material.alphaMode == 1)
+			if(transparency < material.alphaCutOff)
+				discard;
+
+		vec3 pbrValues = material.getPBRValues(texCoord);
+		float metallic = pbrValues.b;
+		roughness = clamp(pbrValues.g, 0.1, 1.0);
+
+		c_diff = mix(baseColor.rgb * 0.96, vec3(0.0), metallic);
+		F0 = mix(vec3(0.04), baseColor.rgb, metallic);
+		alpha = roughness * roughness;
+	}
+
 	vec3 emission = material.getEmission(texCoord);
-	vec3 pbrValues = material.getPBRValues(texCoord);
-	float ao = texture(material.occlusionTex, texCoord).r;
-	//float ao = 1.0;
-	float roughness = clamp(pbrValues.g, 0.1, 1.0);
-	float metallic = pbrValues.b;
+	float ao = 1.0;
+	if(material.useOcclusionTex)
+		ao = texture(material.occlusionTex, texCoord).r;
 
 	vec3 n = normalize(wNormal);
 	if(material.useNormalTex)
@@ -148,13 +216,11 @@ void main()
 	float NdotV = max(dot(n, v), 0.0);
 	float HdotV = max(dot(h, v), 0.0);
 	
-	vec3 c_diff = mix(baseColor.rgb * 0.96, vec3(0.0), metallic);
-	vec3 F0 = mix(vec3(0.04), baseColor.rgb, metallic);
 	vec3 F = F_Schlick(HdotV, F0);
 
 	vec3 lambert = c_diff;
 	vec3 f_diff  = (vec3(1.0) - F) * lambert;
-	vec3 f_spec = CookTorrance(F0, n, l, v, roughness);
+	vec3 f_spec = CookTorrance(F0, n, l, v, alpha);
 	vec3 lo = (f_diff + f_spec) * NdotL;
 		
 	vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
@@ -179,5 +245,5 @@ void main()
 	if(material.alphaMode == 0 || material.alphaMode == 1)
 		fragColor = vec4(intensity, 1.0);
 	else
-		fragColor = vec4(intensity * alpha, alpha);
+		fragColor = vec4(intensity * transparency, transparency);
 }
