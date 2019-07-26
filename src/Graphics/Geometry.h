@@ -13,20 +13,30 @@ struct Vertex
 	glm::vec3 normal;
 	glm::vec2 texCoord;
 	glm::vec4 tangent;
-	//glm::vec3 bitangent;
-	glm::vec3 targetPosition0;
-	glm::vec3 targetNormal0;
-	glm::vec3 targetTangent0;
-	glm::vec3 targetPosition1;
-	glm::vec3 targetNormal1;
-	glm::vec3 targetTangent1;
+	glm::vec4 boneIDs;
+	glm::vec4 boneWeights;
+	//glm::vec3 targetPosition0;
+	//glm::vec3 targetNormal0;
+	//glm::vec3 targetTangent0;
+	//glm::vec3 targetPosition1;
+	//glm::vec3 targetNormal1;
+	//glm::vec3 targetTangent1;
 	Vertex() {}
-	Vertex(glm::vec3 position, glm::vec4 color = glm::vec4(1.0f), glm::vec3 normal = glm::vec3(0), glm::vec2 texCoord = glm::vec2(0), glm::vec4 tangent = glm::vec4(0)) :
+	Vertex(glm::vec3 position, 
+		glm::vec4 color = glm::vec4(1.0f), 
+		glm::vec3 normal = glm::vec3(0), 
+		glm::vec2 texCoord = glm::vec2(0), 
+		glm::vec4 tangent = glm::vec4(0),
+		glm::vec4 boneIDs = glm::vec4(0),
+		glm::vec4 boneWeights = glm::vec4(0)) :
+
 		position(position),
 		color(color),
 		normal(normal),
 		texCoord(texCoord),
-		tangent(tangent)
+		tangent(tangent),
+		boneIDs(boneIDs),
+		boneWeights(boneWeights)
 	{
 
 	}

@@ -244,6 +244,6 @@ void main()
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
 		fragColor = vec4(intensity, 1.0);
-	else
+	else 
 		fragColor = vec4(intensity * transparency, transparency);
 }

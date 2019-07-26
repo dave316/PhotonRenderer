@@ -48,7 +48,12 @@ namespace IO
 		loadTextures(doc, path);
 		loadMaterials(doc);
 		loadMeshes(doc);
-		loadAnimations(doc);
+		loadSkins(doc);
+
+		if (skin.boneMapping.empty())
+			loadAnimations(doc);
+		else
+			loadRiggedAnimations(doc);
 
 		auto root = loadScene(doc);
 
@@ -143,15 +148,15 @@ namespace IO
 				int output = samplers[samplerIndex].output;
 				std::string interpolation = samplers[samplerIndex].interpolation;
 
-				Animation::Interpolation interp;
+				NodeAnimation::Interpolation interp;
 				if (interpolation.compare("STEP") == 0)
-					interp = Animation::Interpolation::STEP;
+					interp = NodeAnimation::Interpolation::STEP;
 				else if (interpolation.compare("LINEAR") == 0)
-					interp = Animation::Interpolation::LINEAR;
+					interp = NodeAnimation::Interpolation::LINEAR;
 				else if (interpolation.compare("CUBICSPLINE") == 0)
-					interp = Animation::Interpolation::CUBIC;
+					interp = NodeAnimation::Interpolation::CUBIC;
 				else
-					interp = Animation::Interpolation::LINEAR;
+					interp = NodeAnimation::Interpolation::LINEAR;
 
 				std::vector<float> times;
 				std::vector<glm::vec3> translations;
@@ -238,13 +243,149 @@ namespace IO
 				else
 				{
 					// TODO figure out how to deal with different start/end times
-					Animation::Ptr anim(new Animation("blub", interp, 0, minTime, maxTime, maxTime, tartetNodeIndex));
+					NodeAnimation::Ptr anim(new NodeAnimation("blub", interp, 0, minTime, maxTime, maxTime, tartetNodeIndex));
 					anim->setTimes(times);
 					anim->setPositions(translations);
 					anim->setRotations(rotations);
 					anim->setScales(scales);
-					animations.push_back(anim);
+					nodeAnims.push_back(anim);
 				}
+			}
+		}
+	}
+
+	void GLTFImporter::loadRiggedAnimations(const json::Document& doc)
+	{
+		if (!doc.HasMember("animations"))
+			return;
+
+		for (auto& animationNode : doc["animations"].GetArray())
+		{
+			std::vector<AnimationSampler> samplers;
+			auto samplersNode = animationNode.FindMember("samplers");
+			for (auto& samplerNode : samplersNode->value.GetArray())
+			{
+				AnimationSampler sampler;
+				sampler.input = samplerNode.FindMember("input")->value.GetInt();
+				sampler.output = samplerNode.FindMember("output")->value.GetInt();
+				sampler.interpolation = samplerNode.FindMember("interpolation")->value.GetString();
+				samplers.push_back(sampler);
+			}
+
+			std::map<int, Channel> channels;
+			float minTime = 1000.0f;
+			float maxTime = 0.0f;
+			int channelIndex = 0;
+			auto channelsNode = animationNode.FindMember("channels");
+			for (auto& channelNode : channelsNode->value.GetArray())
+			{
+				int samplerIndex = channelNode["sampler"].GetInt();
+				auto targetNode = channelNode["target"].GetObject();
+				int targetNodeIndex = targetNode["node"].GetInt();
+				std::string targetPath = targetNode["path"].GetString();
+
+				if (channels.find(targetNodeIndex) == channels.end())
+					channels.insert(std::make_pair(targetNodeIndex, Channel()));
+
+				std::cout << "channel: " << channelIndex << " sampler: " << samplerIndex 
+					<< " target node: " << targetNodeIndex << " path: " << targetPath 
+					<< std::endl;
+				
+				int input = samplers[samplerIndex].input;
+				int output = samplers[samplerIndex].output;
+				std::string interpolation = samplers[samplerIndex].interpolation;
+
+				if (targetPath.compare("translation") == 0)
+				{
+					std::vector<float> times;
+					std::vector<glm::vec3> translations;
+					loadData(input, times);
+					loadData(output, translations);
+
+					Channel& channel = channels[targetNodeIndex];
+					for (int i = 0; i < times.size(); i++)
+					{
+						minTime = std::min(minTime, times[i]);
+						maxTime = std::max(maxTime, times[i]);
+						channel.positions.push_back(std::make_pair(times[i], translations[i]));
+					}
+				}
+				else if (targetPath.compare("rotation") == 0)
+				{
+					std::vector<float> times;
+					std::vector<glm::quat> rotations;
+					loadData(input, times);
+					loadData(output, rotations);
+
+					Channel& channel = channels[targetNodeIndex];
+					for (int i = 0; i < times.size(); i++)
+					{
+						minTime = std::min(minTime, times[i]);
+						maxTime = std::max(maxTime, times[i]);
+						channel.rotations.push_back(std::make_pair(times[i], rotations[i]));
+					}
+				}
+				else if (targetPath.compare("scale") == 0)
+				{
+					std::vector<float> times;
+					std::vector<glm::vec3> scales;
+					loadData(input, times);
+					loadData(output, scales);
+					Channel& channel = channels[targetNodeIndex];
+					for (int i = 0; i < times.size(); i++)
+					{
+						minTime = std::min(minTime, times[i]);
+						maxTime = std::max(maxTime, times[i]);
+						channel.scales.push_back(std::make_pair(times[i], scales[i]));
+					}
+				}
+			}
+
+			std::cout << "minTime: " << minTime << " maxTime: " << maxTime << std::endl;
+
+			auto animation = Animation::create("blub", maxTime, 2);
+			for (auto it : channels)
+			{
+				animation->addChannel(it.first, it.second);
+			}
+			animations.push_back(animation);
+		}
+	}
+
+	void GLTFImporter::loadSkins(const json::Document& doc)
+	{
+		if (!doc.HasMember("skins"))
+			return;
+
+		for (auto& skinNode : doc["skins"].GetArray()) // can there be multiple skins????
+		{
+			std::vector<int> boneJoints;
+			std::vector<glm::mat4> boneMatrices;
+			if (skinNode.HasMember("inverseBindMatrices"))
+			{
+				int accIndex = skinNode["inverseBindMatrices"].GetInt();
+				loadData(accIndex, boneMatrices);
+			}
+			if (skinNode.HasMember("joints"))
+			{
+				for (auto& jointNode : skinNode["joints"].GetArray())
+				{
+					boneJoints.push_back(jointNode.GetInt());
+				}
+			}
+			if (skinNode.HasMember("skeleton"))
+				skin.rootNode = skinNode["skeleton"].GetInt();
+			if (skinNode.HasMember("name"))
+				skin.name = skinNode["name"].GetString();
+
+			for (int i = 0; i < boneJoints.size(); i++)
+			{
+				std::cout << "joint: " << i << " node: " << boneJoints[i] << std::endl;
+			}
+
+			for (int i = 0; i < boneJoints.size(); i++)
+			{
+				skin.boneMapping.insert(std::make_pair(boneJoints[i], boneMatrices[i]));
 			}
 		}
 	}
@@ -274,46 +415,65 @@ namespace IO
 				std::vector<glm::vec3> normals;
 				std::vector<glm::vec2> texCoords;
 				std::vector<glm::vec4> tangets;
-				std::vector<GLuint> indices; // TODO check other index types!
+				std::vector<GLuint> indices;
+				std::vector<glm::u16vec4> boneIndices; // TODO check index type!
+				//std::vector<GLushort> boneIndices;
+				std::vector<glm::vec4> boneWeights;
 				bool calcNormals = true;
 				bool calcTangentSpace = true;
-				auto attributesNode = primitiveNode.FindMember("attributes");
-				if (attributesNode->value.HasMember("POSITION"))
+				auto& attributesNode = primitiveNode["attributes"];
+				if (attributesNode.HasMember("POSITION"))
 				{
-					auto posNode = attributesNode->value.FindMember("POSITION");
-					int accIndex = posNode->value.GetInt();
+					int accIndex = attributesNode["POSITION"].GetInt();
 					loadData(accIndex, positions);
 				}
 
-				if (attributesNode->value.HasMember("COLOR_0"))
+				if (attributesNode.HasMember("COLOR_0"))
 				{
-					auto colorNode = attributesNode->value.FindMember("COLOR_0");
-					int accIndex = colorNode->value.GetInt();
+					int accIndex = attributesNode["COLOR_0"].GetInt();
 					loadData(accIndex, colors);
 				}
 
-				if (attributesNode->value.HasMember("NORMAL"))
+				if (attributesNode.HasMember("NORMAL"))
 				{
-					auto normalNode = attributesNode->value.FindMember("NORMAL");
-					int accIndex = normalNode->value.GetInt();
+					int accIndex = attributesNode["NORMAL"].GetInt();
 					loadData(accIndex, normals);
 					calcNormals = false;
 				}
 				
-				if (attributesNode->value.HasMember("TEXCOORD_0"))
+				if (attributesNode.HasMember("TEXCOORD_0"))
 				{
-					auto texCoordNode = attributesNode->value.FindMember("TEXCOORD_0");
-					int accIndex = texCoordNode->value.GetInt();
+					int accIndex = attributesNode["TEXCOORD_0"].GetInt();
 					loadData(accIndex, texCoords);
 				}
 
-				if (attributesNode->value.HasMember("TANGENT"))
+				if (attributesNode.HasMember("TANGENT"))
 				{
-					auto tangentNode = attributesNode->value.FindMember("TANGENT");
-					int accIndex = tangentNode->value.GetInt();
+					int accIndex = attributesNode["TANGENT"].GetInt();
 					loadData(accIndex, tangets);
 					calcTangentSpace = false;
 				}
+
+				if (attributesNode.HasMember("JOINTS_0"))
+				{
+					int accIndex = attributesNode["JOINTS_0"].GetInt();
+					loadData(accIndex, boneIndices);
+				}
+
+				if (attributesNode.HasMember("WEIGHTS_0"))
+				{
+					int accIndex = attributesNode["WEIGHTS_0"].GetInt();
+					loadData(accIndex, boneWeights);
+				}
+
+				//std::cout << "bones: " << boneIndices.size() << " indices and " << boneWeights.size() << " weights " << std::endl;
+				//for (int i = 0; i < boneIndices.size(); i++)
+				//{
+				//	std::cout << i << " "
+				//		<< boneIndices[i].x << " " << boneIndices[i].y << " " << boneIndices[i].z << " " << boneIndices[i].w << " "
+				//		<< boneWeights[i].x << " " << boneWeights[i].y << " " << boneWeights[i].z << " " << boneWeights[i].w
+				//		<< std::endl;
+				//}
 
 				if (primitiveNode.HasMember("indices"))
 				{
@@ -398,24 +558,28 @@ namespace IO
 						v.texCoord = texCoords[i];
 					if (i < tangets.size())
 						v.tangent = tangets[i];
+					if (i < boneIndices.size())
+						v.boneIDs = boneIndices[i];
+					if (i < boneWeights.size())
+						v.boneWeights = boneWeights[i];
 					
-					if (morphTargets.size() == 2) // TODO: add support for more thant 2...
-					{
-						v.targetPosition0 = morphTargets[0].positions[i];
-						v.targetPosition1 = morphTargets[1].positions[i];
-						if (i < morphTargets[0].normals.size() &&
-							i < morphTargets[1].normals.size())
-						{
-							v.targetNormal0 = morphTargets[0].normals[i];
-							v.targetNormal1 = morphTargets[1].normals[i];
-						}
-						if (i < morphTargets[0].tangents.size() &&
-							i < morphTargets[1].tangents.size())
-						{
-							v.targetTangent0 = morphTargets[0].tangents[i];
-							v.targetTangent1 = morphTargets[1].tangents[i];
-						}
-					}
+					//if (morphTargets.size() == 2) // TODO: add support for more thant 2...
+					//{
+					//	v.targetPosition0 = morphTargets[0].positions[i];
+					//	v.targetPosition1 = morphTargets[1].positions[i];
+					//	if (i < morphTargets[0].normals.size() &&
+					//		i < morphTargets[1].normals.size())
+					//	{
+					//		v.targetNormal0 = morphTargets[0].normals[i];
+					//		v.targetNormal1 = morphTargets[1].normals[i];
+					//	}
+					//	if (i < morphTargets[0].tangents.size() &&
+					//		i < morphTargets[1].tangents.size())
+					//	{
+					//		v.targetTangent0 = morphTargets[0].tangents[i];
+					//		v.targetTangent1 = morphTargets[1].tangents[i];
+					//	}
+					//}
 
 					surface.addVertex(v);
 				}
@@ -611,6 +775,10 @@ namespace IO
 				else
 					std::cout << "texture index " << texIndex << " not found" << std::endl;
 			}
+			else
+			{
+				material->addProperty("material.useEmissiveTex", false);
+			}
 
 			if (materialNode.HasMember("extensions"))
 			{
@@ -660,20 +828,6 @@ namespace IO
 							float glossiness = pbrSpecGlossNode["glossinessFactor"].GetFloat();
 							material->addProperty("material2.glossFactor", glossiness);
 							material->addProperty("material2.useSpecularTex", false);
-						}
-						if (pbrSpecGlossNode.HasMember("diffuseFactor"))
-						{
-							bool ishas = pbrSpecGlossNode.HasMember("specular value");
-
-							const auto& baseColorNode = pbrSpecGlossNode["diffuseFactor"];
-							auto array = baseColorNode.GetArray();
-							glm::vec4 color;
-							color.r = array[0].GetFloat();
-							color.g = array[1].GetFloat();
-							color.b = array[2].GetFloat();
-							color.a = array[3].GetFloat();
-							material->addProperty("material2.diffuseFactor", color);
-							material->addProperty("material2.useDiffuseTex", false);
 						}
 						if (pbrSpecGlossNode.HasMember("specularGlossinessTexture"))
 						{
@@ -753,8 +907,8 @@ namespace IO
 				std::string filename = imageFiles[imageIndex];
 				std::cout << "loading texture " << filename << std::endl;
 
-				int i0 = filename.find_first_of("_") + 1;
-				int i1 = filename.find_first_of(".");
+				int i0 = filename.find_last_of("_") + 1;
+				int i1 = filename.find_last_of(".");
 				int len = i1 - i0;
 
 				std::string mapType = filename.substr(i0, len);
@@ -764,7 +918,9 @@ namespace IO
 					mapType.compare("albedo") == 0 || 
 					mapType.compare("emissive") == 0 ||
 					mapType.compare("diffuse") == 0 ||
-					mapType.compare("specularGlossiness") == 0)
+					mapType.compare("specularGlossiness") == 0 ||
+					mapType.compare("a") == 0 ||
+					mapType.compare("sg") == 0)
 				{
 					std::cout << "SRGB: true" << std::endl;
 					sRGB = true;
@@ -844,9 +1000,6 @@ namespace IO
 	Entity::Ptr GLTFImporter::traverse(int nodeIndex)
 	{
 		auto node = nodes[nodeIndex];
-		//glm::mat4 M = parentTransform * glm::translate(glm::mat4(1.0f), node.translation);
-		//glm::mat4 M = node.transform;
-
 		if (node.name.empty())
 			node.name = "node_" + std::to_string(nodeIndex);
 
@@ -866,23 +1019,18 @@ namespace IO
 		{
 			auto anim = Animator::create();
 
+			if (!skin.boneTree.children.empty())
+				anim->setSkin(skin.boneTree);
+
 			if (node.animIndex < animations.size())
 				anim->addAnimation(animations[node.animIndex]);
+			else if (node.animIndex < nodeAnims.size())
+				anim->addNodeAnim(nodeAnims[node.animIndex]);
 			else if (node.animIndex < morphAnims.size())
 				anim->addMorphAnim(morphAnims[node.animIndex]);
+			anim->setSkin(skin.boneTree);
 			entity->addComponent(anim);
 		}
-
-		//std::cout << "node " << node.name << std::endl;
-		//std::cout << "transformation:" << std::endl;
-		//for (int row = 0; row < 4; row++)
-		//{
-		//	for (int col = 0; col < 4; col++) 
-		//	{
-		//		std::cout << M[row][col] << " ";
-		//	}
-		//	std::cout << std::endl;
-		//}
 
 		for (auto& index : node.children)
 		{
@@ -893,6 +1041,26 @@ namespace IO
 		entities.push_back(entity);
 
 		return entity;
+	}
+
+	void GLTFImporter::buildBoneTree(int childIndex, BoneNode& parentNode)
+	{
+		GLTFNode& sceneNode = nodes[childIndex];
+		glm::mat4 T = glm::translate(glm::mat4(1.0f), sceneNode.translation);
+		glm::mat4 R = glm::mat4_cast(sceneNode.rotation);
+		glm::mat4 S = glm::scale(glm::mat4(1.0f), sceneNode.scale);
+
+		BoneNode boneNode;
+		boneNode.boneIndex = childIndex;
+		boneNode.boneTransform = skin.boneMapping[childIndex];
+		boneNode.nodeTransform = T * R * S;
+
+		parentNode.children.push_back(boneNode);
+
+		for (int noneIndex : sceneNode.children)
+		{
+			buildBoneTree(noneIndex, parentNode.children[parentNode.children.size() - 1]);
+		}
 	}
 
 	Entity::Ptr GLTFImporter::loadScene(const json::Document& doc)
@@ -931,10 +1099,16 @@ namespace IO
 				nodes.push_back(gltfNode);
 			}
 		}
-
- 		for (int i = 0; i < animations.size(); i++)
+		
+		for (int i = 0; i < animations.size(); i++)
 		{
 			unsigned int nodeIndex = animations[i]->getNodeIndex();
+			nodes[nodeIndex].animIndex = i;
+		}
+
+		for (int i = 0; i < nodeAnims.size(); i++)
+		{
+			unsigned int nodeIndex = nodeAnims[i]->getNodeIndex();
 			nodes[nodeIndex].animIndex = i;
 		}
 
@@ -943,6 +1117,29 @@ namespace IO
 			unsigned int nodeIndex = morphAnims[i]->getNodeIndex();
 			nodes[nodeIndex].animIndex = i;
 		}
+
+		if (!skin.boneMapping.empty())
+		{
+			GLTFNode& sceneRoot = nodes[skin.rootNode];
+			glm::mat4 T = glm::translate(glm::mat4(1.0f), sceneRoot.translation);
+			glm::mat4 R = glm::mat4_cast(sceneRoot.rotation);
+			glm::mat4 S = glm::scale(glm::mat4(1.0f), sceneRoot.scale);
+
+			BoneNode boneRoot;
+			boneRoot.boneIndex = skin.rootNode;
+			boneRoot.boneTransform = skin.boneMapping[skin.rootNode];
+			boneRoot.nodeTransform = T * R * S;
+			boneRoot.name = sceneRoot.name;
+
+			for (int nodeIndex : sceneRoot.children)
+			{
+				buildBoneTree(nodeIndex, boneRoot);
+			}
+
+			skin.boneTree = boneRoot;
+		}
+
+		//skin.boneTree.print();
 
 		auto root = Entity::create("root");
 		auto rootTransform = root->getComponent<Transform>();
@@ -973,7 +1170,7 @@ namespace IO
 		renderables.clear();
 		animators.clear();
 		textures.clear();
-		animations.clear();
+		nodeAnims.clear();
 		morphAnims.clear();
 		entities.clear();
 	}

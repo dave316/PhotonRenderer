@@ -17,7 +17,7 @@ namespace IO
 		std::vector<Entity::Ptr> entities;
 		std::vector<Mesh::Ptr> meshes;
 		std::vector<Material::Ptr> materials;
-		std::map<std::string, Animation::Ptr> animations;
+		std::map<std::string, NodeAnimation::Ptr> nodeAnims;
 
 		ModelImporter(const ModelImporter&) = delete;
 		ModelImporter& operator=(const ModelImporter&) = delete;

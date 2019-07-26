@@ -171,12 +171,12 @@ namespace IO
 			auto r = Renderable::create();
 			r->addMesh(mesh, materials[mesh->getMaterialIndex()]);
 			//std::cout << "added mesh " << mesh->getName() << " index: " << pNode->mMeshes[0] << " mat index: " << mesh->getMaterialIndex() << std::endl;
-			if (animations.find(name) != animations.end())
+			if (nodeAnims.find(name) != nodeAnims.end())
 			{
 				std::cout << "adding animation to node " << name << std::endl;
 
 				auto a = Animator::create();
-				a->addAnimation(animations[name]);
+				a->addNodeAnim(nodeAnims[name]);
 
 				entity->addComponent(a);
 
@@ -238,12 +238,12 @@ namespace IO
 			scales.push_back(std::pair<float, glm::vec3>(time, scale));
 		}
 
-		Animation::Ptr anim(new Animation(name, Animation::Interpolation::LINEAR, ticksPerSecond, 0.0, duration, duration, 0));
+		NodeAnimation::Ptr anim(new NodeAnimation(name, NodeAnimation::Interpolation::LINEAR, ticksPerSecond, 0.0, duration, duration, 0));
 		//anim->setPositions(positions);
 		//anim->setRotations(rotations);
 		//anim->setScales(scales);
 		
-		animations[animNode->mNodeName.C_Str()] = anim;
+		nodeAnims[animNode->mNodeName.C_Str()] = anim;
 	}
 
 	Material::Ptr ModelImporter::loadMaterial(const std::string& path, const aiScene* pScene, const aiMaterial* pMaterial)
@@ -328,23 +328,23 @@ namespace IO
 				auto& animMesh0 = pMesh->mAnimMeshes[0];
 				auto& animMesh1 = pMesh->mAnimMeshes[1];
 
-				if (animMesh0->HasPositions() && animMesh1->HasPositions())
-				{
-					v.targetPosition0 = toVec3(animMesh0->mVertices[i] - pMesh->mVertices[i]);
-					v.targetPosition1 = toVec3(animMesh1->mVertices[i] - pMesh->mVertices[i]);
-				}
+				//if (animMesh0->HasPositions() && animMesh1->HasPositions())
+				//{
+				//	v.targetPosition0 = toVec3(animMesh0->mVertices[i] - pMesh->mVertices[i]);
+				//	v.targetPosition1 = toVec3(animMesh1->mVertices[i] - pMesh->mVertices[i]);
+				//}
 
-				if (animMesh0->HasNormals() && animMesh1->HasNormals())
-				{
-					v.targetNormal0 = toVec3(animMesh0->mNormals[i]);
-					v.targetNormal1 = toVec3(animMesh1->mNormals[i]);
-				}
+				//if (animMesh0->HasNormals() && animMesh1->HasNormals())
+				//{
+				//	v.targetNormal0 = toVec3(animMesh0->mNormals[i]);
+				//	v.targetNormal1 = toVec3(animMesh1->mNormals[i]);
+				//}
 
-				if (animMesh0->HasTangentsAndBitangents() && animMesh1->HasTangentsAndBitangents())
-				{
-					v.targetTangent0 = toVec3(animMesh0->mTangents[i]);
-					v.targetTangent1 = toVec3(animMesh1->mTangents[i]);
-				}
+				//if (animMesh0->HasTangentsAndBitangents() && animMesh1->HasTangentsAndBitangents())
+				//{
+				//	v.targetTangent0 = toVec3(animMesh0->mTangents[i]);
+				//	v.targetTangent1 = toVec3(animMesh1->mTangents[i]);
+				//}
 			}
 
 			surface.addVertex(v);
@@ -407,6 +407,6 @@ namespace IO
 		entities.clear();
 		meshes.clear();
 		materials.clear();
-		animations.clear();
+		nodeAnims.clear();
 	}
 }

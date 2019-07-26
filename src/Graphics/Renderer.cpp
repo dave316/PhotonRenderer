@@ -59,12 +59,13 @@ bool Renderer::init()
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "SpecGlossVsMetalRough";
+	std::string name = "EnvironmentTest";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
 	IO::GLTFImporter importer;
 	auto root = importer.importModel(path + "/" + fn);
+	//auto root = importer.importModel(assetPath + "/Adam/adamHead.gltf");
 	//root->getComponent<Transform>()->setRotation(glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 1, 0)));
 	//root->getComponent<Transform>()->setScale(glm::vec3(0.01f));
 	rootEntitis.push_back(root);
@@ -313,10 +314,10 @@ void Renderer::initEnvMaps()
 {
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
-	std::string assetPath = "../assets";
-	//std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
-	//auto pano = IO::loadTextureHDR(assetPath + "/Brooklyn_Bridge_Planks/Brooklyn_Bridge_Planks_2k.hdr");
-	auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+	//std::string assetPath = "../assets";
+	std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
+	auto pano = IO::loadTextureHDR(assetPath + "/Serpentine_Valley/Serpentine_Valley_3k.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
 
 	glm::vec3 position = glm::vec3(0);
 	std::vector<glm::mat4> VP;
@@ -460,17 +461,26 @@ void Renderer::loadGLTFModels(std::string path)
 
 void Renderer::updateAnimations(float dt)
 {
+	//std::cout << "update animation" << std::endl;
 	// apply transformations from animations
 	auto rootEntity = rootEntitis[modelIndex];
 	auto animators = rootEntity->getChildrenWithComponent<Animator>();
-	for (auto e : animators)
+ 	for (auto e : animators)
 	{
 		auto a = e->getComponent<Animator>();
 		auto t = e->getComponent<Transform>();
 
 		a->update(dt);
 
-		if (a->hasMorphAnim())
+		//defaultProgram.setUniform("hasAnimations", false);
+
+		if (a->hasRiggedAnim())
+		{
+			auto boneTransforms = a->getBoneTransform();
+			defaultProgram.setUniform("bones[0]", boneTransforms);
+			defaultProgram.setUniform("hasAnimations", true);
+		}
+		else if (a->hasMorphAnim())
 		{
 			glm::vec2 weights = a->getWeights();
 			defaultProgram.setUniform("w0", weights.x);

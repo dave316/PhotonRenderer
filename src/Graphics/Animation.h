@@ -5,10 +5,51 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
+#include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
+
+struct BoneNode
+{
+	std::string name;
+	std::vector<BoneNode> children;
+	glm::mat4 boneTransform;
+	glm::mat4 nodeTransform;
+	int boneIndex;
+
+	void print()
+	{
+		std::cout << "boneNode: " << name << " boneIndex: " << boneIndex << ", " << children.size() << " children" << std::endl;
+		std::cout << "boneTransform: ";
+		const float* bT = (const float*)glm::value_ptr(boneTransform);
+		for (int i = 0; i < 16; i++)
+			std::cout << bT[i] << " ";
+		std::cout << std::endl;
+		std::cout << "nodeTransform: ";
+		const float* nT = (const float*)glm::value_ptr(nodeTransform);
+		for (int i = 0; i < 16; i++)
+			std::cout << nT[i] << " ";
+		std::cout << std::endl;
+		
+		for (auto& c : children)
+			c.print();
+	}
+};
+
+struct Channel
+{
+	std::vector<std::pair<float, glm::vec3>> positions;
+	std::vector<std::pair<float, glm::quat>> rotations;
+	std::vector<std::pair<float, glm::vec3>> scales;
+	
+	unsigned int findPosition(float currentTime);
+	unsigned int findRotation(float currentTime);
+	unsigned int findScaling(float currentTime);
+};
 
 class Animation
 {
@@ -20,69 +61,38 @@ public:
 		CUBIC
 	};
 private:
-
 	std::string name;
-	//std::vector<std::pair<float, glm::vec3>> positions;
-	//std::vector<std::pair<float, glm::quat>> rotations;
-	//std::vector<std::pair<float, glm::vec3>> scales;
+	std::map<int, Channel> channels;
+	std::vector<glm::mat4> boneTransforms;
 
-	std::vector<float> times;
-	std::vector<glm::vec3> positions;
-	std::vector<glm::quat> rotations;
-	std::vector<glm::vec3> scales;
-
-	glm::vec3 pos = glm::vec3(0.0f);
-	glm::quat rot = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-	glm::vec3 scale = glm::vec3(1.0f);
-
+	BoneNode rootNode;
 	float currentTime;
-	float ticksPerSecond;
-	float startTime;
-	float endTime;
 	float duration;
-	Interpolation interpMode;
-
 	unsigned int nodeIndex;
 
 	Animation(const Animation&) = delete;
 	Animation& operator=(const Animation&) = delete;
 public:
 	Animation();
-	Animation(const std::string& name, Interpolation interp, float ticksPerSecond, float startTime, float endTime, float duration, unsigned int nodeIndex);
+	Animation(const std::string& name, float duration, unsigned int nodeIndex);
 
-	//void setPositions(std::vector<std::pair<float, glm::vec3>>& positions);
-	//void setRotations(std::vector<std::pair<float, glm::quat>>& positions);
-	//void setScales(std::vector<std::pair<float, glm::vec3>>& positions);
+	glm::mat4 calcInterpPosition(int index);
+	glm::mat4 calcInterpRotation(int index);
+	glm::mat4 calcInterpScaling(int index);
 
-	void setTimes(std::vector<float>& times);
-	void setPositions(std::vector<glm::vec3>& positions);
-	void setRotations(std::vector<glm::quat>& rotations);
-	void setScales(std::vector<glm::vec3>& scales);
-	
-	unsigned int findTime(float currentTime);
-	//unsigned int findPosition(float currentTime);
-	//unsigned int findRotation(float currentTime);
-	//unsigned int findScaling(float currentTime);
-
-	glm::mat4 calcInterpPosition();
-	glm::mat4 calcInterpRotation();
-	glm::mat4 calcInterpScaling();
-
+	void setBoneTree(BoneNode& root);
+	void addChannel(int index, Channel& channel);
+	void readBoneTree(BoneNode& node, glm::mat4 parentTransform);
 	void update(float time);
-	bool hasPositions();
-	bool hasRotations();
-	bool hasScale();
-	glm::vec3 getPos();
-	glm::quat getRot();
-	glm::vec3 getScale();
-	std::string getName();
-	unsigned int getNodeIndex();
 
+	unsigned int getNodeIndex();
+	std::vector<glm::mat4> getBoneTransform();
+	
 	typedef std::shared_ptr<Animation> Ptr;
-	static Ptr create()
+	static Ptr create(const std::string& name, float duration, unsigned int nodeIndex)
 	{
-		return std::make_shared<Animation>();
+		return std::make_shared<Animation>(name, duration, nodeIndex);
 	}
 };
 
-#endif // INCLUDED_MATERIAL
+#endif // INCLUDED_ANIMATION

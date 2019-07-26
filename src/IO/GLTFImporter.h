@@ -57,6 +57,15 @@ namespace IO
 			//glm::mat4 transform = glm::mat4(1.0f);
 		};
 
+		struct Skin
+		{
+			int rootNode = -1;
+			std::string name;
+			std::map<int, glm::mat4> boneMapping;
+			BoneNode boneTree;
+		};
+		Skin skin;
+
 		// GLTF related data
 		std::vector<Buffer> buffers;
 		std::vector<BufferView> bufferViews;
@@ -69,6 +78,7 @@ namespace IO
 		std::vector<Animator::Ptr> animators;
 		std::vector<Texture2D::Ptr> textures;
 		std::vector<Animation::Ptr> animations;
+		std::vector<NodeAnimation::Ptr> nodeAnims;
 		std::vector<MorphAnimation::Ptr> morphAnims;
 		std::vector<Entity::Ptr> entities;
 
@@ -77,11 +87,14 @@ namespace IO
 
 		void loadBuffers(const json::Document& doc, const std::string& path);
 		void loadAnimations(const json::Document& doc);
+		void loadRiggedAnimations(const json::Document& doc);
+		void loadSkins(const json::Document& doc);
 		void loadMeshes(const json::Document& doc);
 		void loadMaterials(const json::Document& doc);
 		void loadTextures(const json::Document& doc, const std::string& path);
 		Entity::Ptr loadScene(const json::Document& doc);
 		Entity::Ptr traverse(int nodeIndex);
+		void buildBoneTree(int nodeIndex, BoneNode& node);
 
 		template<typename T>
 		void loadData(int accIndex, std::vector<T>& data)

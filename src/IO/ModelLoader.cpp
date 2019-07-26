@@ -349,25 +349,25 @@ namespace IO
 				auto& animMesh0 = pMesh->mAnimMeshes[0];
 				auto& animMesh1 = pMesh->mAnimMeshes[1];
 
-				if (animMesh0->HasPositions() && animMesh1->HasPositions())
-				{
-					glm::vec3 pos0 = toVec3(animMesh0->mVertices[i] - pMesh->mVertices[i]);
-					glm::vec3 pos1 = toVec3(animMesh1->mVertices[i] - pMesh->mVertices[i]);
-					v.targetPosition0 = glm::vec3(M * glm::vec4(pos0, 1.0f));
-					v.targetPosition1 = glm::vec3(M * glm::vec4(pos1, 1.0f));
-				}
+				//if (animMesh0->HasPositions() && animMesh1->HasPositions())
+				//{
+				//	glm::vec3 pos0 = toVec3(animMesh0->mVertices[i] - pMesh->mVertices[i]);
+				//	glm::vec3 pos1 = toVec3(animMesh1->mVertices[i] - pMesh->mVertices[i]);
+				//	v.targetPosition0 = glm::vec3(M * glm::vec4(pos0, 1.0f));
+				//	v.targetPosition1 = glm::vec3(M * glm::vec4(pos1, 1.0f));
+				//}
 
-				if (animMesh0->HasNormals() && animMesh1->HasNormals())
-				{
-					v.targetNormal0 = glm::normalize(N * toVec3(animMesh0->mNormals[i]));
-					v.targetNormal1 = glm::normalize(N * toVec3(animMesh1->mNormals[i]));
-				}
+				//if (animMesh0->HasNormals() && animMesh1->HasNormals())
+				//{
+				//	v.targetNormal0 = glm::normalize(N * toVec3(animMesh0->mNormals[i]));
+				//	v.targetNormal1 = glm::normalize(N * toVec3(animMesh1->mNormals[i]));
+				//}
 
-				if (animMesh0->HasTangentsAndBitangents() && animMesh1->HasTangentsAndBitangents())
-				{
-					v.targetTangent0 = glm::normalize(N * toVec3(animMesh0->mTangents[i]));
-					v.targetTangent1 = glm::normalize(N * toVec3(animMesh1->mTangents[i]));
-				}
+				//if (animMesh0->HasTangentsAndBitangents() && animMesh1->HasTangentsAndBitangents())
+				//{
+				//	v.targetTangent0 = glm::normalize(N * toVec3(animMesh0->mTangents[i]));
+				//	v.targetTangent1 = glm::normalize(N * toVec3(animMesh1->mTangents[i]));
+				//}
 			}
 			//else if (pMesh->mNumAnimMeshes > 0)
 			//{
