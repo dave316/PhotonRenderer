@@ -79,9 +79,9 @@ Entity* Transform::getEntity()
 	return entity;
 }
 
-void Transform::setUniforms(GL::Program& program)
+void Transform::setUniforms(Shader::Ptr shader)
 {
-	program.setUniform("M", transform);
-	program.setUniform("N", normalTransform);
+	shader->setUniform("M", transform);
+	shader->setUniform("N", normalTransform);
 }
 

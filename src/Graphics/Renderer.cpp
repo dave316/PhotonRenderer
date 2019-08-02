@@ -1,11 +1,9 @@
 #include "Renderer.h"
 
-#include <GL/GLBuffer.h>
-
 #include <Graphics/Framebuffer.h>
 #include <Graphics/Primitives.h>
+#include <Graphics/Shader.h>
 
-//#include <IO/ModelLoader.h>
 #include <IO/GLTFImporter.h>
 #include <IO/ImageLoader.h>
 
@@ -59,13 +57,13 @@ bool Renderer::init()
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "DamagedHelmet";
+	std::string name = "EnvironmentTest";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
 	IO::GLTFImporter importer;
-	auto root = importer.importModel(path + "/" + fn);
-	//auto root = importer.importModel(assetPath + "/Adam/adamHead.gltf");
+	//auto root = importer.importModel(path + "/" + fn);
+	auto root = importer.importModel(assetPath + "/Adam/adamHead.gltf");
 	//root->getComponent<Transform>()->setRotation(glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 1, 0)));
 	//root->getComponent<Transform>()->setScale(glm::vec3(0.01f));
 	rootEntitis.push_back(root);
@@ -81,7 +79,7 @@ bool Renderer::init()
 	//rootEntitis.push_back(rootEntity);
 	//entities = importer.getEntities();
 	//importer.clear();
-
+	 
 	return true;
 }
 
@@ -89,224 +87,79 @@ void Renderer::initShader()
 {
 	std::string shaderPath = "../src/Shaders";
 	{
+		defaultShader = Shader::create("Default");
 		auto vsCode = loadTxtFile(shaderPath + "/Default.vert");
 		auto fsCode = loadTxtFile(shaderPath + "/Default.frag");
+		defaultShader->compile<GL::VertexShader>(vsCode);
+		defaultShader->compile<GL::FragmentShader>(fsCode);
+		defaultShader->link();
 
-		GL::VertexShader vs;
-		GL::FragmentShader fs;
+		defaultShader->setUniform("material.baseColorFactor", glm::vec4(1.0f));
+		defaultShader->setUniform("material.alphaCutOff", 0.0f);
+		defaultShader->setUniform("material.baseColorTex", 0);
+		defaultShader->setUniform("material.pbrTex", 1);
+		defaultShader->setUniform("material.normalTex", 2);
+		defaultShader->setUniform("material.occlusionTex", 3);
+		defaultShader->setUniform("material.emissiveTex", 4);
 
-		if (!vs.compile(vsCode.c_str()))
-		{
-			std::cout << "error compiling vertex shader" << std::endl;
-			std::cout << vs.getErrorLog() << std::endl;
-		}
-
-		if (!fs.compile(fsCode.c_str()))
-		{
-			std::cout << "error compiling fragment shader" << std::endl;
-			std::cout << fs.getErrorLog() << std::endl;
-		}
-
-		defaultProgram.attachShader(vs);
-		defaultProgram.attachShader(fs); 
-		if (!defaultProgram.link())
-		{
-			std::cout << "error linking shader program" << std::endl;
-			std::cout << defaultProgram.getErrorLog() << std::endl;
-		}
-		defaultProgram.loadUniforms();
-
-		defaultProgram.setUniform("material.baseColorFactor", glm::vec4(1.0f));
-		defaultProgram.setUniform("material.alphaCutOff", 0.0f);
-		defaultProgram.setUniform("material.baseColorTex", 0);
-		defaultProgram.setUniform("material.pbrTex", 1);
-		defaultProgram.setUniform("material.normalTex", 2);
-		defaultProgram.setUniform("material.occlusionTex", 3);
-		defaultProgram.setUniform("material.emissiveTex", 4);
-
-		defaultProgram.setUniform("irradianceMap", 5);
-		defaultProgram.setUniform("specularMap", 6);
-		defaultProgram.setUniform("brdfLUT", 7);
-		//program.setUniform("w0", 0.0f);
-		//program.setUniform("w1", 0.0f);
+		defaultShader->setUniform("irradianceMap", 5);
+		defaultShader->setUniform("specularMap", 6);
+		defaultShader->setUniform("brdfLUT", 7);
 	}
 
 	{
+		pano2cmShader = Shader::create("PanoToCubeMap");
 		auto vsCode = loadTxtFile(shaderPath + "/PanoToCubeMap.vert");
 		auto gsCode = loadTxtFile(shaderPath + "/PanoToCubeMap.geom");
 		auto fsCode = loadTxtFile(shaderPath + "/PanoToCubeMap.frag");
+		pano2cmShader->compile<GL::VertexShader>(vsCode);
+		pano2cmShader->compile<GL::GeometryShader>(gsCode);
+		pano2cmShader->compile<GL::FragmentShader>(fsCode);
+		pano2cmShader->link();
 
-		GL::VertexShader vs;
-		GL::GeometryShader gs;
-		GL::FragmentShader fs;
-
-		if (!vs.compile(vsCode.c_str()))
-		{
-			std::cout << "error compiling vertex shader" << std::endl;
-			std::cout << vs.getErrorLog() << std::endl;
-		}
-
-		if (!gs.compile(gsCode.c_str()))
-		{
-			std::cout << "error compiling geometry shader" << std::endl;
-			std::cout << gs.getErrorLog() << std::endl;
-		}
-
-		if (!fs.compile(fsCode.c_str()))
-		{
-			std::cout << "error compiling fragment shader" << std::endl;
-			std::cout << fs.getErrorLog() << std::endl;
-		}
-
-		pano2cmProgram.attachShader(vs);
-		pano2cmProgram.attachShader(gs);
-		pano2cmProgram.attachShader(fs);
-		if (!pano2cmProgram.link())
-		{
-			std::cout << "error linking shader program" << std::endl;
-			std::cout << pano2cmProgram.getErrorLog() << std::endl;
-		}
-		pano2cmProgram.loadUniforms();
-
-		pano2cmProgram.setUniform("envMap", 0);
+		pano2cmShader->setUniform("envMap", 0);
 	}
 
 	{
+		irradianceShader = Shader::create("IBLDiffuseIrradiance");
 		auto vsCode = loadTxtFile(shaderPath + "/IBLDiffuseIrradiance.vert");
 		auto gsCode = loadTxtFile(shaderPath + "/IBLDiffuseIrradiance.geom");
 		auto fsCode = loadTxtFile(shaderPath + "/IBLDiffuseIrradiance.frag");
-
-		GL::VertexShader vs;
-		GL::GeometryShader gs;
-		GL::FragmentShader fs;
-
-		if (!vs.compile(vsCode.c_str()))
-		{
-			std::cout << "error compiling vertex shader" << std::endl;
-			std::cout << vs.getErrorLog() << std::endl;
-		}
-
-		if (!gs.compile(gsCode.c_str()))
-		{
-			std::cout << "error compiling geometry shader" << std::endl;
-			std::cout << gs.getErrorLog() << std::endl;
-		}
-
-		if (!fs.compile(fsCode.c_str()))
-		{
-			std::cout << "error compiling fragment shader" << std::endl;
-			std::cout << fs.getErrorLog() << std::endl;
-		}
-
-		irradianceProgram.attachShader(vs);
-		irradianceProgram.attachShader(gs);
-		irradianceProgram.attachShader(fs);
-		if (!irradianceProgram.link())
-		{
-			std::cout << "error linking shader program" << std::endl;
-			std::cout << irradianceProgram.getErrorLog() << std::endl;
-		}
-		irradianceProgram.loadUniforms();
+		irradianceShader->compile<GL::VertexShader>(vsCode);
+		irradianceShader->compile<GL::GeometryShader>(gsCode);
+		irradianceShader->compile<GL::FragmentShader>(fsCode);
+		irradianceShader->link();
 	}
 
 	{
+		specularShader = Shader::create("IBLSpecular");
 		auto vsCode = loadTxtFile(shaderPath + "/IBLSpecular.vert");
 		auto gsCode = loadTxtFile(shaderPath + "/IBLSpecular.geom");
 		auto fsCode = loadTxtFile(shaderPath + "/IBLSpecular.frag");
-
-		GL::VertexShader vs;
-		GL::GeometryShader gs;
-		GL::FragmentShader fs;
-
-		if (!vs.compile(vsCode.c_str()))
-		{
-			std::cout << "error compiling vertex shader" << std::endl;
-			std::cout << vs.getErrorLog() << std::endl;
-		}
-
-		if (!gs.compile(gsCode.c_str()))
-		{
-			std::cout << "error compiling geometry shader" << std::endl;
-			std::cout << gs.getErrorLog() << std::endl;
-		}
-
-		if (!fs.compile(fsCode.c_str()))
-		{
-			std::cout << "error compiling fragment shader" << std::endl;
-			std::cout << fs.getErrorLog() << std::endl;
-		}
-
-		specularProgram.attachShader(vs);
-		specularProgram.attachShader(gs);
-		specularProgram.attachShader(fs);
-		if (!specularProgram.link())
-		{
-			std::cout << "error linking shader program" << std::endl;
-			std::cout << specularProgram.getErrorLog() << std::endl;
-		}
-		specularProgram.loadUniforms();
+		specularShader->compile<GL::VertexShader>(vsCode);
+		specularShader->compile<GL::GeometryShader>(gsCode);
+		specularShader->compile<GL::FragmentShader>(fsCode);
+		specularShader->link();
 	}
 
 	{
+		integrateBRDFShader = Shader::create("IBLIntegrateBRDF");
 		auto vsCode = loadTxtFile(shaderPath + "/IBLIntegrateBRDF.vert");
 		auto fsCode = loadTxtFile(shaderPath + "/IBLIntegrateBRDF.frag");
-
-		GL::VertexShader vs;
-		GL::FragmentShader fs;
-
-		if (!vs.compile(vsCode.c_str()))
-		{
-			std::cout << "error compiling vertex shader" << std::endl;
-			std::cout << vs.getErrorLog() << std::endl;
-		}
-
-		if (!fs.compile(fsCode.c_str()))
-		{
-			std::cout << "error compiling fragment shader" << std::endl;
-			std::cout << fs.getErrorLog() << std::endl;
-		}
-
-		integrateBRDFProgram.attachShader(vs);
-		integrateBRDFProgram.attachShader(fs);
-		if (!integrateBRDFProgram.link())
-		{
-			std::cout << "error linking shader program" << std::endl;
-			std::cout << integrateBRDFProgram.getErrorLog() << std::endl;
-		}
-		integrateBRDFProgram.loadUniforms();
+		integrateBRDFShader->compile<GL::VertexShader>(vsCode);
+		integrateBRDFShader->compile<GL::FragmentShader>(fsCode);
+		integrateBRDFShader->link();
 	}
 
 	{
+		skyboxShader = Shader::create("Skybox");
 		auto vsCode = loadTxtFile(shaderPath + "/Skybox.vert");
 		auto fsCode = loadTxtFile(shaderPath + "/Skybox.frag");
+		skyboxShader->compile<GL::VertexShader>(vsCode);
+		skyboxShader->compile<GL::FragmentShader>(fsCode);
+		skyboxShader->link();
 
-		GL::VertexShader vs;
-		GL::FragmentShader fs;
-
-		if (!vs.compile(vsCode.c_str()))
-		{
-			std::cout << "error compiling vertex shader" << std::endl;
-			std::cout << vs.getErrorLog() << std::endl;
-		}
-
-		if (!fs.compile(fsCode.c_str()))
-		{
-			std::cout << "error compiling fragment shader" << std::endl;
-			std::cout << fs.getErrorLog() << std::endl;
-		}
-
-		skyboxProgram.attachShader(vs);
-		skyboxProgram.attachShader(fs);
-		if (!skyboxProgram.link())
-		{
-			std::cout << "error linking shader program" << std::endl;
-			std::cout << skyboxProgram.getErrorLog() << std::endl;
-		}
-		skyboxProgram.loadUniforms();
-
-		skyboxProgram.setUniform("envMap", 0);
-		//program.setUniform("w0", 0.0f);
-		//program.setUniform("w1", 0.0f);
+		skyboxShader->setUniform("envMap", 0);
 	}
 }
 
@@ -330,10 +183,10 @@ void Renderer::initEnvMaps()
 	VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
 	VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
 
-	pano2cmProgram.setUniform("M", glm::mat4(1.0f));
-	pano2cmProgram.setUniform("VP[0]", VP);
-	pano2cmProgram.setUniform("panorama", 0);
-	pano2cmProgram.use();
+	pano2cmShader->setUniform("M", glm::mat4(1.0f));
+	pano2cmShader->setUniform("VP[0]", VP);
+	pano2cmShader->setUniform("panorama", 0);
+	pano2cmShader->use();
 
 	glDisable(GL_DEPTH_TEST);
 	{
@@ -353,9 +206,9 @@ void Renderer::initEnvMaps()
 		cubeMap->generateMipmaps();
 	}
 
-	irradianceProgram.setUniform("VP[0]", VP);
-	irradianceProgram.setUniform("environmentMap", 0);
-	irradianceProgram.use();
+	irradianceShader->setUniform("VP[0]", VP);
+	irradianceShader->setUniform("environmentMap", 0);
+	irradianceShader->use();
 
 	{
 		int size = 32;
@@ -369,9 +222,9 @@ void Renderer::initEnvMaps()
 		irrFBO->end();
 	}
 
-	specularProgram.setUniform("VP[0]", VP);
-	specularProgram.setUniform("environmentMap", 0);
-	specularProgram.use();
+	specularShader->setUniform("VP[0]", VP);
+	specularShader->setUniform("environmentMap", 0);
+	specularShader->use();
 
 	{
 		int size = 256;
@@ -386,7 +239,7 @@ void Renderer::initEnvMaps()
 			unsigned int mipWidth = size * std::pow(0.5, mip);
 			unsigned int mipHeight = size * std::pow(0.5, mip);
 			float roughness = (float)mip / (float)(maxMipLevel - 1);
-			specularProgram.setUniform("roughness", roughness);
+			specularShader->setUniform("roughness", roughness);
 
 			specFBO->resize(mipWidth, mipHeight);
 			specFBO->addRenderTexture(GL::COLOR0, specularMap, mip);
@@ -406,7 +259,7 @@ void Renderer::initEnvMaps()
 		brdfLUT = Texture2D::create(size, size, GL::RG16F);
 		brdfLUT->setWrap(GL::CLAMP_TO_EDGE);
 
-		integrateBRDFProgram.use();
+		integrateBRDFShader->use();
 		auto brdfFBO = Framebuffer::create(size, size);
 		brdfFBO->addRenderTexture(GL::COLOR0, brdfLUT);
 		brdfFBO->begin();
@@ -477,14 +330,14 @@ void Renderer::updateAnimations(float dt)
 		if (a->hasRiggedAnim())
 		{
 			auto boneTransforms = a->getBoneTransform();
-			defaultProgram.setUniform("bones[0]", boneTransforms);
-			defaultProgram.setUniform("hasAnimations", true);
+			defaultShader->setUniform("bones[0]", boneTransforms);
+			defaultShader->setUniform("hasAnimations", true);
 		}
 		else if (a->hasMorphAnim())
 		{
 			glm::vec2 weights = a->getWeights();
-			defaultProgram.setUniform("w0", weights.x);
-			defaultProgram.setUniform("w1", weights.y);
+			defaultShader->setUniform("w0", weights.x);
+			defaultShader->setUniform("w1", weights.y);
 		}
 		else
 			a->transform(t);
@@ -499,11 +352,11 @@ void Renderer::updateCamera(Camera& camera)
 	Camera::UniformData cameraData;
 	camera.writeUniformData(cameraData);
 
-	defaultProgram.setUniform("VP", cameraData.VP);
-	defaultProgram.setUniform("cameraPos", glm::vec3(cameraData.position));
+	defaultShader->setUniform("VP", cameraData.VP);
+	defaultShader->setUniform("cameraPos", glm::vec3(cameraData.position));
 
-	skyboxProgram.setUniform("V", cameraData.V);
-	skyboxProgram.setUniform("P", cameraData.P);
+	skyboxShader->setUniform("V", cameraData.V);
+	skyboxShader->setUniform("P", cameraData.P);
 }
 
 void Renderer::nextModel()
@@ -515,7 +368,7 @@ void Renderer::render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
-	defaultProgram.use();
+	defaultShader->use();
 
 	irradianceMap->use(5);
 	specularMap->use(6);
@@ -540,20 +393,20 @@ void Renderer::render()
 			auto r = m->getComponent<Renderable>();
 			auto t = m->getComponent<Transform>();
 
-			t->setUniforms(defaultProgram);
-			r->render(defaultProgram);
+			t->setUniforms(defaultShader);
+			r->render(defaultShader);
 		}
 		for (auto m : transparentEntities)
 		{
 			auto r = m->getComponent<Renderable>();
 			auto t = m->getComponent<Transform>();
 
-			t->setUniforms(defaultProgram);
-			r->render(defaultProgram);
+			t->setUniforms(defaultShader);
+			r->render(defaultShader);
 		}
 	}
 
-	skyboxProgram.use();
+	skyboxShader->use();
 	cubeMap->use(0);
 	unitCube->draw();
 }

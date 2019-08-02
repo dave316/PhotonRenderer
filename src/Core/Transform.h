@@ -5,7 +5,7 @@
 
 #include "Component.h"
 
-#include <GL/GLProgram.h>
+#include <Graphics/Shader.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -43,7 +43,7 @@ public:
 	Transform::Ptr getChild(int index);
 	Entity* getEntity();
 
-	void setUniforms(GL::Program& program);
+	void setUniforms(Shader::Ptr shader);
 
 
 	//operator glm::mat4() const

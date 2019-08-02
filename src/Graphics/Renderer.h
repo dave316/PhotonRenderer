@@ -4,28 +4,22 @@
 #pragma once
 
 #include <Graphics/Camera.h>
+#include <Graphics/Shader.h>
+
 #include <Core/Entity.h>
 #include <Core/Renderable.h>
 #include <Core/Transform.h>
-#include <GL/GLProgram.h>
-#include <GL/GLShader.h>
 
 #include <IO/ModelImporter.h>
 
-class Shader
-{
-	
-
-};
-
 class Renderer
 {
-	GL::Program defaultProgram;
-	GL::Program pano2cmProgram;
-	GL::Program skyboxProgram;
-	GL::Program irradianceProgram;
-	GL::Program specularProgram;
-	GL::Program integrateBRDFProgram;
+	Shader::Ptr defaultShader;
+	Shader::Ptr pano2cmShader;
+	Shader::Ptr skyboxShader;
+	Shader::Ptr irradianceShader;
+	Shader::Ptr specularShader;
+	Shader::Ptr integrateBRDFShader;
 
 	Mesh::Ptr unitCube;
 	TextureCubeMap::Ptr cubeMap;

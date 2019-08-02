@@ -4,8 +4,7 @@
 #pragma once
 
 #include "Texture.h"
-
-#include <GL/GLProgram.h>
+#include "Shader.h"
 
 #include <vector>
 
@@ -23,7 +22,7 @@ public:
 	{
 
 	}
-	virtual void setUniform(GL::Program& program) = 0;
+	virtual void setUniform(Shader::Ptr shader) = 0;
 	bool isTexture() { return useTextureMap; }
 	typedef std::shared_ptr<IProperty> Ptr;
 };
@@ -41,9 +40,9 @@ public:
 
 	}
 
-	void setUniform(GL::Program& program)
+	void setUniform(Shader::Ptr shader)
 	{
-		program.setUniform(name, value);
+		shader->setUniform(name, value);
 	}
 
 	typedef std::shared_ptr<Property<T>> Ptr;
@@ -86,9 +85,7 @@ public:
 		return useBlending;
 	}
 
-	//void setColor(glm::vec4& color);
-	//void addTexture(Texture2D::Ptr texture);
-	void setUniforms(GL::Program& program);
+	void setUniforms(Shader::Ptr shader);
 
 	typedef std::shared_ptr<Material> Ptr;
 	static Ptr create()

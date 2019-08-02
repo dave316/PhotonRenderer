@@ -22,26 +22,7 @@ Renderable::~Renderable()
 	//std::cout << "renderable: " << mesh->getName() << " destroyed" << std::endl;
 }
 
-//void Renderable::setAnimation(Animation::Ptr anim)
-//{
-//	this->animation = anim;
-//}
-
-//void Renderable::setMorphAnim(MorphAnimation::Ptr anim)
-//{
-//	this->morphAnim = anim;
-//}
-
-//void Renderable::update(float dt)
-//{
-//	if (animation != nullptr)
-//		animation->update(dt);
-//
-//	if (morphAnim != nullptr)
-//		morphAnim->update(dt);
-//}
-
-void Renderable::render(GL::Program& program)
+void Renderable::render(Shader::Ptr shader)
 {
 	//program.setUniform("M", M);
 	//program.setUniform("w0", weights.x);
@@ -66,7 +47,7 @@ void Renderable::render(GL::Program& program)
 			glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 		}
 
-		p.material->setUniforms(program);
+		p.material->setUniforms(shader);
 		p.mesh->draw();
 
 		if (p.material->blend())
@@ -86,28 +67,3 @@ void Renderable::print()
 {
 	//std::cout << "meshes: " << meshes.size() << std::endl;
 }
-
-//bool Renderable::hasAnimations()
-//{
-//	return (animation != nullptr);
-//}
-//
-//bool Renderable::hasMorphAnim()
-//{
-//	return (morphAnim != nullptr);
-//}
-//
-//glm::vec2 Renderable::getWeights()
-//{
-//	if (morphAnim != nullptr)
-//		return morphAnim->getWeights();
-//	return glm::vec2();
-//}
-//
-//glm::mat4 Renderable::getTransform()
-//{
-//	if (animation != nullptr)
-//		return animation->getTransform();
-//	   		
-//	return glm::mat4();
-//}

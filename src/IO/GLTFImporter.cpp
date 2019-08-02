@@ -354,6 +354,8 @@ namespace IO
 
 	void GLTFImporter::loadSkins(const json::Document& doc)
 	{
+		// TODO: retrive ordering of joints from joint array, since this is important for blending the correct bones.
+
 		if (!doc.HasMember("skins"))
 			return;
 
