@@ -62,8 +62,8 @@ bool Renderer::init()
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
 	IO::GLTFImporter importer;
-	//auto root = importer.importModel(path + "/" + fn);
-	auto root = importer.importModel(assetPath + "/Adam/adamHead.gltf");
+	auto root = importer.importModel(path + "/" + fn);
+	//auto root = importer.importModel(assetPath + "/Adam/adamHead.gltf");
 	//root->getComponent<Transform>()->setRotation(glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 1, 0)));
 	//root->getComponent<Transform>()->setScale(glm::vec3(0.01f));
 	rootEntitis.push_back(root);
