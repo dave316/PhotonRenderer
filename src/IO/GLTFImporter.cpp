@@ -690,12 +690,12 @@ namespace IO
 					material->addProperty("material.baseColorFactor", color);
 					material->addProperty("material.useBaseColorTex", false);
 				}
-				else if (pbrNode.HasMember("baseColorTexture"))
+				if (pbrNode.HasMember("baseColorTexture"))
 				{
 					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
 					if (texIndex < textures.size())
 					{
-						//std::cout << "added baseColorTexture texture index " << texIndex << std::endl;
+						std::cout << "added baseColorTexture texture index " << texIndex << std::endl;
 						material->addTexture("material.baseColorTex", textures[texIndex]);
 						material->addProperty("material.useBaseColorTex", true);
 					}

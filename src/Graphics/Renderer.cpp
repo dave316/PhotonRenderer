@@ -38,6 +38,15 @@ std::string loadTxtFile(const std::string& fileName)
 	return ss.str();
 }
 
+void extern debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
+{
+	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
+	{
+		std::cout << std::hex << std::endl;
+		std::cout << "OpenGL error: type=" << type << " severity: " << severity << " message: " << message << std::endl;
+	}
+}
+
 Renderer::Renderer(unsigned int width, unsigned int height)
 {
 }
@@ -51,13 +60,15 @@ bool Renderer::init()
 	glDepthFunc(GL_LEQUAL);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glViewport(0, 0, 1920, 1080);
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(debugCallback, 0);
 
 	initShader();
 	initEnvMaps();
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "EnvironmentTest";
+	std::string name = "BoomBox";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
