@@ -59,7 +59,7 @@ void main()
 		vec3 b = normalize(N * vbitangent); 
 		wTBN = mat3(t,b,wNormal);
 	}
-	
+
 	vertexColor = vColor;
 	texCoord = vTexCoord;
 	gl_Position = VP * vec4(wPosition, 1.0);

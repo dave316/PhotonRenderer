@@ -68,7 +68,7 @@ bool Renderer::init()
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "BoomBox";
+	std::string name = "DamagedHelmet";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
