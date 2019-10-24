@@ -35,6 +35,14 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 		return;
 	}
 
+	GLint numExtensions = 0;
+	glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+	for (GLint i = 0; i < numExtensions; i++)
+	{
+		const char* ext = (const char*)glGetStringi(GL_EXTENSIONS, i);
+		std::cout << "GL extension " << i << ": " << ext << std::endl;
+	}
+
 	//if (gl3wInit() != GL3W_OK)
 	//{
 	//	std::cout << "error initializing GL3W!" << std::endl;

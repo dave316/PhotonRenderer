@@ -1,4 +1,5 @@
-#version 450 core
+#version 460 core
+#extension VK_NV_ray_tracing : require
 
 //#define MORPH_TARGETS
 

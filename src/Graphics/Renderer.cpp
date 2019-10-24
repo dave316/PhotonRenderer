@@ -38,6 +38,43 @@ std::string loadTxtFile(const std::string& fileName)
 	return ss.str();
 }
 
+std::string loadExpanded(const std::string& fileName)
+{
+	std::string code = loadTxtFile(fileName);
+	std::stringstream is(code);
+	std::string line;
+	std::string expandedCode = "";
+	while (std::getline(is, line))
+	{
+		if (!line.empty() && line.at(0) == '#')
+		{
+			size_t index = line.find_first_of(" ");
+			std::string directive = line.substr(0, index);
+			if (directive.compare("#include") == 0)
+			{
+				size_t start = line.find_first_of("\"") + 1;
+				size_t end = line.find_last_of("\"");
+				size_t index = fileName.find_last_of("/");
+				std::string includeFile = fileName.substr(0, index) + "/" + line.substr(start, end - start);
+				std::string includeCode = loadTxtFile(includeFile);
+				expandedCode += includeCode;
+			}
+			else
+			{
+				expandedCode += line + "\n";
+			}
+		}
+		else
+		{
+			expandedCode += line + "\n";
+		}
+	}
+
+	expandedCode += '\0';
+
+	return expandedCode;
+}
+
 void extern debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
 {
 	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
@@ -68,7 +105,7 @@ bool Renderer::init()
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "BrainStem";
+	std::string name = "MetalRoughSpheres";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
@@ -99,8 +136,9 @@ void Renderer::initShader()
 	std::string shaderPath = "../src/Shaders";
 	{
 		defaultShader = Shader::create("Default");
-		auto vsCode = loadTxtFile(shaderPath + "/Default.vert");
-		auto fsCode = loadTxtFile(shaderPath + "/Default.frag");
+		auto vsCode = loadExpanded(shaderPath + "/Default.vert");
+		auto fsCode = loadExpanded(shaderPath + "/Default.frag");
+		std::cout << fsCode << std::endl;
 		defaultShader->compile<GL::VertexShader>(vsCode);
 		defaultShader->compile<GL::FragmentShader>(fsCode);
 		defaultShader->link();
@@ -120,9 +158,9 @@ void Renderer::initShader()
 
 	{
 		pano2cmShader = Shader::create("PanoToCubeMap");
-		auto vsCode = loadTxtFile(shaderPath + "/PanoToCubeMap.vert");
-		auto gsCode = loadTxtFile(shaderPath + "/PanoToCubeMap.geom");
-		auto fsCode = loadTxtFile(shaderPath + "/PanoToCubeMap.frag");
+		auto vsCode = loadExpanded(shaderPath + "/PanoToCubeMap.vert");
+		auto gsCode = loadExpanded(shaderPath + "/PanoToCubeMap.geom");
+		auto fsCode = loadExpanded(shaderPath + "/PanoToCubeMap.frag");
 		pano2cmShader->compile<GL::VertexShader>(vsCode);
 		pano2cmShader->compile<GL::GeometryShader>(gsCode);
 		pano2cmShader->compile<GL::FragmentShader>(fsCode);
@@ -133,9 +171,9 @@ void Renderer::initShader()
 
 	{
 		irradianceShader = Shader::create("IBLDiffuseIrradiance");
-		auto vsCode = loadTxtFile(shaderPath + "/IBLDiffuseIrradiance.vert");
-		auto gsCode = loadTxtFile(shaderPath + "/IBLDiffuseIrradiance.geom");
-		auto fsCode = loadTxtFile(shaderPath + "/IBLDiffuseIrradiance.frag");
+		auto vsCode = loadExpanded(shaderPath + "/IBLDiffuseIrradiance.vert");
+		auto gsCode = loadExpanded(shaderPath + "/IBLDiffuseIrradiance.geom");
+		auto fsCode = loadExpanded(shaderPath + "/IBLDiffuseIrradiance.frag");
 		irradianceShader->compile<GL::VertexShader>(vsCode);
 		irradianceShader->compile<GL::GeometryShader>(gsCode);
 		irradianceShader->compile<GL::FragmentShader>(fsCode);
@@ -144,9 +182,9 @@ void Renderer::initShader()
 
 	{
 		specularShader = Shader::create("IBLSpecular");
-		auto vsCode = loadTxtFile(shaderPath + "/IBLSpecular.vert");
-		auto gsCode = loadTxtFile(shaderPath + "/IBLSpecular.geom");
-		auto fsCode = loadTxtFile(shaderPath + "/IBLSpecular.frag");
+		auto vsCode = loadExpanded(shaderPath + "/IBLSpecular.vert");
+		auto gsCode = loadExpanded(shaderPath + "/IBLSpecular.geom");
+		auto fsCode = loadExpanded(shaderPath + "/IBLSpecular.frag");
 		specularShader->compile<GL::VertexShader>(vsCode);
 		specularShader->compile<GL::GeometryShader>(gsCode);
 		specularShader->compile<GL::FragmentShader>(fsCode);
@@ -155,8 +193,8 @@ void Renderer::initShader()
 
 	{
 		integrateBRDFShader = Shader::create("IBLIntegrateBRDF");
-		auto vsCode = loadTxtFile(shaderPath + "/IBLIntegrateBRDF.vert");
-		auto fsCode = loadTxtFile(shaderPath + "/IBLIntegrateBRDF.frag");
+		auto vsCode = loadExpanded(shaderPath + "/IBLIntegrateBRDF.vert");
+		auto fsCode = loadExpanded(shaderPath + "/IBLIntegrateBRDF.frag");
 		integrateBRDFShader->compile<GL::VertexShader>(vsCode);
 		integrateBRDFShader->compile<GL::FragmentShader>(fsCode);
 		integrateBRDFShader->link();
@@ -164,8 +202,8 @@ void Renderer::initShader()
 
 	{
 		skyboxShader = Shader::create("Skybox");
-		auto vsCode = loadTxtFile(shaderPath + "/Skybox.vert");
-		auto fsCode = loadTxtFile(shaderPath + "/Skybox.frag");
+		auto vsCode = loadExpanded(shaderPath + "/Skybox.vert");
+		auto fsCode = loadExpanded(shaderPath + "/Skybox.frag");
 		skyboxShader->compile<GL::VertexShader>(vsCode);
 		skyboxShader->compile<GL::FragmentShader>(fsCode);
 		skyboxShader->link();
