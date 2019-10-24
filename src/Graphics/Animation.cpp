@@ -39,15 +39,17 @@ unsigned int Channel::findScaling(float currentTime)
 Animation::Animation() :
 	name(""),
 	duration(0.0f),
-	nodeIndex(0)
+	nodeIndex(0),
+	numBones(0)
 {
 
 }
 
-Animation::Animation(const std::string& name, float duration, unsigned int nodeIndex) :
+Animation::Animation(const std::string& name, float duration, unsigned int nodeIndex, unsigned int numBones) :
 	name(name),
 	duration(duration),
-	nodeIndex(nodeIndex)
+	nodeIndex(nodeIndex),
+	numBones(numBones)
 {
 
 }
@@ -156,7 +158,8 @@ void Animation::readBoneTree(BoneNode& node, glm::mat4 parentTransform)
 	glm::mat4 localTransform = translation * rotation * scale;
 	glm::mat4 globalTransform = parentTransform * localTransform;
 	glm::mat4 boneTransform = globalTransform * node.boneTransform;
-	boneTransforms.push_back(boneTransform);
+	//boneTransforms.push_back(boneTransform);
+	boneTransforms[node.jointIndex] = boneTransform;
 
 	for (auto& c : node.children)
 		readBoneTree(c, globalTransform);
@@ -166,7 +169,8 @@ void Animation::update(float time)
 {
 	currentTime = fmodf(time, duration);
 
-	boneTransforms.clear();
+	//boneTransforms.clear();
+	boneTransforms.resize(numBones);
 	readBoneTree(rootNode, glm::mat4(1.0f));
 }
 

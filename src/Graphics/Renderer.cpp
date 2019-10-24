@@ -60,21 +60,21 @@ bool Renderer::init()
 	glDepthFunc(GL_LEQUAL);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glViewport(0, 0, 1920, 1080);
-	glEnable(GL_DEBUG_OUTPUT);
-	glDebugMessageCallback(debugCallback, 0);
+	//glEnable(GL_DEBUG_OUTPUT);
+	//glDebugMessageCallback(debugCallback, 0);
 
 	initShader();
 	initEnvMaps();
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "DamagedHelmet";
+	std::string name = "BrainStem";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
 	IO::GLTFImporter importer;
 	auto root = importer.importModel(path + "/" + fn);
-	//auto root = importer.importModel(assetPath + "/Adam/adamHead.gltf");
+	//auto root = importer.importModel(assetPath + "/Kara/scene.gltf");
 	//root->getComponent<Transform>()->setRotation(glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 1, 0)));
 	//root->getComponent<Transform>()->setScale(glm::vec3(0.01f));
 	rootEntitis.push_back(root);

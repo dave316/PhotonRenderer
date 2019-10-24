@@ -343,7 +343,7 @@ namespace IO
 
 			std::cout << "minTime: " << minTime << " maxTime: " << maxTime << std::endl;
 
-			auto animation = Animation::create("blub", maxTime, 2);
+			auto animation = Animation::create("blub", maxTime, 2, skin.jointMapping.size());
 			for (auto it : channels)
 			{
 				animation->addChannel(it.first, it.second);
@@ -388,6 +388,7 @@ namespace IO
 			for (int i = 0; i < boneJoints.size(); i++)
 			{
 				skin.boneMapping.insert(std::make_pair(boneJoints[i], boneMatrices[i]));
+				skin.jointMapping.insert(std::make_pair(boneJoints[i], i));
 			}
 		}
 	}
@@ -471,10 +472,11 @@ namespace IO
 				//std::cout << "bones: " << boneIndices.size() << " indices and " << boneWeights.size() << " weights " << std::endl;
 				//for (int i = 0; i < boneIndices.size(); i++)
 				//{
+				//	float weightSum = boneWeights[i].x + boneWeights[i].y + boneWeights[i].z + boneWeights[i].w;
 				//	std::cout << i << " "
 				//		<< boneIndices[i].x << " " << boneIndices[i].y << " " << boneIndices[i].z << " " << boneIndices[i].w << " "
-				//		<< boneWeights[i].x << " " << boneWeights[i].y << " " << boneWeights[i].z << " " << boneWeights[i].w
-				//		<< std::endl;
+				//		<< boneWeights[i].x << " " << boneWeights[i].y << " " << boneWeights[i].z << " " << boneWeights[i].w << " "
+				//		<< "sum: " << weightSum << std::endl;
 				//}
 
 				if (primitiveNode.HasMember("indices"))
@@ -561,9 +563,14 @@ namespace IO
 					if (i < tangets.size())
 						v.tangent = tangets[i];
 					if (i < boneIndices.size())
-						v.boneIDs = boneIndices[i];
+					{						
+						v.boneIDs = glm::vec4(boneIndices[i].x, boneIndices[i].y, boneIndices[i].z, boneIndices[i].w);
+					}
 					if (i < boneWeights.size())
-						v.boneWeights = boneWeights[i];
+					{
+						float weightSum = boneWeights[i].x + boneWeights[i].y + boneWeights[i].z + boneWeights[i].w;
+						v.boneWeights = boneWeights[i] / weightSum;
+					}
 					
 					//if (morphTargets.size() == 2) // TODO: add support for more thant 2...
 					//{
@@ -677,7 +684,7 @@ namespace IO
 			if (materialNode.HasMember("pbrMetallicRoughness"))
 			{
 				const auto& pbrNode = materialNode["pbrMetallicRoughness"];
-
+				material->addProperty("material.baseColorFactor", glm::vec4(1.0f));
 				if (pbrNode.HasMember("baseColorFactor"))
 				{
 					const auto& baseColorNode = pbrNode["baseColorFactor"];
@@ -702,11 +709,7 @@ namespace IO
 					else
 						std::cout << "texture index " << texIndex << " not found" << std::endl;
 				}
-				else
-				{
-					material->addProperty("material.baseColorFactor", glm::vec4(1.0f));
-				}
-
+	
 				if (pbrNode.HasMember("metallicRoughnessTexture"))
 				{
 					unsigned int texIndex = pbrNode["metallicRoughnessTexture"]["index"].GetInt();
@@ -1053,6 +1056,7 @@ namespace IO
 		glm::mat4 S = glm::scale(glm::mat4(1.0f), sceneNode.scale);
 
 		BoneNode boneNode;
+		boneNode.jointIndex = skin.jointMapping[childIndex];
 		boneNode.boneIndex = childIndex;
 		boneNode.boneTransform = skin.boneMapping[childIndex];
 		boneNode.nodeTransform = T * R * S;
@@ -1127,7 +1131,13 @@ namespace IO
 			glm::mat4 R = glm::mat4_cast(sceneRoot.rotation);
 			glm::mat4 S = glm::scale(glm::mat4(1.0f), sceneRoot.scale);
 
+			for (auto it : skin.jointMapping)
+			{
+				std::cout << it.first << " " << it.second << std::endl;
+			}
+
 			BoneNode boneRoot;
+			boneRoot.jointIndex = skin.jointMapping[skin.rootNode];
 			boneRoot.boneIndex = skin.rootNode;
 			boneRoot.boneTransform = skin.boneMapping[skin.rootNode];
 			boneRoot.nodeTransform = T * R * S;

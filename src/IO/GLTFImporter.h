@@ -62,6 +62,7 @@ namespace IO
 			int rootNode = -1;
 			std::string name;
 			std::map<int, glm::mat4> boneMapping;
+			std::map<int, int> jointMapping;
 			BoneNode boneTree;
 		};
 		Skin skin;

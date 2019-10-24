@@ -20,6 +20,7 @@ struct BoneNode
 	glm::mat4 boneTransform;
 	glm::mat4 nodeTransform;
 	int boneIndex;
+	int jointIndex;
 
 	void print()
 	{
@@ -69,12 +70,13 @@ private:
 	float currentTime;
 	float duration;
 	unsigned int nodeIndex;
+	unsigned int numBones;
 
 	Animation(const Animation&) = delete;
 	Animation& operator=(const Animation&) = delete;
 public:
 	Animation();
-	Animation(const std::string& name, float duration, unsigned int nodeIndex);
+	Animation(const std::string& name, float duration, unsigned int nodeIndex, unsigned int numBones);
 
 	glm::mat4 calcInterpPosition(int index);
 	glm::mat4 calcInterpRotation(int index);
@@ -89,9 +91,9 @@ public:
 	std::vector<glm::mat4> getBoneTransform();
 	
 	typedef std::shared_ptr<Animation> Ptr;
-	static Ptr create(const std::string& name, float duration, unsigned int nodeIndex)
+	static Ptr create(const std::string& name, float duration, unsigned int nodeIndex, unsigned int numBones)
 	{
-		return std::make_shared<Animation>(name, duration, nodeIndex);
+		return std::make_shared<Animation>(name, duration, nodeIndex, numBones);
 	}
 };
 
