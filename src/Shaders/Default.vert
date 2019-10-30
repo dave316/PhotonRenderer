@@ -1,5 +1,4 @@
 #version 460 core
-#extension VK_NV_ray_tracing : require
 
 //#define MORPH_TARGETS
 
@@ -26,7 +25,9 @@ out mat3 wTBN;
 out vec4 vertexColor;
 out vec2 texCoord;
 
-uniform mat4 VP;
+#include "Camera.glsl"
+
+//uniform mat4 VP;
 uniform mat4 M;
 uniform mat3 N;
 uniform mat4 bones[64];
@@ -63,5 +64,5 @@ void main()
 
 	vertexColor = vColor;
 	texCoord = vTexCoord;
-	gl_Position = VP * vec4(wPosition, 1.0);
+	gl_Position = camera.VP * vec4(wPosition, 1.0);
 }

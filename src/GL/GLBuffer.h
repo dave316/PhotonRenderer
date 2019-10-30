@@ -37,6 +37,20 @@ namespace GL
 			unbind();
 		}
 
+		void upload(const void* data, int size, GLenum usage = GL_STATIC_DRAW)
+		{
+			numElements = (GLsizei)size;
+
+			bind();
+			glBufferData(Target, size * sizeof(DataType), data, usage);
+			unbind();
+		}
+
+		void bindBase(GLuint index)
+		{
+			glBindBufferBase(Target, index, id);
+		}
+
 		void bind()
 		{
 			glBindBuffer(Target, id);

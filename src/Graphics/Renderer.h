@@ -15,12 +15,11 @@
 class Renderer
 {
 	Shader::Ptr defaultShader;
-	Shader::Ptr pano2cmShader;
 	Shader::Ptr skyboxShader;
-	Shader::Ptr irradianceShader;
-	Shader::Ptr specularShader;
-	Shader::Ptr integrateBRDFShader;
+	std::map<std::string, Shader::Ptr> shaders;
 
+	GL::UniformBuffer<Camera::UniformData> cameraUBO;
+	
 	Mesh::Ptr unitCube;
 	TextureCubeMap::Ptr cubeMap;
 	TextureCubeMap::Ptr irradianceMap;

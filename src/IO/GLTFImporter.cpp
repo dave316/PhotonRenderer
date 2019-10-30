@@ -287,9 +287,9 @@ namespace IO
 				if (channels.find(targetNodeIndex) == channels.end())
 					channels.insert(std::make_pair(targetNodeIndex, Channel()));
 
-				std::cout << "channel: " << channelIndex << " sampler: " << samplerIndex 
-					<< " target node: " << targetNodeIndex << " path: " << targetPath 
-					<< std::endl;
+				//std::cout << "channel: " << channelIndex << " sampler: " << samplerIndex 
+				//	<< " target node: " << targetNodeIndex << " path: " << targetPath 
+				//	<< std::endl;
 				
 				int input = samplers[samplerIndex].input;
 				int output = samplers[samplerIndex].output;
@@ -380,10 +380,10 @@ namespace IO
 			if (skinNode.HasMember("name"))
 				skin.name = skinNode["name"].GetString();
 
-			for (int i = 0; i < boneJoints.size(); i++)
-			{
-				std::cout << "joint: " << i << " node: " << boneJoints[i] << std::endl;
-			}
+			//for (int i = 0; i < boneJoints.size(); i++)
+			//{
+			//	std::cout << "joint: " << i << " node: " << boneJoints[i] << std::endl;
+			//}
 
 			for (int i = 0; i < boneJoints.size(); i++)
 			{
@@ -642,14 +642,14 @@ namespace IO
 			if (materialNode.HasMember("name"))
 			{
 				std::string name = materialNode["name"].GetString();
-				std::cout << "loading material " << name << std::endl;
+				//std::cout << "loading material " << name << std::endl;
 			}
 			std::string alphaMode = "OPAQUE";
 			int alphaModeEnum = 0;
 			if (materialNode.HasMember("alphaMode"))
 			{
 				alphaMode = materialNode["alphaMode"].GetString();
-				std::cout << "alpha mode: " << alphaMode << std::endl;
+				//std::cout << "alpha mode: " << alphaMode << std::endl;
 			}
 
 			float cutOff = 0.0f;
@@ -659,7 +659,7 @@ namespace IO
 				if (materialNode.HasMember("alphaCutoff"))
 				{
 					cutOff = materialNode["alphaCutoff"].GetFloat();
-					std::cout << "alpha cut off: " << cutOff << std::endl;
+					//std::cout << "alpha cut off: " << cutOff << std::endl;
 				}
 				else
 				{
@@ -1131,10 +1131,10 @@ namespace IO
 			glm::mat4 R = glm::mat4_cast(sceneRoot.rotation);
 			glm::mat4 S = glm::scale(glm::mat4(1.0f), sceneRoot.scale);
 
-			for (auto it : skin.jointMapping)
-			{
-				std::cout << it.first << " " << it.second << std::endl;
-			}
+			//for (auto it : skin.jointMapping)
+			//{
+			//	std::cout << it.first << " " << it.second << std::endl;
+			//}
 
 			BoneNode boneRoot;
 			boneRoot.jointIndex = skin.jointMapping[skin.rootNode];

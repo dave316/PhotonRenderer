@@ -28,3 +28,8 @@ Shader::Ptr Shader::create(const std::string& name)
 {
 	return std::make_shared<Shader>(name);
 }
+
+std::string Shader::getName() const
+{
+	return name;
+}

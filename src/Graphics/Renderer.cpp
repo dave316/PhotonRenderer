@@ -20,6 +20,7 @@
 #include <filesystem>
 
 namespace json = rapidjson;
+namespace fs = std::filesystem;
 
 std::string loadTxtFile(const std::string& fileName)
 {
@@ -105,7 +106,7 @@ bool Renderer::init()
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "MetalRoughSpheres";
+	std::string name = "WaterBottle";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
@@ -117,6 +118,8 @@ bool Renderer::init()
 	rootEntitis.push_back(root);
 	entities = importer.getEntities();
 	importer.clear();
+
+	cameraUBO.bindBase(0);
 
 	//loadGLTFModels(path);
 
@@ -131,89 +134,119 @@ bool Renderer::init()
 	return true;
 }
 
+std::vector<std::string> getAllFileNames(const std::string& path, const std::string& extension = "")
+{
+	if (!fs::exists(path))
+		std::cout << "path " << path << " does not exist!" << std::endl;
+
+	if (!fs::is_directory(path))
+		std::cout << "path " << path << " is not a directory!" << std::endl;
+
+	std::vector<std::string> fileNames;
+	for (auto& file : fs::directory_iterator(path))
+	{
+		if (fs::is_regular_file(file))
+		{
+			std::string fileName = file.path().filename().string();
+			if (extension.empty())
+			{
+				fileNames.push_back(fileName);
+			}
+			else
+			{
+				std::string ext = file.path().extension().string();
+				if (ext == extension)
+				{
+					fileNames.push_back(fileName);
+				}
+			}
+		}
+	}
+	return fileNames;
+}
+
+std::vector<Shader::Ptr> loadShadersFromPath(const std::string& path)
+{
+	auto filenames = getAllFileNames(path); // check subdirectories...
+	std::vector<Shader::Ptr> shaderList;
+	std::map<std::string, std::vector<std::string>> shaderFiles;
+	for (auto fn : filenames)
+	{
+		int index = fn.find_last_of('.');
+		std::string name = fn.substr(0, index);
+		if (shaderFiles.find(name) == shaderFiles.end())
+			shaderFiles[name] = std::vector<std::string>();
+		shaderFiles[name].push_back(fn);
+	}
+	for (auto shaderName : shaderFiles)
+	{
+		auto name = shaderName.first;
+		auto stageList = shaderName.second;
+		if (stageList.size() > 1)
+		{
+			bool success = true;
+			auto shader = Shader::create(name);
+			for (auto shaderFile : shaderName.second)
+			{
+				int index = shaderFile.find_last_of('.') + 1;
+				int len = shaderFile.length() - index;
+				
+				std::string stage = shaderFile.substr(index, len);
+				if (stage.compare("vert") == 0)
+					success = shader->compile<GL::VertexShader>(loadExpanded(path + "/" + shaderFile));
+				else if (stage.compare("geom") == 0)
+					success = shader->compile<GL::GeometryShader>(loadExpanded(path + "/" + shaderFile));
+				else if (stage.compare("frag") == 0)
+					success = shader->compile<GL::FragmentShader>(loadExpanded(path + "/" + shaderFile));
+
+				if (!success)
+					break;
+			}
+
+			if (success)
+			{
+				shader->link();
+				shaderList.push_back(shader);
+			}
+			else
+			{
+				std::cout << "error loading shader " << name << std::endl;
+			}
+		}
+	}
+	return shaderList;
+}
+
 void Renderer::initShader()
 {
 	std::string shaderPath = "../src/Shaders";
-	{
-		defaultShader = Shader::create("Default");
-		auto vsCode = loadExpanded(shaderPath + "/Default.vert");
-		auto fsCode = loadExpanded(shaderPath + "/Default.frag");
-		std::cout << fsCode << std::endl;
-		defaultShader->compile<GL::VertexShader>(vsCode);
-		defaultShader->compile<GL::FragmentShader>(fsCode);
-		defaultShader->link();
+	auto shaderList = loadShadersFromPath(shaderPath);
+	for (auto s : shaderList)
+		shaders.insert(std::pair(s->getName(), s));
+	defaultShader = shaders["Default"];
+	defaultShader->setUniform("material.baseColorFactor", glm::vec4(1.0f));
+	defaultShader->setUniform("material.alphaCutOff", 0.0f);
+	defaultShader->setUniform("material.baseColorTex", 0);
+	defaultShader->setUniform("material.pbrTex", 1);
+	defaultShader->setUniform("material.normalTex", 2);
+	defaultShader->setUniform("material.occlusionTex", 3);
+	defaultShader->setUniform("material.emissiveTex", 4);
 
-		defaultShader->setUniform("material.baseColorFactor", glm::vec4(1.0f));
-		defaultShader->setUniform("material.alphaCutOff", 0.0f);
-		defaultShader->setUniform("material.baseColorTex", 0);
-		defaultShader->setUniform("material.pbrTex", 1);
-		defaultShader->setUniform("material.normalTex", 2);
-		defaultShader->setUniform("material.occlusionTex", 3);
-		defaultShader->setUniform("material.emissiveTex", 4);
+	defaultShader->setUniform("irradianceMap", 5);
+	defaultShader->setUniform("specularMap", 6);
+	defaultShader->setUniform("brdfLUT", 7);
 
-		defaultShader->setUniform("irradianceMap", 5);
-		defaultShader->setUniform("specularMap", 6);
-		defaultShader->setUniform("brdfLUT", 7);
-	}
-
-	{
-		pano2cmShader = Shader::create("PanoToCubeMap");
-		auto vsCode = loadExpanded(shaderPath + "/PanoToCubeMap.vert");
-		auto gsCode = loadExpanded(shaderPath + "/PanoToCubeMap.geom");
-		auto fsCode = loadExpanded(shaderPath + "/PanoToCubeMap.frag");
-		pano2cmShader->compile<GL::VertexShader>(vsCode);
-		pano2cmShader->compile<GL::GeometryShader>(gsCode);
-		pano2cmShader->compile<GL::FragmentShader>(fsCode);
-		pano2cmShader->link();
-
-		pano2cmShader->setUniform("envMap", 0);
-	}
-
-	{
-		irradianceShader = Shader::create("IBLDiffuseIrradiance");
-		auto vsCode = loadExpanded(shaderPath + "/IBLDiffuseIrradiance.vert");
-		auto gsCode = loadExpanded(shaderPath + "/IBLDiffuseIrradiance.geom");
-		auto fsCode = loadExpanded(shaderPath + "/IBLDiffuseIrradiance.frag");
-		irradianceShader->compile<GL::VertexShader>(vsCode);
-		irradianceShader->compile<GL::GeometryShader>(gsCode);
-		irradianceShader->compile<GL::FragmentShader>(fsCode);
-		irradianceShader->link();
-	}
-
-	{
-		specularShader = Shader::create("IBLSpecular");
-		auto vsCode = loadExpanded(shaderPath + "/IBLSpecular.vert");
-		auto gsCode = loadExpanded(shaderPath + "/IBLSpecular.geom");
-		auto fsCode = loadExpanded(shaderPath + "/IBLSpecular.frag");
-		specularShader->compile<GL::VertexShader>(vsCode);
-		specularShader->compile<GL::GeometryShader>(gsCode);
-		specularShader->compile<GL::FragmentShader>(fsCode);
-		specularShader->link();
-	}
-
-	{
-		integrateBRDFShader = Shader::create("IBLIntegrateBRDF");
-		auto vsCode = loadExpanded(shaderPath + "/IBLIntegrateBRDF.vert");
-		auto fsCode = loadExpanded(shaderPath + "/IBLIntegrateBRDF.frag");
-		integrateBRDFShader->compile<GL::VertexShader>(vsCode);
-		integrateBRDFShader->compile<GL::FragmentShader>(fsCode);
-		integrateBRDFShader->link();
-	}
-
-	{
-		skyboxShader = Shader::create("Skybox");
-		auto vsCode = loadExpanded(shaderPath + "/Skybox.vert");
-		auto fsCode = loadExpanded(shaderPath + "/Skybox.frag");
-		skyboxShader->compile<GL::VertexShader>(vsCode);
-		skyboxShader->compile<GL::FragmentShader>(fsCode);
-		skyboxShader->link();
-
-		skyboxShader->setUniform("envMap", 0);
-	}
+	skyboxShader = shaders["Skybox"];
+	skyboxShader->setUniform("envMap", 0);
 }
 
 void Renderer::initEnvMaps()
 {
+	auto pano2cmShader = shaders["PanoToCubeMap"];
+	auto irradianceShader = shaders["IBLDiffuseIrradiance"];
+	auto specularShader = shaders["IBLSpecular"];
+	auto integrateBRDFShader = shaders["IBLIntegrateBRDF"];
+
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
 	//std::string assetPath = "../assets";
@@ -400,12 +433,7 @@ void Renderer::updateCamera(Camera& camera)
 {
 	Camera::UniformData cameraData;
 	camera.writeUniformData(cameraData);
-
-	defaultShader->setUniform("VP", cameraData.VP);
-	defaultShader->setUniform("cameraPos", glm::vec3(cameraData.position));
-
-	skyboxShader->setUniform("V", cameraData.V);
-	skyboxShader->setUniform("P", cameraData.P);
+	cameraUBO.upload(&cameraData, 1);
 }
 
 void Renderer::nextModel()

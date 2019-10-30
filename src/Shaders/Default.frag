@@ -8,10 +8,11 @@ in vec2 texCoord;
 
 layout(location = 0) out vec4 fragColor;
 
+#include "Camera.glsl"
 #include "Material.glsl"
 #include "BRDF.glsl"
 
-uniform vec3 cameraPos;
+//uniform vec3 cameraPos;
 
 uniform samplerCube irradianceMap;
 uniform samplerCube specularMap;
@@ -73,10 +74,10 @@ void main()
 		n = normalize(wTBN * tNormal);
 	}
 
-	vec3 lightPos = cameraPos;
+	vec3 lightPos = camera.position;
 //	vec3 lightPos = vec3(0,100,0);
 	vec3 l = normalize(lightPos - wPosition);
-	vec3 v = normalize(cameraPos - wPosition);
+	vec3 v = normalize(camera.position - wPosition);
 	vec3 h = normalize(l + v);
 	vec3 r = normalize(reflect(-v, n));
 	
