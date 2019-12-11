@@ -24,7 +24,7 @@ endforeach()
 source_group("Shaders" FILES ${SHADER_LIST})
 
 add_executable(PhotonRenderer ${SRC_LIST} ${SHADER_LIST})
-target_link_libraries(PhotonRenderer PRIVATE glfw GLEW::GLEW ${ASSIMP_LIBRARIES} ${OPENGL_gl_LIBRARY})
+target_link_libraries(PhotonRenderer PRIVATE glfw GLEW::GLEW assimp::assimp ${OPENGL_gl_LIBRARY})
 
 if(WIN32)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT PhotonRenderer)
