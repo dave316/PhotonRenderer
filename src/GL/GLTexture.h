@@ -13,6 +13,10 @@ namespace GL
 		RGBA8,
 		SRGB8,
 		SRGBA8,
+		DEPTH16,
+		DEPTH24,
+		DEPTH32,
+		DEPTH32F,
 		RGB32F,
 		RG16F
 	};
@@ -54,6 +58,10 @@ namespace GL
 		case RGBA8:	internalFormat = GL_RGBA8; break;
 		case SRGB8:	internalFormat = GL_SRGB8; break;
 		case SRGBA8:internalFormat = GL_SRGB8_ALPHA8; break;
+		case DEPTH16:	internalFormat = GL_DEPTH_COMPONENT16; break;
+		case DEPTH24:	internalFormat = GL_DEPTH_COMPONENT24; break;
+		case DEPTH32:	internalFormat = GL_DEPTH_COMPONENT32; break;
+		case DEPTH32F:	internalFormat = GL_DEPTH_COMPONENT32F; break;
 		case RGB32F: internalFormat = GL_RGB32F; break;
 		case RG16F: internalFormat = GL_RG16F; break;
 		default:	internalFormat = GL_RGBA8; break;
@@ -78,6 +86,12 @@ namespace GL
 		case SRGBA8:
 			dataFormat = GL_RGBA;
 			break;
+		case DEPTH16:
+		case DEPTH24:
+		case DEPTH32:
+		case DEPTH32F:
+			dataFormat = GL_DEPTH_COMPONENT;
+			break;
 		default:		
 			dataFormat = GL_RGBA; 
 			break;
@@ -97,9 +111,13 @@ namespace GL
 			dataType = GL_UNSIGNED_BYTE;
 			break;
 		case RG16F:
+		case DEPTH16:
 			dataType = GL_HALF_FLOAT;
 			break;
 		case RGB32F:
+		case DEPTH24:
+		case DEPTH32:
+		case DEPTH32F:
 			dataType = GL_FLOAT;
 			break;
 		default:
@@ -225,8 +243,14 @@ namespace GL
 		}
 	};
 
+	typedef Texture<GL_TEXTURE_1D> Texture1D;
 	typedef Texture<GL_TEXTURE_2D> Texture2D;
+	typedef Texture<GL_TEXTURE_3D> Texture3D;
+	typedef Texture<GL_TEXTURE_1D_ARRAY> Texture1DArray;
+	typedef Texture<GL_TEXTURE_2D_ARRAY> Texture2DArray;
 	typedef Texture<GL_TEXTURE_CUBE_MAP> TextureCubeMap;
+	typedef Texture<GL_TEXTURE_2D_MULTISAMPLE> Texture2DMultisample;
+	typedef Texture<GL_TEXTURE_2D_MULTISAMPLE_ARRAY> Texture2DMultisampleArray;
 
 	template<>
 	void Texture2D::setWrap(TextureWrap wrap)

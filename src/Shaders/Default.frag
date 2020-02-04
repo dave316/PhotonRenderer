@@ -105,7 +105,7 @@ void main()
 
 	vec3 ambient = (kD * diffuse + specular) * ao;
 	
-	vec3 intensity = emission + ambient + lo;
+	vec3 intensity = emission + ambient; // + lo;
 	float exposure = 1.0;
 	intensity = vec3(1.0) - exp(-intensity * exposure);
 	//color = color / (1.0 + color);

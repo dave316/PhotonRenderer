@@ -40,6 +40,7 @@ public:
 
 	Mesh(const std::string& name, TriangleSurface& surface, unsigned int index);
 	~Mesh();
+	void updatGeometry(TriangleSurface& surface);
 	unsigned int getMaterialIndex() { return materialIndex; }
 	void draw();
 	std::string getName()

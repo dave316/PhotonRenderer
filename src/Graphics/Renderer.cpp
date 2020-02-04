@@ -106,15 +106,16 @@ bool Renderer::init()
 
 	std::string assetPath = "../assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "WaterBottle";
+	std::string name = "DamagedHelmet";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
 	IO::GLTFImporter importer;
 	auto root = importer.importModel(path + "/" + fn);
+	root->getComponent<Transform>()->setPosition(glm::vec3(-2 , 0, -2));
 	//auto root = importer.importModel(assetPath + "/Kara/scene.gltf");
 	//root->getComponent<Transform>()->setRotation(glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 1, 0)));
-	//root->getComponent<Transform>()->setScale(glm::vec3(0.01f));
+	//root->getComponent<Transform>()->setScale(glm::vec3(10.0f));
 	rootEntitis.push_back(root);
 	entities = importer.getEntities();
 	importer.clear();
@@ -251,7 +252,7 @@ void Renderer::initEnvMaps()
 
 	//std::string assetPath = "../assets";
 	std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
-	auto pano = IO::loadTextureHDR(assetPath + "/Serpentine_Valley/Serpentine_Valley_3k.hdr");
+	auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
 
 	glm::vec3 position = glm::vec3(0);

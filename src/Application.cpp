@@ -58,7 +58,7 @@ void Application::loop()
 
 			renderer.updateAnimations(startTime);
 			animTime = 0.0f;
-		}	
+		}
 
 		//camera.move(dt);
 		//camera.rotate(dt);
