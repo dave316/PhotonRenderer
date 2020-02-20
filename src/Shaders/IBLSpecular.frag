@@ -33,7 +33,7 @@ void main()
 			float VdotH = max(dot(v, h), 0.0);
 			float D = D_GGX_TR(NdotH, alpha);
 			float pdf = D * NdotH / (4.0 * VdotH);
-			float resolution = 512.0;
+			float resolution = 256.0;
 			float saTexel = 4.0 * PI / (6.0 * resolution * resolution);
 			float saSample = 1.0 / (float(numSamples) * pdf);
 			float mipBias = 1.0;

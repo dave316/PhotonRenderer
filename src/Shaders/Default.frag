@@ -33,7 +33,7 @@ void main()
 		vec4 diffuseColor = material2.getDiffuseColor(texCoord);
 		float transparency = diffuseColor.a;
 		if(material2.alphaMode == 1)
-			if(alpha < material2.alphaCutOff)
+			if(transparency < material2.alphaCutOff)
 				discard;
 
 		vec4 specGlossColor = material2.getSpecularColor(texCoord);
@@ -80,9 +80,10 @@ void main()
 	vec3 v = normalize(camera.position - wPosition);
 	vec3 h = normalize(l + v);
 	vec3 r = normalize(reflect(-v, n));
-	
+
 	float NdotL = max(dot(n, l), 0.0);
 	float NdotV = max(dot(n, v), 0.0);
+	float NdotH = max(dot(n, h), 0.0);
 	float HdotV = max(dot(h, v), 0.0);
 	
 	vec3 F = F_Schlick(HdotV, F0);
@@ -105,7 +106,7 @@ void main()
 
 	vec3 ambient = (kD * diffuse + specular) * ao;
 	
-	vec3 intensity = emission + ambient; // + lo;
+	vec3 intensity = emission + ambient + lo;
 	float exposure = 1.0;
 	intensity = vec3(1.0) - exp(-intensity * exposure);
 	//color = color / (1.0 + color);

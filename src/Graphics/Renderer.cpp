@@ -6,6 +6,7 @@
 
 #include <IO/GLTFImporter.h>
 #include <IO/ImageLoader.h>
+#include <IO/ShaderLoader.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -17,64 +18,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
-#include <filesystem>
-
 namespace json = rapidjson;
-namespace fs = std::filesystem;
-
-std::string loadTxtFile(const std::string& fileName)
-{
-	std::ifstream file(fileName);
-	std::stringstream ss;
-
-	if (file.is_open())
-	{
-		ss << file.rdbuf();
-	}
-	else
-	{
-		std::cout << "could not open file " << fileName << std::endl;
-	}
-
-	return ss.str();
-}
-
-std::string loadExpanded(const std::string& fileName)
-{
-	std::string code = loadTxtFile(fileName);
-	std::stringstream is(code);
-	std::string line;
-	std::string expandedCode = "";
-	while (std::getline(is, line))
-	{
-		if (!line.empty() && line.at(0) == '#')
-		{
-			size_t index = line.find_first_of(" ");
-			std::string directive = line.substr(0, index);
-			if (directive.compare("#include") == 0)
-			{
-				size_t start = line.find_first_of("\"") + 1;
-				size_t end = line.find_last_of("\"");
-				size_t index = fileName.find_last_of("/");
-				std::string includeFile = fileName.substr(0, index) + "/" + line.substr(start, end - start);
-				std::string includeCode = loadTxtFile(includeFile);
-				expandedCode += includeCode;
-			}
-			else
-			{
-				expandedCode += line + "\n";
-			}
-		}
-		else
-		{
-			expandedCode += line + "\n";
-		}
-	}
-
-	expandedCode += '\0';
-
-	return expandedCode;
-}
 
 void extern debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
 {
@@ -104,24 +48,25 @@ bool Renderer::init()
 	initShader();
 	initEnvMaps();
 
-	std::string assetPath = "../assets";
+	//std::string assetPath = "../assets";
+	std::string assetPath = "C:/Users/dave316/Documents/Code/PhotonRenderer/assets";
 	std::string path = assetPath + "/glTF-Sample-Models/2.0";
 	std::string name = "DamagedHelmet";
 	std::cout << "loading model " << name << std::endl;
 	std::string fn = name + "/glTF/" + name + ".gltf";
 
 	IO::GLTFImporter importer;
-	auto root = importer.importModel(path + "/" + fn);
-	root->getComponent<Transform>()->setPosition(glm::vec3(-2 , 0, -2));
-	//auto root = importer.importModel(assetPath + "/Kara/scene.gltf");
+	 auto root = importer.importModel(path + "/" + fn);
+	//root->getComponent<Transform>()->setPosition(glm::vec3(-2 , 0, -2));
+	//auto root = importer.importModel(assetPath + "/Adam/adamHead.gltf");
 	//root->getComponent<Transform>()->setRotation(glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 1, 0)));
-	//root->getComponent<Transform>()->setScale(glm::vec3(10.0f));
+	root->getComponent<Transform>()->setScale(glm::vec3(0.1f));
 	rootEntitis.push_back(root);
 	entities = importer.getEntities();
 	importer.clear();
 
 	cameraUBO.bindBase(0);
-
+	 
 	//loadGLTFModels(path);
 
 	//root->getComponent<Transform>()->update(glm::mat4(1.0f));
@@ -135,93 +80,11 @@ bool Renderer::init()
 	return true;
 }
 
-std::vector<std::string> getAllFileNames(const std::string& path, const std::string& extension = "")
-{
-	if (!fs::exists(path))
-		std::cout << "path " << path << " does not exist!" << std::endl;
-
-	if (!fs::is_directory(path))
-		std::cout << "path " << path << " is not a directory!" << std::endl;
-
-	std::vector<std::string> fileNames;
-	for (auto& file : fs::directory_iterator(path))
-	{
-		if (fs::is_regular_file(file))
-		{
-			std::string fileName = file.path().filename().string();
-			if (extension.empty())
-			{
-				fileNames.push_back(fileName);
-			}
-			else
-			{
-				std::string ext = file.path().extension().string();
-				if (ext == extension)
-				{
-					fileNames.push_back(fileName);
-				}
-			}
-		}
-	}
-	return fileNames;
-}
-
-std::vector<Shader::Ptr> loadShadersFromPath(const std::string& path)
-{
-	auto filenames = getAllFileNames(path); // check subdirectories...
-	std::vector<Shader::Ptr> shaderList;
-	std::map<std::string, std::vector<std::string>> shaderFiles;
-	for (auto fn : filenames)
-	{
-		int index = fn.find_last_of('.');
-		std::string name = fn.substr(0, index);
-		if (shaderFiles.find(name) == shaderFiles.end())
-			shaderFiles[name] = std::vector<std::string>();
-		shaderFiles[name].push_back(fn);
-	}
-	for (auto shaderName : shaderFiles)
-	{
-		auto name = shaderName.first;
-		auto stageList = shaderName.second;
-		if (stageList.size() > 1)
-		{
-			bool success = true;
-			auto shader = Shader::create(name);
-			for (auto shaderFile : shaderName.second)
-			{
-				int index = shaderFile.find_last_of('.') + 1;
-				int len = shaderFile.length() - index;
-				
-				std::string stage = shaderFile.substr(index, len);
-				if (stage.compare("vert") == 0)
-					success = shader->compile<GL::VertexShader>(loadExpanded(path + "/" + shaderFile));
-				else if (stage.compare("geom") == 0)
-					success = shader->compile<GL::GeometryShader>(loadExpanded(path + "/" + shaderFile));
-				else if (stage.compare("frag") == 0)
-					success = shader->compile<GL::FragmentShader>(loadExpanded(path + "/" + shaderFile));
-
-				if (!success)
-					break;
-			}
-
-			if (success)
-			{
-				shader->link();
-				shaderList.push_back(shader);
-			}
-			else
-			{
-				std::cout << "error loading shader " << name << std::endl;
-			}
-		}
-	}
-	return shaderList;
-}
-
 void Renderer::initShader()
 {
-	std::string shaderPath = "../src/Shaders";
-	auto shaderList = loadShadersFromPath(shaderPath);
+	//std::string shaderPath = "../src/Shaders";
+	std::string shaderPath = "C:/Users/dave316/Documents/Code/PhotonRenderer/src/Shaders";
+	auto shaderList = IO::loadShadersFromPath(shaderPath);
 	for (auto s : shaderList)
 		shaders.insert(std::pair(s->getName(), s));
 	defaultShader = shaders["Default"];
@@ -252,8 +115,11 @@ void Renderer::initEnvMaps()
 
 	//std::string assetPath = "../assets";
 	std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
-	auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
-	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
+	auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+
+	//auto pano = IO::loadTextureHDR(assetPath + "/blaubeuren_outskirts_16k.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/office.hdr");
 
 	glm::vec3 position = glm::vec3(0);
 	std::vector<glm::mat4> VP;
@@ -413,7 +279,9 @@ void Renderer::updateAnimations(float dt)
 		if (a->hasRiggedAnim())
 		{
 			auto boneTransforms = a->getBoneTransform();
+			auto normalTransforms = a->getNormalTransform();
 			defaultShader->setUniform("bones[0]", boneTransforms);
+			defaultShader->setUniform("normals[0]", normalTransforms);
 			defaultShader->setUniform("hasAnimations", true);
 		}
 		else if (a->hasMorphAnim())

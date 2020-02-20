@@ -35,6 +35,10 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 		return;
 	}
 
+	GLint maxCubeMapSize = 0;
+	glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &maxCubeMapSize);
+	std::cout << "max cube map size: " << maxCubeMapSize << std::endl;
+
 	//GLint numExtensions = 0;
 	//glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
 	//for (GLint i = 0; i < numExtensions; i++)
@@ -69,6 +73,11 @@ void GLWindow::attachInput(InputHandler& input)
 	glfwSetCursorPosCallback(window, InputHandler::mouseMoveCB);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetWindowUserPointer(window, input.getDataPointer());
+}
+
+void GLWindow::setWindowTitle(const std::string& title)
+{
+	glfwSetWindowTitle(window, title.c_str());
 }
 
 void GLWindow::swapBuffers()

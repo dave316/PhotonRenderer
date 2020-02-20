@@ -33,6 +33,7 @@ public:
 	bool hasRiggedAnim();
 	glm::vec2 getWeights();
 	std::vector<glm::mat4> getBoneTransform();
+	std::vector<glm::mat3> getNormalTransform();
 
 	typedef std::shared_ptr<Animator> Ptr;
 	static Ptr create()

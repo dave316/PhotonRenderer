@@ -23,6 +23,7 @@ public:
 	~GLWindow();
 	bool isInitialized();
 	void attachInput(InputHandler& input);
+	void setWindowTitle(const std::string& title);
 	void swapBuffers();
 	bool shouldClose();
 	void close();

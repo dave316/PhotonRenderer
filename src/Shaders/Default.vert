@@ -31,6 +31,7 @@ out vec2 texCoord;
 uniform mat4 M;
 uniform mat3 N;
 uniform mat4 bones[64];
+uniform mat3 normals[64];
 uniform bool hasAnimations;
 
 void main()
@@ -40,10 +41,12 @@ void main()
 	if(hasAnimations)
 	{
 		mat4 B = mat4(0.0);
+		//mat3 C = mat3(0.0);
 		for(int i = 0; i < 4; i++)
 		{
 			int index = int(boneIDs[i]);
 			B += bones[index] * boneWeights[i];
+			//C += normals[index] * boneWeights[i];
 		}
 		mat3 C = transpose(inverse(mat3(B)));
 

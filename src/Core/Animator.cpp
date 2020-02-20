@@ -79,3 +79,11 @@ std::vector<glm::mat4> Animator::getBoneTransform()
 		boneTransforms = animations[currentAnimation]->getBoneTransform();
 	return boneTransforms;
 }
+
+std::vector<glm::mat3> Animator::getNormalTransform()
+{
+	std::vector<glm::mat3> normalTransforms;
+	if (currentAnimation < animations.size())
+		normalTransforms = animations[currentAnimation]->getNormalTransform();
+	return normalTransforms;
+}

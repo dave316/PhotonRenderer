@@ -65,6 +65,7 @@ private:
 	std::string name;
 	std::map<int, Channel> channels;
 	std::vector<glm::mat4> boneTransforms;
+	std::vector<glm::mat3> normalTransforms;
 
 	BoneNode rootNode;
 	float currentTime;
@@ -89,6 +90,7 @@ public:
 
 	unsigned int getNodeIndex();
 	std::vector<glm::mat4> getBoneTransform();
+	std::vector<glm::mat3> getNormalTransform();
 	
 	typedef std::shared_ptr<Animation> Ptr;
 	static Ptr create(const std::string& name, float duration, unsigned int nodeIndex, unsigned int numBones)

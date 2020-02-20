@@ -44,6 +44,8 @@ void Application::loop()
 	double dt = 0.0;
 	double animTime = 0.0f;
 	double tickTime = 1.0f / 60.0f;
+	double updateTime = 0.0f;
+	int frames = 0;
 	while (!window.shouldClose())
 	{
 		double startTime = glfwGetTime();
@@ -71,5 +73,18 @@ void Application::loop()
 
 		dt = glfwGetTime() - startTime;
 		animTime += dt;
+		updateTime += dt;
+
+		if (updateTime >= 1.0)
+		{
+			std::string title = "PhotonRenderer, FPS: " + std::to_string(frames);
+			window.setWindowTitle(title);
+			updateTime = 0.0;
+			frames = 0;
+		}
+		else
+		{
+			frames++;
+		}
 	}
 }

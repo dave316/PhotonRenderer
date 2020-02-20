@@ -1,5 +1,7 @@
 #include "Animation.h"
 
+#include <glm/gtc/matrix_inverse.hpp>
+
 unsigned int Channel::findPosition(float currentTime)
 {
 	for (int i = 0; i < positions.size() - 1; i++)
@@ -158,8 +160,10 @@ void Animation::readBoneTree(BoneNode& node, glm::mat4 parentTransform)
 	glm::mat4 localTransform = translation * rotation * scale;
 	glm::mat4 globalTransform = parentTransform * localTransform;
 	glm::mat4 boneTransform = globalTransform * node.boneTransform;
+	glm::mat3 normalTransform = glm::inverseTranspose(glm::mat3(boneTransform));
 	//boneTransforms.push_back(boneTransform);
 	boneTransforms[node.jointIndex] = boneTransform;
+	normalTransforms[node.jointIndex] = normalTransform;
 
 	for (auto& c : node.children)
 		readBoneTree(c, globalTransform);
@@ -171,12 +175,18 @@ void Animation::update(float time)
 
 	//boneTransforms.clear();
 	boneTransforms.resize(numBones);
+	normalTransforms.resize(numBones);
 	readBoneTree(rootNode, glm::mat4(1.0f));
 }
 
 std::vector<glm::mat4> Animation::getBoneTransform()
 {
 	return boneTransforms;
+}
+
+std::vector<glm::mat3> Animation::getNormalTransform()
+{
+	return normalTransforms;
 }
 
 unsigned int Animation::getNodeIndex()
