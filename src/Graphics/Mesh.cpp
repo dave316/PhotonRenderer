@@ -77,3 +77,10 @@ void Mesh::draw()
 		glDrawArrays(GL_TRIANGLES, 0, vertexBuffer.size());
 	vao.unbind();
 }
+
+void Mesh::drawPoints()
+{
+	vao.bind();
+	glDrawArrays(GL_POINTS, 0, vertexBuffer.size());
+	vao.unbind();
+}

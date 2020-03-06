@@ -248,7 +248,19 @@ namespace IO
 
 	Material::Ptr ModelImporter::loadMaterial(const std::string& path, const aiScene* pScene, const aiMaterial* pMaterial)
 	{
-		auto material = Material::create();
+		auto defaultMaterial = Material::create();
+		defaultMaterial->addProperty("material.baseColorFactor", glm::vec4(1.0));
+		defaultMaterial->addProperty("material.roughnessFactor", 1.0f);
+		defaultMaterial->addProperty("material.metallicFactor", 0.0f);
+		defaultMaterial->addProperty("material.occlusionFactor", 0.0f);
+		defaultMaterial->addProperty("material.emissiveFactor", glm::vec3(0.0));
+		defaultMaterial->addProperty("material.alphaCutOff", 0.0f);
+		defaultMaterial->addProperty("material.alphaMode", 0);
+		defaultMaterial->addProperty("material.useBaseColorTex", false);
+		defaultMaterial->addProperty("material.usePbrTex", false);
+		defaultMaterial->addProperty("material.useNormalTex", false);
+		defaultMaterial->addProperty("material.useEmissiveTex", false);
+		defaultMaterial->addProperty("material.useOcclusionTex", false);
 
 		aiString aiName;
 		pMaterial->Get(AI_MATKEY_NAME, aiName);
@@ -259,12 +271,12 @@ namespace IO
 		//	std::cout << pMaterial->mProperties[i]->mKey.C_Str() << " - " << pMaterial->mProperties[i]->mType << std::endl;
 		//}
 
-		aiColor4D color;
-		if (pMaterial->Get("$mat.gltf.pbrMetallicRoughness.baseColorFactor", 0, 0, color) == AI_SUCCESS)
-		{
-			//material->setColor(glm::vec4(toVec3(color), 1.0f));
-			material->addProperty("material.baseColorFactor", glm::vec4(toVec3(color), 1.0f));
-		}
+		//aiColor4D color;
+		//if (pMaterial->Get("$mat.gltf.pbrMetallicRoughness.baseColorFactor", 0, 0, color) == AI_SUCCESS)
+		//{
+		//	//material->setColor(glm::vec4(toVec3(color), 1.0f));
+		//	defaultMaterial->addProperty("material.baseColorFactor", glm::vec4(toVec3(color), 1.0f));
+		//}
 		
 		if (pMaterial->GetTextureCount(aiTextureType_DIFFUSE) > 0)
 		{
@@ -287,7 +299,7 @@ namespace IO
 					//std::cout << "loading tex size: " << pTexture->mWidth << "x" << pTexture->mHeight << " format: " << format << std::endl;
 					auto tex = Texture2D::create(pTexture->mWidth, pTexture->mHeight, GL::RGBA8);
 					tex->upload((void*)pScene->mTextures[texIndex]->pcData);
-					material->addTexture("material.baseColorTex", tex);
+					defaultMaterial->addTexture("material.baseColorTex", tex);
 				}
 				else
 				{
@@ -297,11 +309,13 @@ namespace IO
 			else
 			{
 				std::string filename = path + "/" + texFilename.C_Str();
-				material->addTexture("material.baseColorTex", IO::loadTexture(filename, true));
+				std::cout << "loading texture " << filename << std::endl;
+				defaultMaterial->addTexture("material.baseColorTex", IO::loadTexture(filename, true));
+				defaultMaterial->addProperty("material.useBaseColorTex", true);
 			}
 		}
 
-		return material;
+		return defaultMaterial;
 	}
 
 	Mesh::Ptr ModelImporter::loadMesh(const aiMesh* pMesh)
@@ -310,7 +324,7 @@ namespace IO
 		for (auto i = 0; i < pMesh->mNumVertices; i++)
 		{
 			Vertex v;
-			if (pMesh->HasPositions())
+			if (pMesh->HasPositions()) // TODO: check if positions are missing for whatever reason
 				v.position = toVec3(pMesh->mVertices[i]);
 				//v.position = glm::vec3(glm::vec4(pos, 1.0f));
 

@@ -1,37 +1,24 @@
 #version 450 core
 
-struct Material
-{
-	vec3 diffuseColor;
-	vec3 specularColor;
-	float shininess;
-	
-	sampler2D diffuseTexture;
-};
-uniform Material material;
-
-in vec3 wPosition;
-in vec3 wNormal;
-in vec3 color;
+in vec4 vertexColor;
 in vec2 texCoord;
 
-uniform bool useTexture;
+uniform sampler2D tex;
+uniform vec3 solidColor = vec3(0.5);
+uniform bool useTex = false;
+uniform bool useVertexColor = false;
 
 layout(location = 0) out vec4 fragColor;
 
 void main()
 {
-	vec3 diffMat = material.diffuseColor;
-	if(useTexture)
-		diffMat = texture2D(material.diffuseTexture, texCoord).rgb;
-	
-	vec3 lightPos = vec3(15, 100, 50);
-	vec3 l = normalize(lightPos - wPosition);
-	vec3 n = normalize(wNormal);
+	vec3 color = vec3(0);
+	if(useTex)
+		color = texture(tex, texCoord).rgb;
+	else if(useVertexColor)
+		color = vertexColor.rgb;
+	else
+		color = solidColor;
 
-	vec3 diffColor = diffMat * max(dot(n,l),0.0);
-	vec3 ambColor = diffMat * 0.1;
-	vec3 radiance = ambColor + diffColor;
-	 
-	fragColor = vec4(radiance, 1.0);
+	fragColor = vec4(color, 1.0);
 }

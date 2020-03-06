@@ -43,6 +43,7 @@ public:
 	void updatGeometry(TriangleSurface& surface);
 	unsigned int getMaterialIndex() { return materialIndex; }
 	void draw();
+	void drawPoints();
 	std::string getName()
 	{
 		return name;

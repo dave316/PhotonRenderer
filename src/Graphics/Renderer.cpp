@@ -116,7 +116,8 @@ void Renderer::initEnvMaps()
 	//std::string assetPath = "../assets";
 	std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
 	//auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
-	auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
 
 	//auto pano = IO::loadTextureHDR(assetPath + "/blaubeuren_outskirts_16k.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/office.hdr");
