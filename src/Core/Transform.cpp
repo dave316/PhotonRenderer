@@ -6,7 +6,7 @@ Transform::Transform(Entity* entity) :
 	entity(entity),
 	position(0.0f),
 	rotation(1.0f, 0.0f, 0.0f, 0.0f),
-	scale(1.0f),
+	scaling(1.0f),
 	transform(1.0f),
 	normalTransform(1.0f)
 {}
@@ -28,24 +28,26 @@ void Transform::setRotation(glm::quat q)
 
 void Transform::setScale(glm::vec3 s)
 {
-	this->scale = s;
+	this->scaling = s;
 }
 
 void Transform::setTransform(glm::mat4 T)
 {
 	transform = T;
+	calcNormalMatrix();
 }
 
 void Transform::update(glm::mat4 parentTransform)
 {
-	glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
-	glm::mat4 R = glm::mat4_cast(rotation);
-	glm::mat4 S = glm::scale(glm::mat4(1.0f), scale);
-	transform = parentTransform * (T * R * S);
+	//glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
+	//glm::mat4 R = glm::mat4_cast(rotation);
+	//glm::mat4 S = glm::scale(glm::mat4(1.0f), scaling);
+	//transform = parentTransform * (T * R * S);
+	localTransform = parentTransform * transform;
 	for (auto c : children)
-		c->update(transform);
+		c->update(localTransform);
 
-	normalTransform = glm::inverseTranspose(glm::mat3(transform));
+	normalTransform = glm::inverseTranspose(glm::mat3(localTransform));
 }
 
 void Transform::updateTransform(glm::mat4 parentTransform)
@@ -81,7 +83,50 @@ Entity* Transform::getEntity()
 
 void Transform::setUniforms(Shader::Ptr shader)
 {
-	shader->setUniform("M", transform);
+	//for (int row = 0; row < 4; row++)
+	//{
+	//	for (int col = 0; col < 4; col++)
+	//	{
+	//		std::cout << transform[row][col] << " ";
+	//	}
+	//	std::cout << std::endl;
+
+	//}
+	shader->setUniform("M", localTransform);
 	shader->setUniform("N", normalTransform);
 }
 
+void Transform::translate(glm::vec3 t)
+{
+	transform = glm::translate(transform, t);
+	//calcNormalMatrix();
+}
+
+void Transform::rotate(float angle, glm::vec3 axis)
+{
+	transform = glm::rotate(transform, glm::radians(angle), axis);
+	//calcNormalMatrix();
+}
+
+void Transform::scale(glm::vec3 s)
+{
+	transform = glm::scale(transform, s);
+	//calcNormalMatrix();
+	//moved = true;
+}	
+
+void Transform::setModelMatrix(glm::mat4& M)
+{
+	transform = M;
+	//calcNormalMatrix();
+}
+
+glm::mat4 Transform::getTransform()
+{
+	return transform;
+}
+
+void Transform::calcNormalMatrix()
+{
+	normalTransform = glm::inverseTranspose(glm::mat3(transform));
+}

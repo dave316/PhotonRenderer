@@ -22,8 +22,9 @@ private:
 
 	glm::vec3 position;
 	glm::quat rotation;
-	glm::vec3 scale;
+	glm::vec3 scaling;
 	glm::mat4 transform;
+	glm::mat4 localTransform;
 	glm::mat3 normalTransform;
 	
 	Transform::Ptr parent;
@@ -46,6 +47,12 @@ public:
 	void setUniforms(Shader::Ptr shader);
 
 
+	void translate(glm::vec3 t);
+	void rotate(float angle, glm::vec3 axis);
+	void scale(glm::vec3 s);
+	void setModelMatrix(glm::mat4& M);
+	void calcNormalMatrix();
+	glm::mat4 getTransform();
 	//operator glm::mat4() const
 	//{
 	//	return transform;
