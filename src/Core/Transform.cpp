@@ -39,15 +39,20 @@ void Transform::setTransform(glm::mat4 T)
 
 void Transform::update(glm::mat4 parentTransform)
 {
-	//glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
-	//glm::mat4 R = glm::mat4_cast(rotation);
-	//glm::mat4 S = glm::scale(glm::mat4(1.0f), scaling);
-	//transform = parentTransform * (T * R * S);
-	localTransform = parentTransform * transform;
+	glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
+	glm::mat4 R = glm::mat4_cast(rotation);
+	glm::mat4 S = glm::scale(glm::mat4(1.0f), scaling);
+	transform = parentTransform * (T * R * S);
 	for (auto c : children)
-		c->update(localTransform);
+		c->update(transform);
 
-	normalTransform = glm::inverseTranspose(glm::mat3(localTransform));
+	normalTransform = glm::inverseTranspose(glm::mat3(transform));
+
+	//localTransform = parentTransform * transform;
+	//for (auto c : children)
+	//	c->update(localTransform);
+
+	//normalTransform = glm::inverseTranspose(glm::mat3(localTransform));
 }
 
 void Transform::updateTransform(glm::mat4 parentTransform)
@@ -92,7 +97,8 @@ void Transform::setUniforms(Shader::Ptr shader)
 	//	std::cout << std::endl;
 
 	//}
-	shader->setUniform("M", localTransform);
+	//shader->setUniform("M", localTransform);
+	shader->setUniform("M", transform);
 	shader->setUniform("N", normalTransform);
 }
 

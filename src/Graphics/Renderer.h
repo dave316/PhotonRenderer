@@ -36,6 +36,7 @@ public:
 	void initShader();
 	void initEnvMaps();
 	void loadGLTFModels(std::string path);
+	void loadModel(std::string path);
 	void nextModel();
 	void updateAnimations(float dt);
 	void updateCamera(Camera& camera);

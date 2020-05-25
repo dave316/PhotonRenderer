@@ -24,7 +24,7 @@ private:
 	glm::quat rotation;
 	glm::vec3 scaling;
 	glm::mat4 transform;
-	glm::mat4 localTransform;
+	//glm::mat4 localTransform;
 	glm::mat3 normalTransform;
 	
 	Transform::Ptr parent;

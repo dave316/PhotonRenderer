@@ -68,6 +68,7 @@ bool GLWindow::isInitialized()
 
 void GLWindow::attachInput(InputHandler& input)
 {
+	glfwSetDropCallback(window, InputHandler::dropCB);
 	glfwSetKeyCallback(window, InputHandler::keyboardCB);
 	glfwSetMouseButtonCallback(window, InputHandler::mouseButtonCB);
 	glfwSetCursorPosCallback(window, InputHandler::mouseMoveCB);

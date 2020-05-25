@@ -16,6 +16,7 @@ class InputHandler
 		std::map<KeyEvent, std::function<void()>> keyMapping;
 		std::map<KeyEvent, std::function<void()>> mouseMapping;
 		std::function<void(float, float)> mouseMove;
+		std::function<void(int, const char**)> dropEvent;
 		bool mousePressed = false;
 	};
 	InputData inputData;
@@ -24,6 +25,7 @@ class InputHandler
 public:
 	InputHandler() {}
 	InputData* getDataPointer();
+	static void dropCB(GLFWwindow* window, int count, const char** paths);
 	static void keyboardCB(GLFWwindow* window, int key, int scancode, int action, int mode);
 	static void mouseButtonCB(GLFWwindow* window, int button, int action, int mods);
 	static void mouseMoveCB(GLFWwindow* window, double xpos, double ypos);
@@ -31,6 +33,7 @@ public:
 	void addKeyCallback(int key, int action, std::function<void()> callback);
 	void removeKeyCallback(int key, int action);
 	void setMouseCallback(std::function<void(float, float)> callback);	
+	void setDropCallback(std::function<void(int, const char**)> callback);
 };
 
 #endif // INCLUDED_INPUTHANDLER

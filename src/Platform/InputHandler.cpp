@@ -1,8 +1,16 @@
 #include "InputHandler.h"
 
+#include <iostream>
+
 InputHandler::InputData* InputHandler::getDataPointer()
 {
 	return &inputData;
+}
+
+void InputHandler::dropCB(GLFWwindow* window, int count, const char** paths)
+{
+	InputData* data = (InputData*)glfwGetWindowUserPointer(window);
+	data->dropEvent(count, paths);
 }
 
 void InputHandler::keyboardCB(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -102,4 +110,9 @@ void InputHandler::removeKeyCallback(int key, int action)
 void InputHandler::setMouseCallback(std::function<void(float, float)> callback)
 {
 	inputData.mouseMove = callback;
+}
+
+void InputHandler::setDropCallback(std::function<void(int, const char**)> callback)
+{
+	inputData.dropEvent = callback;
 }
