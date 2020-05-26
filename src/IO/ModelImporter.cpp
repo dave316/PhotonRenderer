@@ -189,7 +189,8 @@ namespace IO
 		for (size_t i = 0; i < pNode->mNumChildren; i++)
 		{
 			auto childEntity = traverse(pScene, pNode->mChildren[i], M);
-			t->addChild(childEntity->getComponent<Transform>());
+			entity->addChild(childEntity);
+			//t->addChild(childEntity->getComponent<Transform>());
 		}
 		entities.push_back(entity);
 		return entity;

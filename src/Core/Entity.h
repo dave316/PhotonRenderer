@@ -16,11 +16,12 @@ class Entity
 private:
 	std::string name;
 	std::map<std::type_index, Component::Ptr> components;
+	std::vector<std::shared_ptr<Entity>> children;
 
 public:
 	Entity(const std::string& name) : name(name)
 	{
-		auto t = Transform::Ptr(new Transform(this));
+		auto t = Transform::Ptr(new Transform());
 		addComponent(t);
 	}
 
@@ -66,17 +67,12 @@ public:
 	std::vector<std::shared_ptr<T>> getComponentsInChildren()
 	{
 		std::vector<std::shared_ptr<T>> allComponents;
-		Transform::Ptr transform = getComponent<Transform>();
-		for (int i = 0; i < transform->getNumChildren(); i++)
+		for (auto c : children)
 		{
-			auto childTransform = transform->getChild(i);
-			auto e = childTransform->getEntity();
-			
-			auto component = e->getComponent<T>();
-			if(component)
-				allComponents.push_back(e->getComponent<T>());
+			auto component = c->getComponent<T>();
+			allComponents.push_back(component);
 
-			std::vector<std::shared_ptr<T>> childComponents = e->getComponentsInChildren<T>();
+			auto childComponents = c->getComponentsInChildren<T>();
 			for (auto childComp : childComponents)
 				allComponents.push_back(childComp);
 		}
@@ -84,25 +80,77 @@ public:
 	}
 
 	template<typename T>
-	std::vector<Entity*> getChildrenWithComponent()
+	std::vector<std::shared_ptr<Entity>> getChildrenWithComponent()
 	{
-		std::vector<Entity*> entities;
-		Transform::Ptr transform = getComponent<Transform>();
-		for (int i = 0; i < transform->getNumChildren(); i++)
+		std::vector<std::shared_ptr<Entity>> entities;
+		for (auto c : children)
 		{
-			auto childTransform = transform->getChild(i);
-			auto e = childTransform->getEntity();
-
-			auto component = e->getComponent<T>();
+			auto component = c->getComponent<T>();
 			if (component)
-				entities.push_back(e);
+				entities.push_back(c);
 
-			auto chiledEntities = e->getChildrenWithComponent<T>();
+			auto chiledEntities = c->getChildrenWithComponent<T>();
 			for (auto child : chiledEntities)
 				entities.push_back(child);
 		}
 		return entities;
 	}
+
+	void addChild(std::shared_ptr<Entity> child)
+	{
+		children.push_back(child);
+	}
+
+	void update(glm::mat4 parentTransform)
+	{
+		auto t = getComponent<Transform>();
+		t->update(parentTransform);
+		auto T = t->getTransform();
+		for (auto c : children)
+			c->update(T);
+	}
+
+	//template<typename T>
+	//std::vector<std::shared_ptr<T>> getComponentsInChildren()
+	//{
+	//	std::vector<std::shared_ptr<T>> allComponents;
+	//	Transform::Ptr transform = getComponent<Transform>();
+	//	for (int i = 0; i < transform->getNumChildren(); i++)
+	//	{
+	//		auto childTransform = transform->getChild(i);
+	//		auto e = childTransform->getEntity();
+	//		
+	//		auto component = e->getComponent<T>();
+	//		if(component)
+	//			allComponents.push_back(e->getComponent<T>());
+
+	//		std::vector<std::shared_ptr<T>> childComponents = e->getComponentsInChildren<T>();
+	//		for (auto childComp : childComponents)
+	//			allComponents.push_back(childComp);
+	//	}
+	//	return allComponents;
+	//}
+
+	//template<typename T>
+	//std::vector<Entity*> getChildrenWithComponent()
+	//{
+	//	std::vector<Entity*> entities;
+	//	Transform::Ptr transform = getComponent<Transform>();
+	//	for (int i = 0; i < transform->getNumChildren(); i++)
+	//	{
+	//		auto childTransform = transform->getChild(i);
+	//		auto e = childTransform->getEntity();
+
+	//		auto component = e->getComponent<T>();
+	//		if (component)
+	//			entities.push_back(e);
+
+	//		auto chiledEntities = e->getChildrenWithComponent<T>();
+	//		for (auto child : chiledEntities)
+	//			entities.push_back(child);
+	//	}
+	//	return entities;
+	//}
 
 	std::string getName() const
 	{

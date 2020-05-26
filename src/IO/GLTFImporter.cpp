@@ -1040,7 +1040,8 @@ namespace IO
 		for (auto& index : node.children)
 		{
 			auto childEntity = traverse(index);
-			t->addChild(childEntity->getComponent<Transform>());
+			entity->addChild(childEntity);
+			//t->addChild(childEntity->getComponent<Transform>());
 		}
 
 		entities.push_back(entity);
@@ -1160,7 +1161,8 @@ namespace IO
 			for (auto& nodeIndex : doc["scenes"][0]["nodes"].GetArray())
 			{
 				auto childEntity = traverse(nodeIndex.GetInt());
-				rootTransform->addChild(childEntity->getComponent<Transform>());
+				root->addChild(childEntity);
+				//rootTransform->addChild(childEntity->getComponent<Transform>());
 			}
 		}
 

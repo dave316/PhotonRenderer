@@ -127,7 +127,8 @@ namespace IO
 			auto r = Renderable::create();
 			r->addMesh(m, materials[m->getMaterialIndex()]);
 			auto t = childEntity->getComponent<Transform>();
-			rootTransform->addChild(t);
+			//rootTransform->addChild(t);
+			rootEntity->addChild(childEntity);
 			childEntity->addComponent<Renderable>(r);
 		}
 

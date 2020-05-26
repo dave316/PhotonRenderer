@@ -112,10 +112,10 @@ void Renderer::initEnvMaps()
 
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
-	std::string assetPath = "E:/Seafile/Assets/EnvMaps";
-	//auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
+	std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
+	auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
-	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
 
 	//auto pano = IO::loadTextureHDR(assetPath + "/blaubeuren_outskirts_16k.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/office.hdr");
@@ -306,7 +306,8 @@ void Renderer::updateAnimations(float dt)
 	}
 
 	// propagate the transformations trough the scene hirarchy
-	rootEntity->getComponent<Transform>()->update(glm::mat4(1.0f));
+	//rootEntity->getComponent<Transform>()->update(glm::mat4(1.0f));
+	rootEntity->update(glm::mat4(1.0f));
 }
 
 void Renderer::updateCamera(Camera& camera)
@@ -337,8 +338,8 @@ void Renderer::render()
 		{
 			// TODO: do depth/tansparent sorting
 			auto models = e->getChildrenWithComponent<Renderable>();
-			std::vector<Entity*> transparentEntities;
-			std::vector<Entity*> opaqueEntities;
+			std::vector<Entity::Ptr> transparentEntities;
+			std::vector<Entity::Ptr> opaqueEntities;
 			for (auto m : models)
 			{
 				auto r = m->getComponent<Renderable>();

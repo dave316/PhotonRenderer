@@ -18,7 +18,7 @@ public:
 	typedef std::shared_ptr<Transform> Ptr;
 
 private:
-	Entity* entity;
+	//Entity* entity;
 
 	glm::vec3 position;
 	glm::quat rotation;
@@ -27,22 +27,22 @@ private:
 	//glm::mat4 localTransform;
 	glm::mat3 normalTransform;
 	
-	Transform::Ptr parent;
-	std::vector<Transform::Ptr> children;
+	//Transform::Ptr parent;
+	//std::vector<Transform::Ptr> children;
 
 public:
-	Transform(Entity* entity);
+	Transform();
 	~Transform();
 	void setPosition(glm::vec3 p);
 	void setRotation(glm::quat q);
 	void setScale(glm::vec3 s);
 	void setTransform(glm::mat4 T);
 	void update(glm::mat4 parentTransform);
-	void updateTransform(glm::mat4 parentTransform);
-	void addChild(Transform::Ptr child);
-	int getNumChildren();
-	Transform::Ptr getChild(int index);
-	Entity* getEntity();
+	//void updateTransform(glm::mat4 parentTransform);
+	//void addChild(Transform::Ptr child);
+	//int getNumChildren();
+	//Transform::Ptr getChild(int index);
+	//Entity* getEntity();
 
 	void setUniforms(Shader::Ptr shader);
 

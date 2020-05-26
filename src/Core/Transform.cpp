@@ -2,8 +2,8 @@
 #include <iostream>
 #include <glm/gtc/matrix_inverse.hpp>
 
-Transform::Transform(Entity* entity) :
-	entity(entity),
+Transform::Transform() :
+	//entity(entity),
 	position(0.0f),
 	rotation(1.0f, 0.0f, 0.0f, 0.0f),
 	scaling(1.0f),
@@ -43,8 +43,8 @@ void Transform::update(glm::mat4 parentTransform)
 	glm::mat4 R = glm::mat4_cast(rotation);
 	glm::mat4 S = glm::scale(glm::mat4(1.0f), scaling);
 	transform = parentTransform * (T * R * S);
-	for (auto c : children)
-		c->update(transform);
+	//for (auto c : children)
+	//	c->update(transform);
 
 	normalTransform = glm::inverseTranspose(glm::mat3(transform));
 
@@ -55,36 +55,36 @@ void Transform::update(glm::mat4 parentTransform)
 	//normalTransform = glm::inverseTranspose(glm::mat3(localTransform));
 }
 
-void Transform::updateTransform(glm::mat4 parentTransform)
-{
-	transform = parentTransform * transform;
-	for (auto c : children)
-		c->updateTransform(transform);
-}
+//void Transform::updateTransform(glm::mat4 parentTransform)
+//{
+//	transform = parentTransform * transform;
+//	for (auto c : children)
+//		c->updateTransform(transform);
+//}
 
-void Transform::addChild(Transform::Ptr child)
-{
-	children.push_back(child);
-}
-
-Transform::Ptr Transform::getChild(int index)
-{
-	if (index >= 0 && index < children.size())
-	{
-		return children[index];
-	}
-	return nullptr;
-}
-
-int Transform::getNumChildren()
-{
-	return children.size();
-}
-
-Entity* Transform::getEntity()
-{
-	return entity;
-}
+//void Transform::addChild(Transform::Ptr child)
+//{
+//	children.push_back(child);
+//}
+//
+//Transform::Ptr Transform::getChild(int index)
+//{
+//	if (index >= 0 && index < children.size())
+//	{
+//		return children[index];
+//	}
+//	return nullptr;
+//}
+//
+//int Transform::getNumChildren()
+//{
+//	return children.size();
+//}
+//
+//Entity* Transform::getEntity()
+//{
+//	return entity;
+//}
 
 void Transform::setUniforms(Shader::Ptr shader)
 {
