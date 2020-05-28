@@ -255,7 +255,7 @@ namespace GL
 	template<>
 	void Texture2D::setWrap(TextureWrap wrap)
 	{
-		GLint wrapMode;
+		GLint wrapMode = GL_REPEAT;
 
 		switch (wrap)
 		{

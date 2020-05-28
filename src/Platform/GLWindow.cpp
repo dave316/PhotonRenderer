@@ -26,7 +26,7 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 	}
 
 	glfwMakeContextCurrent(window);
-	glfwSwapInterval(0);
+	glfwSwapInterval(1);
 
 	glewExperimental = true;
 	if (glewInit() != GLEW_NO_ERROR)
@@ -34,10 +34,6 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 		std::cerr << "error initializing GLEW!" << std::endl;
 		return;
 	}
-
-	GLint maxCubeMapSize = 0;
-	glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &maxCubeMapSize);
-	std::cout << "max cube map size: " << maxCubeMapSize << std::endl;
 
 	//GLint numExtensions = 0;
 	//glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
@@ -58,6 +54,7 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 
 GLWindow::~GLWindow()
 {
+	glfwDestroyWindow(window);
 	glfwTerminate();
 }
 
@@ -94,4 +91,9 @@ bool GLWindow::shouldClose()
 void GLWindow::close()
 {
 	glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
+
+GLFWwindow*  GLWindow::getWindow()
+{
+	return window;
 }

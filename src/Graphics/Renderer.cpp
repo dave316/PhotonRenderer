@@ -41,29 +41,38 @@ bool Renderer::init()
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glViewport(0, 0, 1920, 1080);
+	glViewport(0, 0, 1280, 720);
 	//glEnable(GL_DEBUG_OUTPUT);
 	//glDebugMessageCallback(debugCallback, 0);
 
 	initShader();
 	initEnvMaps();
 
-	////std::string assetPath = "../assets";
-	//std::string assetPath = "../../assets";
-	//std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	//std::string name = "InterpolationTest";
+	//std::string assetPath = "../assets";
+	std::string assetPath = "../../assets";
+	std::string path = assetPath + "/glTF-Sample-Models/2.0";
+	//std::string name = "Corset";
 	//std::cout << "loading model " << name << std::endl;
 	//std::string fn = name + "/glTF/" + name + ".gltf";
 
-	//IO::GLTFImporter importer;
-	// auto root = importer.importModel(path + "/" + fn);
-	////root->getComponent<Transform>()->setPosition(glm::vec3(-2 , 0, -2));
-	////auto root = importer.importModel(assetPath + "/Adam/adamHead.gltf");
-	////root->getComponent<Transform>()->setRotation(glm::angleAxis(glm::radians(-90.0f), glm::vec3(0, 1, 0)));
-	////root->getComponent<Transform>()->setScale(glm::vec3(0.1f));
-	//rootEntitis.push_back(root);
-	//entities = importer.getEntities();
-	//importer.clear();
+	{
+		std::string name = "DamagedHelmet";
+		std::string fn = name + "/glTF/" + name + ".gltf";
+		IO::GLTFImporter importer;
+		auto root = importer.importModel(path + "/" + fn);
+		rootEntitis.push_back(root);
+		auto children = importer.getEntities();
+		entities.insert(entities.end(), children.begin(), children.end());
+	}
+	//{
+	//	std::string name = "CesiumMilkTruck";
+	//	std::string fn = name + "/glTF/" + name + ".gltf";
+	//	IO::GLTFImporter importer;
+	//	auto root = importer.importModel(path + "/" + fn);
+	//	rootEntitis.push_back(root);
+	//	auto children = importer.getEntities();
+	//	entities.insert(entities.end(), children.begin(), children.end());
+	//}
 
 	cameraUBO.bindBase(0);
 	 
@@ -112,9 +121,9 @@ void Renderer::initEnvMaps()
 
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
-	std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
-	auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
-	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+	std::string assetPath = "E:/Seafile/Assets/EnvMaps";
+	//auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
+	auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
 
 	//auto pano = IO::loadTextureHDR(assetPath + "/blaubeuren_outskirts_16k.hdr");
@@ -215,7 +224,7 @@ void Renderer::initEnvMaps()
 		brdfFBO->end();
 	}
 
-	glViewport(0, 0, 1920, 1080);
+	glViewport(0, 0, 1280, 720);
 }
 
 void Renderer::loadGLTFModels(std::string path)
@@ -273,7 +282,7 @@ void Renderer::updateAnimations(float dt)
 {
 	if (rootEntitis.empty())
 		return;
-
+	defaultShader->setUniform("hasAnimations", false);
 	//std::cout << "update animation" << std::endl;
 	// apply transformations from animations
 	auto rootEntity = rootEntitis[modelIndex];
@@ -284,9 +293,7 @@ void Renderer::updateAnimations(float dt)
 		auto t = e->getComponent<Transform>();
 
 		a->update(dt);
-
-		//defaultProgram.setUniform("hasAnimations", false);
-
+		
 		if (a->hasRiggedAnim())
 		{
 			auto boneTransforms = a->getBoneTransform();

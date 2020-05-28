@@ -78,7 +78,8 @@ namespace IO
 		{
 			BufferView bufferView;
 			bufferView.buffer = bufferViewNode.FindMember("buffer")->value.GetInt();
-			bufferView.byteOffset = bufferViewNode.FindMember("byteOffset")->value.GetInt();
+			if (bufferViewNode.HasMember("byteOffset"))
+				bufferView.byteOffset = bufferViewNode.FindMember("byteOffset")->value.GetInt();
 			bufferView.byteLength = bufferViewNode.FindMember("byteLength")->value.GetInt();
 			//bufferView.target = bufferViewNode.FindMember("target")->value.GetInt(); 
 			bufferViews.push_back(bufferView);
@@ -98,13 +99,13 @@ namespace IO
 			accessors.push_back(accessor);
 		}
 
-		std::cout << "GLTF loadBuffers" << std::endl;
-		std::cout << "----------------" << std::endl;
-		std::cout << "Binary buffers: " << buffers.size() << std::endl;
-		for (int i = 0; i < buffers.size(); i++)
-			std::cout << "Buffer " << i << " " << buffers[i].data.size() << " bytes" << std::endl;
-		std::cout << "BufferViews: " << bufferViews.size() << std::endl;
-		std::cout << "Accesssors: " << accessors.size() << std::endl;
+		//std::cout << "GLTF loadBuffers" << std::endl;
+		//std::cout << "----------------" << std::endl;
+		//std::cout << "Binary buffers: " << buffers.size() << std::endl;
+		//for (int i = 0; i < buffers.size(); i++)
+		//	std::cout << "Buffer " << i << " " << buffers[i].data.size() << " bytes" << std::endl;
+		//std::cout << "BufferViews: " << bufferViews.size() << std::endl;
+		//std::cout << "Accesssors: " << accessors.size() << std::endl;
 	}
 
 	void GLTFImporter::loadAnimations(const json::Document& doc)
@@ -219,8 +220,8 @@ namespace IO
 					loadData(input, times);
 					loadData(output, weights);
 
-					std::cout << "times: " << times.size() << std::endl;
-					std::cout << "weights: " << weights.size() << std::endl;
+					//std::cout << "times: " << times.size() << std::endl;
+					//std::cout << "weights: " << weights.size() << std::endl;
 
 					for (int i = 0; i < times.size(); i++)
 					{
@@ -341,7 +342,7 @@ namespace IO
 				}
 			}
 
-			std::cout << "minTime: " << minTime << " maxTime: " << maxTime << std::endl;
+			//std::cout << "minTime: " << minTime << " maxTime: " << maxTime << std::endl;
 
 			auto animation = Animation::create("blub", maxTime, 2, skin.jointMapping.size());
 			for (auto it : channels)
@@ -628,7 +629,7 @@ namespace IO
 			renderables.push_back(renderable);
 		}
 
-		std::cout << "loaded " << renderables.size() << " meshes" << std::endl;
+		//std::cout << "loaded " << renderables.size() << " meshes" << std::endl;
 	}
 
 	void GLTFImporter::loadMaterials(const json::Document& doc)
@@ -679,7 +680,7 @@ namespace IO
 			if (materialNode.HasMember("doubleSided"))
 			{
 				bool doubleSided = materialNode["doubleSided"].GetBool();
-				std::cout << "doubleSided: " << doubleSided << std::endl;
+				//std::cout << "doubleSided: " << doubleSided << std::endl;
 			}
 			if (materialNode.HasMember("pbrMetallicRoughness"))
 			{
@@ -702,7 +703,7 @@ namespace IO
 					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
 					if (texIndex < textures.size())
 					{
-						std::cout << "added baseColorTexture texture index " << texIndex << std::endl;
+						//std::cout << "added baseColorTexture texture index " << texIndex << std::endl;
 						material->addTexture("material.baseColorTex", textures[texIndex]);
 						material->addProperty("material.useBaseColorTex", true);
 					}
@@ -896,8 +897,8 @@ namespace IO
 					Sampler s;
 					s.minFilter = samplerNode["minFilter"].GetInt();
 					s.magFilter = samplerNode["magFilter"].GetInt();
-					s.wrapS = samplerNode["wrapS"].GetInt();
-					s.wrapT = samplerNode["wrapT"].GetInt();
+					//s.wrapS = samplerNode["wrapS"].GetInt();
+					//s.wrapT = samplerNode["wrapT"].GetInt();
 					samplers.push_back(s);
 				}
 			}
@@ -910,7 +911,7 @@ namespace IO
 				int imageIndex = textureNode["source"].GetInt();
 
 				std::string filename = imageFiles[imageIndex];
-				std::cout << "loading texture " << filename << std::endl;
+				//std::cout << "loading texture " << filename << std::endl;
 
 				int i0 = filename.find_last_of("_") + 1;
 				int i1 = filename.find_last_of(".");
@@ -927,7 +928,7 @@ namespace IO
 					mapType.compare("a") == 0 ||
 					mapType.compare("sg") == 0)
 				{
-					std::cout << "SRGB: true" << std::endl;
+					//std::cout << "SRGB: true" << std::endl;
 					sRGB = true;
 				}				
 
@@ -1183,9 +1184,12 @@ namespace IO
 		materials.clear();
 		renderables.clear();
 		animators.clear();
+		animations.clear();
 		textures.clear();
 		nodeAnims.clear();
 		morphAnims.clear();
 		entities.clear();
+		skin.boneMapping.clear();
+		skin.jointMapping.clear();
 	}
 }

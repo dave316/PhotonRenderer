@@ -24,7 +24,7 @@ namespace IO
 		struct BufferView
 		{
 			int buffer;
-			int byteOffset;
+			int byteOffset = 0;
 			int byteLength;
 			int target;
 		};

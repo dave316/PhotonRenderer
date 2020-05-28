@@ -27,6 +27,7 @@ public:
 	void swapBuffers();
 	bool shouldClose();
 	void close();
+	GLFWwindow* getWindow();
 };
 
 #endif // INCLUDED_GLWINDOW

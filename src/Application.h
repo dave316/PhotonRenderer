@@ -23,6 +23,7 @@ public:
 	void setupInput();
 	void handleDrop(int count, const char** paths);
 	void loop();
+	void shutdown();
 };
 
 #endif // INCLUDED_APPLICATION
