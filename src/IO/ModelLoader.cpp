@@ -386,7 +386,7 @@ namespace IO
 				std::cout << "non triangles face not supported!" << std::endl;
 				return nullptr;
 			}
-			Triangle t(face.mIndices[0], face.mIndices[1], face.mIndices[2]);
+			TriangleIndices t(face.mIndices[0], face.mIndices[1], face.mIndices[2]);
 			surface.addTriangle(t);
 		}
 

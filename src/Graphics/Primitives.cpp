@@ -37,8 +37,8 @@ namespace Primitives
 		surface.addVertex(v[2]);
 		surface.addVertex(v[3]);
 
-		Triangle t0(baseIndex, baseIndex + 1, baseIndex + 2);
-		Triangle t1(baseIndex, baseIndex + 2, baseIndex + 3);
+		TriangleIndices t0(baseIndex, baseIndex + 1, baseIndex + 2);
+		TriangleIndices t1(baseIndex, baseIndex + 2, baseIndex + 3);
 
 		surface.addTriangle(t0);
 		surface.addTriangle(t1);

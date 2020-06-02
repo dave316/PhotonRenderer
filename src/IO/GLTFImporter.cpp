@@ -269,7 +269,10 @@ namespace IO
 				AnimationSampler sampler;
 				sampler.input = samplerNode.FindMember("input")->value.GetInt();
 				sampler.output = samplerNode.FindMember("output")->value.GetInt();
-				sampler.interpolation = samplerNode.FindMember("interpolation")->value.GetString();
+				if (samplerNode.HasMember("interpolation"))
+					sampler.interpolation = samplerNode.FindMember("interpolation")->value.GetString();
+				else
+					sampler.interpolation = "LINEAR";
 				samplers.push_back(sampler);
 			}
 
@@ -368,7 +371,7 @@ namespace IO
 			{
 				int accIndex = skinNode["inverseBindMatrices"].GetInt();
 				loadData(accIndex, boneMatrices);
-			}
+			} 
 			if (skinNode.HasMember("joints"))
 			{
 				for (auto& jointNode : skinNode["joints"].GetArray())
@@ -596,7 +599,7 @@ namespace IO
 
 				for (int i = 0; i < indices.size(); i += 3)
 				{
-					Triangle t(indices[i], indices[(int64_t)i + 1], indices[(int64_t)i + 2]);
+					TriangleIndices t(indices[i], indices[(int64_t)i + 1], indices[(int64_t)i + 2]);
 					surface.addTriangle(t);
 				}
 
@@ -1021,20 +1024,21 @@ namespace IO
 			entity->addComponent(r);
 		}
 
-		if (node.animIndex >= 0)
+		if (node.animIndex >= 0 && node.animIndex < nodeAnims.size())
 		{
 			auto anim = Animator::create();
 
-			if (!skin.boneTree.children.empty())
-				anim->setSkin(skin.boneTree);
+			//if (!skin.boneTree.children.empty())
+			//	anim->setSkin(skin.boneTree);
 
-			if (node.animIndex < animations.size())
-				anim->addAnimation(animations[node.animIndex]);
-			else if (node.animIndex < nodeAnims.size())
+			//if (node.animIndex < animations.size())
+			//	anim->addAnimation(animations[node.animIndex]);
+			if (node.animIndex < nodeAnims.size())
 				anim->addNodeAnim(nodeAnims[node.animIndex]);
 			else if (node.animIndex < morphAnims.size())
 				anim->addMorphAnim(morphAnims[node.animIndex]);
-			anim->setSkin(skin.boneTree);
+
+			//anim->setSkin(skin.boneTree);
 			entity->addComponent(anim);
 		}
 
@@ -1061,7 +1065,10 @@ namespace IO
 		boneNode.jointIndex = skin.jointMapping[childIndex];
 		boneNode.boneIndex = childIndex;
 		boneNode.boneTransform = skin.boneMapping[childIndex];
-		boneNode.nodeTransform = T * R * S;
+		//boneNode.nodeTransform = T * R * S;
+		boneNode.translation = sceneNode.translation;
+		boneNode.rotation = sceneNode.rotation;
+		boneNode.scale = sceneNode.scale;
 
 		parentNode.children.push_back(boneNode);
 
@@ -1142,7 +1149,10 @@ namespace IO
 			boneRoot.jointIndex = skin.jointMapping[skin.rootNode];
 			boneRoot.boneIndex = skin.rootNode;
 			boneRoot.boneTransform = skin.boneMapping[skin.rootNode];
-			boneRoot.nodeTransform = T * R * S;
+			//boneRoot.nodeTransform = T * R * S;
+			boneRoot.translation = sceneRoot.translation;
+			boneRoot.rotation = sceneRoot.rotation;
+			boneRoot.scale = sceneRoot.scale;
 			boneRoot.name = sceneRoot.name;
 
 			for (int nodeIndex : sceneRoot.children)
@@ -1157,6 +1167,16 @@ namespace IO
 
 		auto root = Entity::create("root");
 		auto rootTransform = root->getComponent<Transform>();
+		if (!animations.empty())
+		{
+			auto anim = Animator::create();
+			anim->setSkin(skin.boneTree);
+			for (auto a : animations)
+				anim->addAnimation(a);
+
+			anim->setSkin(skin.boneTree);
+			root->addComponent(anim);
+		}
 		if (doc.HasMember("scenes") && doc["scenes"][0].HasMember("nodes"))
 		{
 			for (auto& nodeIndex : doc["scenes"][0]["nodes"].GetArray())

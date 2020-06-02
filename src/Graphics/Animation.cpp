@@ -70,7 +70,7 @@ glm::mat4 Animation::calcInterpPosition(int index)
 {
 	if (channels.find(index) == channels.end())
 	{
-		std::cout << "channel " << index << " not found" << std::endl;
+		//std::cout << "channel " << index << " not found" << std::endl;
 		return glm::mat4(1.0f);
 	}
 
@@ -98,7 +98,7 @@ glm::mat4 Animation::calcInterpRotation(int index)
 {
 	if (channels.find(index) == channels.end())
 	{
-		std::cout << "channel " << index << " not found" << std::endl;
+		//std::cout << "channel " << index << " not found" << std::endl;
 		return glm::mat4(1.0f);
 	}
 
@@ -126,7 +126,7 @@ glm::mat4 Animation::calcInterpScaling(int index)
 {
 	if (channels.find(index) == channels.end())
 	{
-		std::cout << "channel " << index << " not found" << std::endl;
+		//std::cout << "channel " << index << " not found" << std::endl;
 		return glm::mat4(1.0f);
 	}
 
@@ -154,10 +154,25 @@ void Animation::readBoneTree(BoneNode& node, glm::mat4 parentTransform)
 {
 	//std::cout << "joint: " << node.boneIndex << std::endl;
 
-	glm::mat4 translation = calcInterpPosition(node.boneIndex);
-	glm::mat4 rotation = calcInterpRotation(node.boneIndex);
-	glm::mat4 scale = calcInterpScaling(node.boneIndex);
-	glm::mat4 localTransform = translation * rotation * scale;
+	glm::mat4 T = glm::translate(glm::mat4(1.0f), node.translation);
+	glm::mat4 R = glm::mat4_cast(node.rotation);
+	glm::mat4 S = glm::scale(glm::mat4(1.0f), node.scale);
+	glm::mat4 localTransform = T * R * S;
+	
+	if (channels.find(node.boneIndex) != channels.end())
+	{
+		glm::mat4 translation = T;
+		if(!channels[node.boneIndex].positions.empty())
+			translation = calcInterpPosition(node.boneIndex);
+		glm::mat4 rotation = R;
+		if (!channels[node.boneIndex].rotations.empty())
+			rotation = calcInterpRotation(node.boneIndex);
+		glm::mat4 scale = S;
+		if (!channels[node.boneIndex].scales.empty())
+			scale = calcInterpScaling(node.boneIndex);
+		localTransform = translation * rotation * scale;
+	}
+
 	glm::mat4 globalTransform = parentTransform * localTransform;
 	glm::mat4 boneTransform = globalTransform * node.boneTransform;
 	glm::mat3 normalTransform = glm::inverseTranspose(glm::mat3(boneTransform));

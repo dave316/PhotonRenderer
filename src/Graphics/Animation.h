@@ -18,7 +18,9 @@ struct BoneNode
 	std::string name;
 	std::vector<BoneNode> children;
 	glm::mat4 boneTransform;
-	glm::mat4 nodeTransform;
+	glm::vec3 translation;
+	glm::quat rotation;
+	glm::vec3 scale;
 	int boneIndex;
 	int jointIndex;
 
@@ -30,11 +32,11 @@ struct BoneNode
 		for (int i = 0; i < 16; i++)
 			std::cout << bT[i] << " ";
 		std::cout << std::endl;
-		std::cout << "nodeTransform: ";
-		const float* nT = (const float*)glm::value_ptr(nodeTransform);
-		for (int i = 0; i < 16; i++)
-			std::cout << nT[i] << " ";
-		std::cout << std::endl;
+		//std::cout << "nodeTransform: ";
+		//const float* nT = (const float*)glm::value_ptr(nodeTransform);
+		//for (int i = 0; i < 16; i++)
+		//	std::cout << nT[i] << " ";
+		//std::cout << std::endl;
 		
 		for (auto& c : children)
 			c.print();

@@ -44,6 +44,8 @@ Mesh::~Mesh()
 
 void Mesh::updatGeometry(TriangleSurface& surface)
 {
+	this->surface = surface;
+
 	std::vector<GLuint> indices;
 	for (auto& tri : surface.triangles)
 	{
@@ -83,4 +85,9 @@ void Mesh::drawPoints()
 	vao.bind();
 	glDrawArrays(GL_POINTS, 0, vertexBuffer.size());
 	vao.unbind();
+}
+
+std::vector<Vertex> Mesh::getVertices()
+{
+	return surface.vertices;
 }

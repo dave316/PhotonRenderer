@@ -53,10 +53,10 @@ struct Sphere
 	float radius;
 };
 
-struct Triangle
+struct TriangleIndices
 {
 	unsigned int v0, v1, v2;
-	Triangle(unsigned int v0, unsigned int v1, unsigned int v2) :
+	TriangleIndices(unsigned int v0, unsigned int v1, unsigned int v2) :
 		v0(v0), v1(v1), v2(v2)
 	{}
 };
@@ -64,13 +64,13 @@ struct Triangle
 struct TriangleSurface
 {
 	std::vector<Vertex> vertices;
-	std::vector<Triangle> triangles;
+	std::vector<TriangleIndices> triangles;
 
 	void addVertex(Vertex& v)
 	{
 		vertices.push_back(v);
 	}
-	void addTriangle(Triangle& t)
+	void addTriangle(TriangleIndices& t)
 	{
 		triangles.push_back(t);
 	}

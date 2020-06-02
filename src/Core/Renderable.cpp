@@ -63,6 +63,17 @@ bool Renderable::useBlending()
 	return false;
 }
 
+std::vector<Vertex> Renderable::getVertices()
+{
+	std::vector<Vertex> vertices;
+	for (auto& p : primitives)
+	{
+		auto v = p.mesh->getVertices();
+		vertices.insert(vertices.end(), v.begin(), v.end());
+	}
+	return vertices;
+}
+
 void Renderable::print()
 {
 	//std::cout << "meshes: " << meshes.size() << std::endl;

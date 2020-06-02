@@ -34,6 +34,8 @@ bool Application::init()
 	if (!renderer.init())
 		return false;
 
+	renderer.updateAnimations(0.0f);
+
 	setupInput();
 
 	return true;

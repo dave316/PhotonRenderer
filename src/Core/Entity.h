@@ -70,7 +70,8 @@ public:
 		for (auto c : children)
 		{
 			auto component = c->getComponent<T>();
-			allComponents.push_back(component);
+			if (component)
+				allComponents.push_back(component);
 
 			auto childComponents = c->getComponentsInChildren<T>();
 			for (auto childComp : childComponents)

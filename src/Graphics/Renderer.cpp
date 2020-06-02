@@ -29,6 +29,81 @@ void extern debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity
 	}
 }
 
+AABB::AABB()
+{
+	float maxVal = std::numeric_limits<float>::max();
+	float minVal = -maxVal;
+
+	minPoint = glm::vec3(maxVal);
+	maxPoint = glm::vec3(minVal);
+}
+
+AABB::AABB(glm::vec3& minPoint, glm::vec3& maxPoint) :
+	minPoint(minPoint),
+	maxPoint(maxPoint)
+{
+
+}
+
+glm::vec3 AABB::getMinPoint() const
+{
+	return minPoint;
+}
+
+glm::vec3 AABB::getMaxPoint() const
+{
+	return maxPoint;
+}
+
+void AABB::expand(const glm::vec3& point)
+{
+	maxPoint = glm::max(maxPoint, point);
+	minPoint = glm::min(minPoint, point);
+}
+
+void AABB::expand(const Triangle& tri)
+{
+	expand(tri.v0);
+	expand(tri.v1);
+	expand(tri.v2);
+}
+
+void AABB::expand(const AABB& box)
+{
+	expand(box.getMinPoint());
+	expand(box.getMaxPoint());
+}
+
+float AABB::radius()
+{
+	glm::vec3 diff = maxPoint - minPoint;
+	return glm::sqrt(glm::dot(diff, diff) * 0.25f);
+}
+
+glm::vec3 AABB::getCenter()
+{
+	return (maxPoint + minPoint) / 2.0f;
+}
+
+glm::vec3 AABB::getSize()
+{
+	return (maxPoint - minPoint);
+}
+
+std::vector<glm::vec3> AABB::getPoints()
+{
+	std::vector<glm::vec3> points;
+	points.push_back(minPoint);
+	points.push_back(glm::vec3(maxPoint.x, minPoint.y, minPoint.z));
+	points.push_back(glm::vec3(maxPoint.x, minPoint.y, maxPoint.z));
+	points.push_back(glm::vec3(minPoint.x, minPoint.y, maxPoint.z));
+	points.push_back(glm::vec3(minPoint.x, maxPoint.y, minPoint.z));
+	points.push_back(glm::vec3(maxPoint.x, maxPoint.y, minPoint.z));
+	points.push_back(maxPoint);
+	points.push_back(glm::vec3(minPoint.x, maxPoint.y, maxPoint.z));
+	return points;
+}
+
 Renderer::Renderer(unsigned int width, unsigned int height)
 {
 }
@@ -55,20 +130,50 @@ bool Renderer::init()
 	//std::cout << "loading model " << name << std::endl;
 	//std::string fn = name + "/glTF/" + name + ".gltf";
 
-	{
-		std::string name = "DamagedHelmet";
-		std::string fn = name + "/glTF/" + name + ".gltf";
-		IO::GLTFImporter importer;
-		auto root = importer.importModel(path + "/" + fn);
-		rootEntitis.push_back(root);
-		auto children = importer.getEntities();
-		entities.insert(entities.end(), children.begin(), children.end());
-	}
+	//std::vector<std::string> names;
+	////names.push_back("BrainStem");
+	////names.push_back("CesiumMan");
+	//names.push_back("Fox");
+	////names.push_back("RiggedFigure");
+	////names.push_back("RiggedSimple");
+
+	//////int i = 3;
+	//for(int i = 0 ; i < names.size(); i++)
 	//{
-	//	std::string name = "CesiumMilkTruck";
-	//	std::string fn = name + "/glTF/" + name + ".gltf";
+	//	//std::string name = "2CylinderEngine";
+	//	std::string fn = names[i] + "/glTF/" + names[i] + ".gltf";
 	//	IO::GLTFImporter importer;
 	//	auto root = importer.importModel(path + "/" + fn);
+	//	auto rootTransform = root->getComponent<Transform>();
+	//	root->update(glm::mat4(1.0f));
+
+	//	AABB aabb;		
+	//	auto meshEntities = root->getChildrenWithComponent<Renderable>();
+	//	for (auto m : meshEntities)
+	//	{
+	//		auto r = m->getComponent<Renderable>();
+	//		auto t = m->getComponent<Transform>();
+	//		glm::mat4 M = t->getTransform();
+	//		auto vertices = r->getVertices();
+	//		for (auto& v : vertices)
+	//		{
+	//			glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0));
+	//			aabb.expand(pos);
+	//		}
+	//	}
+
+	//	glm::vec3 s = aabb.getSize();
+	//	std::cout << s.x << " " << s.y << " " << s.z << std::endl;
+	//	float scale = 1.0f / glm::max(glm::max(s.x, s.y), s.z);
+	//	std::cout << "scale: " << scale << std::endl;
+
+	//	float x = i % 10 * 2;
+	//	float y = i / 10 * 2;
+	//	float z = 0;
+
+	//	rootTransform->setPosition(glm::vec3(x, y, z));
+	//	rootTransform->setScale(glm::vec3(scale));
+
 	//	rootEntitis.push_back(root);
 	//	auto children = importer.getEntities();
 	//	entities.insert(entities.end(), children.begin(), children.end());
@@ -76,7 +181,7 @@ bool Renderer::init()
 
 	cameraUBO.bindBase(0);
 	 
-	//loadGLTFModels(path);
+	loadGLTFModels(path);
 
 	//root->getComponent<Transform>()->update(glm::mat4(1.0f));
 
@@ -239,7 +344,7 @@ void Renderer::loadGLTFModels(std::string path)
 
 	//IO::ModelImporter importer;
 	IO::GLTFImporter importer;
-	
+	int i = 0;
 	std::vector<std::string> filenames;
 	for (auto &el : doc.GetArray())
 	{
@@ -257,6 +362,35 @@ void Renderer::loadGLTFModels(std::string path)
 					auto rootEntity = importer.importModel(path + "/" + fn);
 					if (rootEntity != nullptr)
 					{
+						auto rootTransform = rootEntity->getComponent<Transform>();
+
+						rootEntity->update(glm::mat4(1.0f));
+
+						AABB aabb;
+						auto meshEntities = rootEntity->getChildrenWithComponent<Renderable>();
+						for (auto m : meshEntities)
+						{
+							auto r = m->getComponent<Renderable>();
+							auto t = m->getComponent<Transform>();
+							glm::mat4 M = t->getTransform();
+							auto vertices = r->getVertices();
+							for (auto& v : vertices)
+							{
+								glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0));
+								aabb.expand(pos);
+							}
+						}
+
+						glm::vec3 s = aabb.getSize();
+						float scale = 1.0f / glm::max(glm::max(s.x, s.y), s.z);
+
+						float x = i % 10 * 2;
+						float y = i / 10 * 2;
+						float z = 0;
+
+						rootTransform->setPosition(glm::vec3(x, y, z));
+						rootTransform->setScale(glm::vec3(scale));
+
 						rootEntitis.push_back(rootEntity);
 						auto children = importer.getEntities();
 						entities.insert(entities.end(), children.begin(), children.end());
@@ -266,6 +400,10 @@ void Renderer::loadGLTFModels(std::string path)
 				}
 			}
 		}
+
+		i++;
+		//if (i == 10)
+		//	break;
 	}
 }
 
@@ -282,39 +420,53 @@ void Renderer::updateAnimations(float dt)
 {
 	if (rootEntitis.empty())
 		return;
-	defaultShader->setUniform("hasAnimations", false);
+	//defaultShader->setUniform("hasAnimations", false); // TODO: put shader uniforms in render func
 	//std::cout << "update animation" << std::endl;
 	// apply transformations from animations
-	auto rootEntity = rootEntitis[modelIndex];
-	auto animators = rootEntity->getChildrenWithComponent<Animator>();
- 	for (auto e : animators)
+	//auto rootEntity = rootEntitis[modelIndex];
+	for (auto rootEntity : rootEntitis)
 	{
-		auto a = e->getComponent<Animator>();
-		auto t = e->getComponent<Transform>();
+		// TODO: now there is only one animator per skin 
+		// but node based animations can have multiple!!! 
+		// fix this
+		auto animators = rootEntity->getChildrenWithComponent<Animator>();
+		if (animators.empty())
+		{
+			auto a = rootEntity->getComponent<Animator>();
+			//a->switchAnimation(modelIndex);
+			if(a)
+				a->update(dt);
+		}
 
-		a->update(dt);
-		
-		if (a->hasRiggedAnim())
+		for (auto e : animators)
 		{
-			auto boneTransforms = a->getBoneTransform();
-			auto normalTransforms = a->getNormalTransform();
-			defaultShader->setUniform("bones[0]", boneTransforms);
-			defaultShader->setUniform("normals[0]", normalTransforms);
-			defaultShader->setUniform("hasAnimations", true);
+			auto a = e->getComponent<Animator>();
+			auto t = e->getComponent<Transform>();
+
+			a->update(dt);
+
+			if (a->hasRiggedAnim())
+			{
+				auto boneTransforms = a->getBoneTransform();
+				auto normalTransforms = a->getNormalTransform();
+				//defaultShader->setUniform("bones[0]", boneTransforms);
+				//defaultShader->setUniform("normals[0]", normalTransforms);
+				//defaultShader->setUniform("hasAnimations", true);
+			}
+			else if (a->hasMorphAnim())
+			{
+				//glm::vec2 weights = a->getWeights();
+				//defaultShader->setUniform("w0", weights.x);
+				//defaultShader->setUniform("w1", weights.y);
+			}
+			else
+				a->transform(t);
 		}
-		else if (a->hasMorphAnim())
-		{
-			glm::vec2 weights = a->getWeights();
-			defaultShader->setUniform("w0", weights.x);
-			defaultShader->setUniform("w1", weights.y);
-		}
-		else
-			a->transform(t);
+
+		// propagate the transformations trough the scene hirarchy
+		//rootEntity->getComponent<Transform>()->update(glm::mat4(1.0f));
+		rootEntity->update(glm::mat4(1.0f));
 	}
-
-	// propagate the transformations trough the scene hirarchy
-	//rootEntity->getComponent<Transform>()->update(glm::mat4(1.0f));
-	rootEntity->update(glm::mat4(1.0f));
 }
 
 void Renderer::updateCamera(Camera& camera)
@@ -326,7 +478,8 @@ void Renderer::updateCamera(Camera& camera)
 
 void Renderer::nextModel()
 {
-	modelIndex = (++modelIndex) % (unsigned int)rootEntitis.size();
+	//modelIndex = (++modelIndex) % (unsigned int)rootEntitis.size();
+	modelIndex = (++modelIndex) % 3;
 }
 
 void Renderer::render()
@@ -341,8 +494,51 @@ void Renderer::render()
 
 	if (rootEntitis.size() > 0)
 	{
-		auto e = rootEntitis[modelIndex];
+		//auto e = rootEntitis[modelIndex];
+		for(auto e : rootEntitis)
 		{
+			auto animators = e->getChildrenWithComponent<Animator>();
+			if (animators.empty())
+			{
+				auto a = e->getComponent<Animator>();
+				if (a)
+				{
+					auto boneTransforms = a->getBoneTransform();
+					auto normalTransforms = a->getNormalTransform();
+					defaultShader->setUniform("hasAnimations", true);
+					defaultShader->setUniform("bones[0]", boneTransforms);
+					defaultShader->setUniform("normals[0]", normalTransforms);
+				}
+				else
+				{
+					defaultShader->setUniform("hasAnimations", false);
+				}
+			}
+			else
+			{
+				for (auto animEntity : animators)
+				{
+					auto a = animEntity->getComponent<Animator>();
+					if (a->hasRiggedAnim())
+					{
+						auto boneTransforms = a->getBoneTransform();
+						auto normalTransforms = a->getNormalTransform();
+						defaultShader->setUniform("hasAnimations", true);
+						defaultShader->setUniform("bones[0]", boneTransforms);
+						defaultShader->setUniform("normals[0]", normalTransforms);
+					}
+					else if (a->hasMorphAnim())
+					{
+						glm::vec2 weights = a->getWeights();
+						defaultShader->setUniform("w0", weights.x);
+						defaultShader->setUniform("w1", weights.y);
+					}
+					else
+						defaultShader->setUniform("hasAnimations", false);
+				}
+			}
+
+
 			// TODO: do depth/tansparent sorting
 			auto models = e->getChildrenWithComponent<Renderable>();
 			std::vector<Entity::Ptr> transparentEntities;

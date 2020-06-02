@@ -32,6 +32,8 @@ private:
 	GL::IndexBuffer<GLuint> indexBuffer;
 	GL::VertexArray vao;
 
+	TriangleSurface surface;
+
 	unsigned int materialIndex;
 
 	Mesh(const Mesh&) = delete;
@@ -44,6 +46,7 @@ public:
 	unsigned int getMaterialIndex() { return materialIndex; }
 	void draw();
 	void drawPoints();
+	std::vector<Vertex> getVertices();
 	std::string getName()
 	{
 		return name;

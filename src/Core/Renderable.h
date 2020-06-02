@@ -26,6 +26,7 @@ public:
 	void render(Shader::Ptr shader);
 	void print();
 	bool useBlending();
+	std::vector<Vertex> getVertices();
 	typedef std::shared_ptr<Renderable> Ptr;
 	static Ptr create()
 	{
