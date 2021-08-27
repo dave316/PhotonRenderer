@@ -30,6 +30,11 @@ void Texture2D::generateMipmaps()
 	texture.generateMipmaps();
 }
 
+void Texture2D::bind()
+{
+	texture.bind();
+}
+
 void Texture2D::use(GLuint unit)
 {
 	texture.use(unit);
@@ -70,6 +75,11 @@ void TextureCubeMap::setFilter(GL::TextureFilter filter)
 void TextureCubeMap::setWrap(GL::TextureWrap wrap)
 {
 	texture.setWrap(wrap);
+}
+
+void TextureCubeMap::setCompareMode()
+{
+	texture.setCompareMode();
 }
 
 void TextureCubeMap::generateMipmaps()

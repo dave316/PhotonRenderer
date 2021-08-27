@@ -7,7 +7,12 @@
 #include <Core/Renderable.h>
 #include <Core/Animator.h>
 
+#include <Graphics/Skin.h>
+#include <Graphics/Animation.h>
+
 #include <rapidjson/document.h>
+
+#include <map>
 
 namespace json = rapidjson;
 
@@ -49,6 +54,7 @@ namespace IO
 		{
 			int meshIndex = -1;
 			int animIndex = -1;
+			int skinIndex = -1;
 			std::string name;
 			std::vector<int> children;
 			glm::vec3 translation = glm::vec3(0.0f);
@@ -57,15 +63,7 @@ namespace IO
 			//glm::mat4 transform = glm::mat4(1.0f);
 		};
 
-		struct Skin
-		{
-			int rootNode = -1;
-			std::string name;
-			std::map<int, glm::mat4> boneMapping;
-			std::map<int, int> jointMapping;
-			BoneNode boneTree;
-		};
-		Skin skin;
+		std::vector<Skin> skins;
 
 		// GLTF related data
 		std::vector<Buffer> buffers;
@@ -79,23 +77,25 @@ namespace IO
 		std::vector<Animator::Ptr> animators;
 		std::vector<Texture2D::Ptr> textures;
 		std::vector<Animation::Ptr> animations;
-		std::vector<NodeAnimation::Ptr> nodeAnims;
-		std::vector<MorphAnimation::Ptr> morphAnims;
+		//std::vector<Animation::Ptr> animations;
+		//std::vector<NodeAnimation::Ptr> nodeAnims;
+		//std::map<int, NodeAnimation::Ptr> nodeAnims;
+		//std::vector<MorphAnimation::Ptr> morphAnims;
 		std::vector<Entity::Ptr> entities;
 
 		GLTFImporter(const GLTFImporter&) = delete;
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
 
 		void loadBuffers(const json::Document& doc, const std::string& path);
+		//void loadAnimations(const json::Document& doc);
 		void loadAnimations(const json::Document& doc);
-		void loadRiggedAnimations(const json::Document& doc);
 		void loadSkins(const json::Document& doc);
 		void loadMeshes(const json::Document& doc);
 		void loadMaterials(const json::Document& doc);
 		void loadTextures(const json::Document& doc, const std::string& path);
 		Entity::Ptr loadScene(const json::Document& doc);
-		Entity::Ptr traverse(int nodeIndex);
-		void buildBoneTree(int nodeIndex, BoneNode& node);
+		Entity::Ptr traverse(int nodeIndex, int& depth);
+		//void buildBoneTree(int nodeIndex, BoneNode& node, Skin& skin);
 
 		template<typename T>
 		void loadData(int accIndex, std::vector<T>& data)

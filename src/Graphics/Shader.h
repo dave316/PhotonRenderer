@@ -64,6 +64,11 @@ public:
 		program.setUniform(name, value);
 	}
 
+	GLuint getProgramID()
+	{
+		return program;
+	}
+
 	typedef std::shared_ptr<Shader> Ptr;
 	static Ptr create(const std::string& name);
 	std::string getName() const;

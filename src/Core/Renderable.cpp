@@ -9,8 +9,9 @@
 //
 //}
 
-void Renderable::addMesh(Mesh::Ptr mesh, Material::Ptr material)
+void Renderable::addMesh(std::string name, Mesh::Ptr mesh, Material::Ptr material)
 {
+	this->name = name;
 	Primitive p;
 	p.mesh = mesh;
 	p.material = material;
@@ -42,7 +43,7 @@ void Renderable::render(Shader::Ptr shader)
 		if (p.material->blend())
 		{
 			glEnable(GL_BLEND);
-			//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 			glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
 			glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 		}
@@ -63,6 +64,22 @@ bool Renderable::useBlending()
 	return false;
 }
 
+void Renderable::setSkin(Skin& skin)
+{
+	this->skin = skin;
+	skinnedMesh = true;
+}
+
+bool Renderable::isSkinnedMesh()
+{
+	return skinnedMesh;
+}
+
+std::string Renderable::getName()
+{
+	return name;
+}
+
 std::vector<Vertex> Renderable::getVertices()
 {
 	std::vector<Vertex> vertices;
@@ -77,4 +94,15 @@ std::vector<Vertex> Renderable::getVertices()
 void Renderable::print()
 {
 	//std::cout << "meshes: " << meshes.size() << std::endl;
+}
+
+void Renderable::flipWindingOrder()
+{
+	for (auto p : primitives)
+		p.mesh->flipWindingOrder();
+}
+
+Skin Renderable::getSkin()
+{
+	return skin;
 }

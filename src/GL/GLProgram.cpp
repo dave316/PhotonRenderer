@@ -154,4 +154,10 @@ namespace GL
 	{
 		glProgramUniformMatrix4fv(id, getUniformLocation(name), (GLsizei)values.size(), GL_FALSE, (GLfloat*)values.data());
 	}
+
+	template<> void Program::setUniform<glm::mat4x3>(const std::string& name, const glm::mat4x3& value)
+	{
+		glProgramUniformMatrix4x3fv(id, getUniformLocation(name), 1, GL_FALSE, glm::value_ptr(value));
+	}
+
 }

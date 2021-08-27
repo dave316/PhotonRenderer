@@ -33,16 +33,22 @@ namespace IO
 			else if (c == 4)
 				format = GL::SRGBA8;
 			else
+			{
 				std::cout << "error: no format for " << c << " channels" << std::endl;
+				return nullptr;
+			}				
 		}
 		else
-		{
+		{			
 			if (c == 3)
 				format = GL::RGB8;
 			else if (c == 4)
 				format = GL::RGBA8;
 			else
+			{
 				std::cout << "error: no format for " << c << " channels" << std::endl;
+				return nullptr;
+			}				
 		}
 	
 		auto tex = Texture2D::create(w, h, format);

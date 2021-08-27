@@ -3,11 +3,14 @@
 #include <glm/gtc/matrix_inverse.hpp>
 
 Transform::Transform() :
-	//entity(entity),
 	position(0.0f),
 	rotation(1.0f, 0.0f, 0.0f, 0.0f),
-	scaling(1.0f),
+	scale(1.0f),
 	transform(1.0f),
+	localPosition(0.0f),
+	localRotation(1.0f, 0.0f, 0.0f, 0.0f),
+	localScale(1.0f),
+	localTransform(1.0f),
 	normalTransform(1.0f)
 {}
 
@@ -28,103 +31,55 @@ void Transform::setRotation(glm::quat q)
 
 void Transform::setScale(glm::vec3 s)
 {
-	this->scaling = s;
+	this->scale = s;
 }
 
-void Transform::setTransform(glm::mat4 T)
+void Transform::setLocalPostion(glm::vec3 p)
 {
-	transform = T;
-	calcNormalMatrix();
+	localPosition = p;
+}
+
+void Transform::setLocalRotation(glm::quat q)
+{
+	localRotation = q;
+}
+
+void Transform::setLocalScale(glm::vec3 s)
+{
+	localScale = s;
 }
 
 void Transform::update(glm::mat4 parentTransform)
 {
+	// TODO: update only when needed (ie. when transform has been changed)
+	//		 otherwise this will get very slow...
+
+	glm::mat4 localT = glm::translate(glm::mat4(1.0f), localPosition);
+	glm::mat4 localR = glm::mat4_cast(localRotation);
+	glm::mat4 localS = glm::scale(glm::mat4(1.0f), localScale);
+	localTransform = localT * localR * localS;
+
 	glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
 	glm::mat4 R = glm::mat4_cast(rotation);
-	glm::mat4 S = glm::scale(glm::mat4(1.0f), scaling);
-	transform = parentTransform * (T * R * S);
-	//for (auto c : children)
-	//	c->update(transform);
-
+	glm::mat4 S = glm::scale(glm::mat4(1.0f), scale);
+	transform = parentTransform * (T * R * S) * localTransform;
 	normalTransform = glm::inverseTranspose(glm::mat3(transform));
-
-	//localTransform = parentTransform * transform;
-	//for (auto c : children)
-	//	c->update(localTransform);
-
-	//normalTransform = glm::inverseTranspose(glm::mat3(localTransform));
 }
-
-//void Transform::updateTransform(glm::mat4 parentTransform)
-//{
-//	transform = parentTransform * transform;
-//	for (auto c : children)
-//		c->updateTransform(transform);
-//}
-
-//void Transform::addChild(Transform::Ptr child)
-//{
-//	children.push_back(child);
-//}
-//
-//Transform::Ptr Transform::getChild(int index)
-//{
-//	if (index >= 0 && index < children.size())
-//	{
-//		return children[index];
-//	}
-//	return nullptr;
-//}
-//
-//int Transform::getNumChildren()
-//{
-//	return children.size();
-//}
-//
-//Entity* Transform::getEntity()
-//{
-//	return entity;
-//}
 
 void Transform::setUniforms(Shader::Ptr shader)
 {
-	//for (int row = 0; row < 4; row++)
-	//{
-	//	for (int col = 0; col < 4; col++)
-	//	{
-	//		std::cout << transform[row][col] << " ";
-	//	}
-	//	std::cout << std::endl;
-
-	//}
-	//shader->setUniform("M", localTransform);
 	shader->setUniform("M", transform);
 	shader->setUniform("N", normalTransform);
 }
 
 void Transform::translate(glm::vec3 t)
 {
-	transform = glm::translate(transform, t);
-	//calcNormalMatrix();
+	position += t;
 }
 
 void Transform::rotate(float angle, glm::vec3 axis)
 {
-	transform = glm::rotate(transform, glm::radians(angle), axis);
-	//calcNormalMatrix();
-}
-
-void Transform::scale(glm::vec3 s)
-{
-	transform = glm::scale(transform, s);
-	//calcNormalMatrix();
-	//moved = true;
-}	
-
-void Transform::setModelMatrix(glm::mat4& M)
-{
-	transform = M;
-	//calcNormalMatrix();
+	rotation *= glm::angleAxis(glm::radians(angle), axis);
 }
 
 glm::mat4 Transform::getTransform()

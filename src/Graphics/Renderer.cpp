@@ -5,6 +5,7 @@
 #include <Graphics/Shader.h>
 
 #include <IO/GLTFImporter.h>
+#include <IO/AssimpImporter.h>
 #include <IO/ImageLoader.h>
 #include <IO/ShaderLoader.h>
 
@@ -14,6 +15,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <random>
 
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
@@ -29,83 +31,19 @@ void extern debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity
 	}
 }
 
-AABB::AABB()
+Renderer::Renderer(unsigned int width, unsigned int height) :
+	width(width), height(height)
 {
-	float maxVal = std::numeric_limits<float>::max();
-	float minVal = -maxVal;
-
-	minPoint = glm::vec3(maxVal);
-	maxPoint = glm::vec3(minVal);
 }
 
-AABB::AABB(glm::vec3& minPoint, glm::vec3& maxPoint) :
-	minPoint(minPoint),
-	maxPoint(maxPoint)
+Renderer::~Renderer()
 {
-
-}
-
-glm::vec3 AABB::getMinPoint() const
-{
-	return minPoint;
-}
-
-glm::vec3 AABB::getMaxPoint() const
-{
-	return maxPoint;
-}
-
-void AABB::expand(const glm::vec3& point)
-{
-	maxPoint = glm::max(maxPoint, point);
-	minPoint = glm::min(minPoint, point);
-}
-
-void AABB::expand(const Triangle& tri)
-{
-	expand(tri.v0);
-	expand(tri.v1);
-	expand(tri.v2);
-}
-
-void AABB::expand(const AABB& box)
-{
-	expand(box.getMinPoint());
-	expand(box.getMaxPoint());
-}
-
-float AABB::radius()
-{
-	glm::vec3 diff = maxPoint - minPoint;
-	return glm::sqrt(glm::dot(diff, diff) * 0.25f);
-}
-
-glm::vec3 AABB::getCenter()
-{
-	return (maxPoint + minPoint) / 2.0f;
-}
-
-glm::vec3 AABB::getSize()
-{
-	return (maxPoint - minPoint);
-}
-
-std::vector<glm::vec3> AABB::getPoints()
-{
-	std::vector<glm::vec3> points;
-	points.push_back(minPoint);
-	points.push_back(glm::vec3(maxPoint.x, minPoint.y, minPoint.z));
-	points.push_back(glm::vec3(maxPoint.x, minPoint.y, maxPoint.z));
-	points.push_back(glm::vec3(minPoint.x, minPoint.y, maxPoint.z));
-	points.push_back(glm::vec3(minPoint.x, maxPoint.y, minPoint.z));
-	points.push_back(glm::vec3(maxPoint.x, maxPoint.y, minPoint.z));
-	points.push_back(maxPoint);
-	points.push_back(glm::vec3(minPoint.x, maxPoint.y, maxPoint.z));
-	return points;
-}
-
-Renderer::Renderer(unsigned int width, unsigned int height)
-{
+	for (auto&& [name, entity] : rootEntitis)
+	{
+		auto animators = entity->getComponentsInChildren<Animator>();
+		for (auto& a : animators)
+			a->clear();
+	}
 }
 
 bool Renderer::init()
@@ -116,105 +54,47 @@ bool Renderer::init()
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glViewport(0, 0, 1280, 720);
+	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glViewport(0, 0, width, height);
 	//glEnable(GL_DEBUG_OUTPUT);
 	//glDebugMessageCallback(debugCallback, 0);
 
+	initLights();
 	initShader();
+	initFBOs();
 	initEnvMaps();
 
-	//std::string assetPath = "../assets";
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+
 	std::string assetPath = "../../assets";
-	std::string path = assetPath + "/glTF-Sample-Models/2.0";
-	//std::string name = "Corset";
-	//std::cout << "loading model " << name << std::endl;
-	//std::string fn = name + "/glTF/" + name + ".gltf";
+	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
+	std::string name = "BoxTextured";
+	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 
-	//std::vector<std::string> names;
-	////names.push_back("BrainStem");
-	////names.push_back("CesiumMan");
-	//names.push_back("Fox");
-	////names.push_back("RiggedFigure");
-	////names.push_back("RiggedSimple");
+	//IO::AssimpImporter assImporter;
+	//auto model = assImporter.importModel(assetPath + "/plane.obj");
+	//model->getComponent<Transform>()->setPosition(glm::vec3(0,-0.5, 0));
+	//model->getComponent<Transform>()->setScale(glm::vec3(10.0f));
+	//if (model != nullptr)
+	//	rootEntitis.insert(std::make_pair("Aplane", model));
+	//assImporter.clear();
 
-	//////int i = 3;
-	//for(int i = 0 ; i < names.size(); i++)
-	//{
-	//	//std::string name = "2CylinderEngine";
-	//	std::string fn = names[i] + "/glTF/" + names[i] + ".gltf";
-	//	IO::GLTFImporter importer;
-	//	auto root = importer.importModel(path + "/" + fn);
-	//	auto rootTransform = root->getComponent<Transform>();
-	//	root->update(glm::mat4(1.0f));
+	loadGLTFModels(gltfPath);
+	//loadAssimpModels(path);
 
-	//	AABB aabb;		
-	//	auto meshEntities = root->getChildrenWithComponent<Renderable>();
-	//	for (auto m : meshEntities)
-	//	{
-	//		auto r = m->getComponent<Renderable>();
-	//		auto t = m->getComponent<Transform>();
-	//		glm::mat4 M = t->getTransform();
-	//		auto vertices = r->getVertices();
-	//		for (auto& v : vertices)
-	//		{
-	//			glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0));
-	//			aabb.expand(pos);
-	//		}
-	//	}
-
-	//	glm::vec3 s = aabb.getSize();
-	//	std::cout << s.x << " " << s.y << " " << s.z << std::endl;
-	//	float scale = 1.0f / glm::max(glm::max(s.x, s.y), s.z);
-	//	std::cout << "scale: " << scale << std::endl;
-
-	//	float x = i % 10 * 2;
-	//	float y = i / 10 * 2;
-	//	float z = 0;
-
-	//	rootTransform->setPosition(glm::vec3(x, y, z));
-	//	rootTransform->setScale(glm::vec3(scale));
-
-	//	rootEntitis.push_back(root);
-	//	auto children = importer.getEntities();
-	//	entities.insert(entities.end(), children.begin(), children.end());
-	//}
+	for (auto [_, e] : rootEntitis)
+	{
+		auto animator = e->getComponent<Animator>();
+		if (animator)
+			animator->play();
+	}
 
 	cameraUBO.bindBase(0);
-	 
-	loadGLTFModels(path);
 
-	//root->getComponent<Transform>()->update(glm::mat4(1.0f));
+	initFonts();
 
-	//IO::ModelImporter importer;
-	//auto rootEntity = importer.importModel(path + "/" + fn);
-	//rootEntitis.push_back(rootEntity);
-	//entities = importer.getEntities();
-	//importer.clear();
-	 
 	return true;
-}
-
-void Renderer::initShader()
-{
-	std::string shaderPath = "../../src/Shaders";
-	auto shaderList = IO::loadShadersFromPath(shaderPath);
-	for (auto s : shaderList)
-		shaders.insert(std::pair(s->getName(), s));
-	defaultShader = shaders["Default"];
-	defaultShader->setUniform("material.baseColorFactor", glm::vec4(1.0f));
-	defaultShader->setUniform("material.alphaCutOff", 0.0f);
-	defaultShader->setUniform("material.baseColorTex", 0);
-	defaultShader->setUniform("material.pbrTex", 1);
-	defaultShader->setUniform("material.normalTex", 2);
-	defaultShader->setUniform("material.occlusionTex", 3);
-	defaultShader->setUniform("material.emissiveTex", 4);
-
-	defaultShader->setUniform("irradianceMap", 5);
-	defaultShader->setUniform("specularMap", 6);
-	defaultShader->setUniform("brdfLUT", 7);
-
-	skyboxShader = shaders["Skybox"];
-	skyboxShader->setUniform("envMap", 0);
 }
 
 void Renderer::initEnvMaps()
@@ -226,13 +106,8 @@ void Renderer::initEnvMaps()
 
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
-	std::string assetPath = "E:/Seafile/Assets/EnvMaps";
-	//auto pano = IO::loadTextureHDR(assetPath + "/Factory_Catwalk/Factory_Catwalk_2k.hdr");
+	std::string assetPath = "../../assets";
 	auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
-	//auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
-
-	//auto pano = IO::loadTextureHDR(assetPath + "/blaubeuren_outskirts_16k.hdr");
-	//auto pano = IO::loadTextureHDR(assetPath + "/office.hdr");
 
 	glm::vec3 position = glm::vec3(0);
 	std::vector<glm::mat4> VP;
@@ -289,7 +164,7 @@ void Renderer::initEnvMaps()
 	specularShader->use();
 
 	{
-		int size = 256;
+		int size = 1024;
 		specularMap = TextureCubeMap::create(size, size, GL::RGB32F);
 		specularMap->generateMipmaps();
 		specularMap->setFilter(GL::LINEAR_MIPMAP_LINEAR);
@@ -329,7 +204,159 @@ void Renderer::initEnvMaps()
 		brdfFBO->end();
 	}
 
-	glViewport(0, 0, 1280, 720);
+	glViewport(0, 0, width, height);
+}
+
+void Renderer::initFBOs()
+{
+	for (auto it : lights)
+	{
+		auto light = it.second;
+
+		glm::vec3 pos = light->position;
+		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 25.0f);
+		std::vector<glm::mat4> VP;
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+		views.push_back(VP);
+
+		const unsigned int size = 4096;
+		auto shadowMap = TextureCubeMap::create(size, size, GL::DEPTH24);
+		shadowMap->setCompareMode();
+
+		auto shadowFBO = Framebuffer::create(size, size);
+		shadowFBO->addRenderTexture(GL::DEPTH, shadowMap);
+		shadowFBO->checkStatus();
+		shadowFBOs.push_back(shadowFBO);
+	}
+}
+
+void Renderer::initLights()
+{
+	std::default_random_engine gen;
+	std::uniform_real_distribution<float> distX(-2.0f, 2.0f);
+	std::uniform_real_distribution<float> distY(2.0f, 2.0f);
+	std::uniform_real_distribution<float> distZ(-2.0f, 2.0f);
+
+	int numLights = 1;
+	for (int i = 0; i < numLights; i++)
+	{
+		float x = distX(gen);
+		float y = distY(gen);
+		float z = distZ(gen);
+		auto light = Light::create(glm::vec3(x, y, z), glm::vec3(0.25f, 0.61f, 1.0f));
+		std::string lightName = "light_" + std::to_string(i);
+		lights.insert(std::make_pair(lightName, light));
+	}
+
+	int i = 0;
+	std::vector<Light::UniformData> lightData(lights.size()); 
+	for (auto it : lights)
+	{
+		it.second->writeUniformData(lightData[i]);
+		i++;
+	}
+
+	std::cout << "created " << lights.size() << " lights" << std::endl;
+
+	lightUBO.upload(lightData, GL_DYNAMIC_DRAW);
+	lightUBO.bindBase(1);
+}
+
+void Renderer::initShader()
+{
+	std::string shaderPath = "../../src/Shaders";
+	auto shaderList = IO::loadShadersFromPath(shaderPath);
+	for (auto s : shaderList)
+		shaders.insert(std::pair(s->getName(), s));
+	defaultShader = shaders["Default"];
+	defaultShader->setUniform("material.baseColorFactor", glm::vec4(1.0f));
+	defaultShader->setUniform("material.alphaCutOff", 0.0f);
+	defaultShader->setUniform("material.baseColorTex", 0);
+	defaultShader->setUniform("material.pbrTex", 1);
+	defaultShader->setUniform("material.normalTex", 2);
+	defaultShader->setUniform("material.occlusionTex", 3);
+	defaultShader->setUniform("material.emissiveTex", 4);
+	defaultShader->setUniform("irradianceMap", 5);
+	defaultShader->setUniform("specularMap", 6);
+	defaultShader->setUniform("brdfLUT", 7);
+
+	std::vector<int> units;
+	for (int i = 10; i < 20; i++)
+		units.push_back(i);
+	defaultShader->setUniform("shadowMaps[0]", units);
+	defaultShader->setUniform("numLights", (int)lights.size());
+
+	skyboxShader = shaders["Skybox"];
+	skyboxShader->setUniform("envMap", 0);
+
+	textShader = shaders["Text"];
+	textShader->setUniform("P", glm::ortho(0.0f, (float)width, 0.0f, (float)height));
+	textShader->setUniform("atlas", 0);
+
+	auto unlitShader = shaders["Unlit"];
+	unlitShader->setUniform("orthoProjection", false);
+	unlitShader->setUniform("useTex", true);
+}
+
+void Renderer::initFonts()
+{
+	FT_Library ft;
+	FT_Init_FreeType(&ft);
+
+	std::vector<std::string> fileNames;
+	fileNames.push_back("../../assets/fonts/arial.ttf");
+	fileNames.push_back("../../assets/fonts/arialbd.ttf");
+	fileNames.push_back("../../assets/fonts/ariali.ttf");
+	fileNames.push_back("../../assets/fonts/arialbi.ttf");
+	fonts.push_back(Font::Ptr(new Font(ft, fileNames, 11, 60)));
+
+	fileNames.clear();
+	fileNames.push_back("../../assets/fonts/times.ttf");
+	fileNames.push_back("../../assets/fonts/timesbd.ttf");
+	fileNames.push_back("../../assets/fonts/timesi.ttf");
+	fileNames.push_back("../../assets/fonts/timesbi.ttf");
+	fonts.push_back(Font::Ptr(new Font(ft, fileNames, 11, 60)));
+
+	FT_Done_FreeType(ft);
+
+	std::string resStr = "Resolution: " + std::to_string(width) + "x" + std::to_string(height);
+	std::string nameStr = "Animation index: 0";
+	std::string lightStr = "Lights: " + std::to_string(lights.size());
+
+	glm::vec3 textColor(0.2f, 0.5f, 0.9f);
+	int fontSize = 48;
+
+	Text2D::Ptr text1(new Text2D(fonts[0], resStr, textColor, glm::vec2(25.0f, 175.0f), fontSize));
+	Text2D::Ptr text2(new Text2D(fonts[0], nameStr, textColor, glm::vec2(25.0f, 125.0f), fontSize));
+	Text2D::Ptr text3(new Text2D(fonts[0], lightStr, textColor, glm::vec2(25.0f, 75.0f), fontSize));
+	Text2D::Ptr text4(new Text2D(fonts[0], "Font: Arial, Size 48", textColor, glm::vec2(25.0f), fontSize));
+	texts.push_back(text1);
+	texts.push_back(text2);
+	texts.push_back(text3);
+	texts.push_back(text4);
+}
+
+void Renderer::updateShadows()
+{
+	auto depthShader = shaders["DepthCubemap"];
+
+	// should be put in light class together with the updating
+	for (int i = 0; i < lights.size(); i++)
+	{
+		shadowFBOs[i]->begin();
+		glCullFace(GL_FRONT);
+		depthShader->use();
+		depthShader->setUniform("lightIndex", i);
+		depthShader->setUniform("VP[0]", views[i]);
+		renderScene(depthShader);
+		shadowFBOs[i]->end();
+		glCullFace(GL_BACK);
+	}
 }
 
 void Renderer::loadGLTFModels(std::string path)
@@ -347,6 +374,81 @@ void Renderer::loadGLTFModels(std::string path)
 	int i = 0;
 	std::vector<std::string> filenames;
 	for (auto &el : doc.GetArray())
+	{
+		std::string name(el.FindMember("name")->value.GetString());
+		auto it = el.FindMember("variants");
+		if (it != el.MemberEnd())
+		{
+			auto it2 = it->value.FindMember("glTF");
+			if (it2 != it->value.MemberEnd())
+			{
+				if (name.compare("RecursiveSkeletons") != 0)
+				{
+					std::cout << "loading model " << name << "...";
+					std::string fn = name + "/glTF/" + name + ".gltf";
+					auto rootEntity = importer.importModel(path + "/" + fn);
+					if (rootEntity != nullptr)
+					{
+						auto rootTransform = rootEntity->getComponent<Transform>();
+
+						rootEntity->update(glm::mat4(1.0f));
+
+						AABB aabb;
+						auto meshEntities = rootEntity->getChildrenWithComponent<Renderable>();
+						for (auto m : meshEntities)
+						{
+							auto r = m->getComponent<Renderable>();
+							auto t = m->getComponent<Transform>();
+							glm::mat4 M = t->getTransform();
+							auto vertices = r->getVertices();
+							for (auto& v : vertices)
+							{
+								glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0));
+								aabb.expand(pos);
+							}
+						}
+
+						glm::vec3 s = aabb.getSize();
+						float scale = 1.0f / glm::max(glm::max(s.x, s.y), s.z);
+
+						float x = i % 10 * 2;
+						float y = i / 10 * 2;
+						float z = 0;
+
+						rootTransform->setPosition(glm::vec3(x, y, z));
+						rootTransform->setScale(glm::vec3(scale));
+
+						rootEntitis.insert(std::make_pair(name, rootEntity));
+						//auto children = importer.getEntities();
+						//entities.insert(entities.end(), children.begin(), children.end());
+					}
+					importer.clear();
+					std::cout << "done!" << std::endl;
+				}
+			}
+		}
+
+		i++;
+		//if (i == 10)
+		//	break;
+	}
+}
+
+void Renderer::loadAssimpModels(std::string path)
+{
+	std::ifstream file(path + "/model-index.json");
+	std::stringstream ss;
+	ss << file.rdbuf();
+	std::string content = ss.str();
+
+	json::Document doc;
+	doc.Parse(content.c_str());
+
+	//IO::ModelImporter importer;
+	IO::GLTFImporter importer;
+	int i = 0;
+	std::vector<std::string> filenames;
+	for (auto& el : doc.GetArray())
 	{
 		std::string name(el.FindMember("name")->value.GetString());
 		auto it = el.FindMember("variants");
@@ -391,9 +493,9 @@ void Renderer::loadGLTFModels(std::string path)
 						rootTransform->setPosition(glm::vec3(x, y, z));
 						rootTransform->setScale(glm::vec3(scale));
 
-						rootEntitis.push_back(rootEntity);
-						auto children = importer.getEntities();
-						entities.insert(entities.end(), children.begin(), children.end());
+						rootEntitis.insert(std::make_pair(name, rootEntity));
+						//auto children = importer.getEntities();
+						//entities.insert(entities.end(), children.begin(), children.end());
 					}
 					importer.clear();
 					std::cout << "done!" << std::endl;
@@ -407,65 +509,55 @@ void Renderer::loadGLTFModels(std::string path)
 	}
 }
 
-void Renderer::loadModel(std::string path)
+void Renderer::loadModel(std::string name, std::string path)
 {
 	IO::GLTFImporter importer;
-	auto root = importer.importModel(path);
-	rootEntitis.push_back(root);
-	entities = importer.getEntities();
+	auto rootEntity = importer.importModel(path);
+	rootEntitis.insert(std::make_pair(name, rootEntity));
 	importer.clear();
+
+	auto rootTransform = rootEntity->getComponent<Transform>();
+	rootEntity->update(glm::mat4(1.0f));
+
+	AABB aabb;
+	auto meshEntities = rootEntity->getChildrenWithComponent<Renderable>();
+	for (auto m : meshEntities)
+	{
+		auto r = m->getComponent<Renderable>();
+		auto t = m->getComponent<Transform>();
+		glm::mat4 M = t->getTransform();
+		auto vertices = r->getVertices();
+		for (auto& v : vertices)
+		{
+			glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0));
+			aabb.expand(pos);
+		}
+	}
+
+	glm::vec3 s = aabb.getSize();
+	float scale = 1.0f / glm::max(glm::max(s.x, s.y), s.z);
+	rootTransform->setScale(glm::vec3(scale));
 }
 
 void Renderer::updateAnimations(float dt)
 {
-	if (rootEntitis.empty())
-		return;
-	//defaultShader->setUniform("hasAnimations", false); // TODO: put shader uniforms in render func
-	//std::cout << "update animation" << std::endl;
-	// apply transformations from animations
-	//auto rootEntity = rootEntitis[modelIndex];
-	for (auto rootEntity : rootEntitis)
+	for (auto [name, rootEntity] : rootEntitis)
 	{
-		// TODO: now there is only one animator per skin 
-		// but node based animations can have multiple!!! 
-		// fix this
-		auto animators = rootEntity->getChildrenWithComponent<Animator>();
-		if (animators.empty())
-		{
-			auto a = rootEntity->getComponent<Animator>();
-			//a->switchAnimation(modelIndex);
-			if(a)
-				a->update(dt);
-		}
-
-		for (auto e : animators)
-		{
-			auto a = e->getComponent<Animator>();
-			auto t = e->getComponent<Transform>();
-
+		auto animators = rootEntity->getComponentsInChildren<Animator>();
+		for (auto a : animators)
 			a->update(dt);
 
-			if (a->hasRiggedAnim())
-			{
-				auto boneTransforms = a->getBoneTransform();
-				auto normalTransforms = a->getNormalTransform();
-				//defaultShader->setUniform("bones[0]", boneTransforms);
-				//defaultShader->setUniform("normals[0]", normalTransforms);
-				//defaultShader->setUniform("hasAnimations", true);
-			}
-			else if (a->hasMorphAnim())
-			{
-				//glm::vec2 weights = a->getWeights();
-				//defaultShader->setUniform("w0", weights.x);
-				//defaultShader->setUniform("w1", weights.y);
-			}
-			else
-				a->transform(t);
-		}
-
-		// propagate the transformations trough the scene hirarchy
-		//rootEntity->getComponent<Transform>()->update(glm::mat4(1.0f));
 		rootEntity->update(glm::mat4(1.0f));
+	}
+}
+
+void Renderer::updateAnimationState(float dt)
+{
+	for (auto [name, e] : rootEntitis)
+	{
+		auto animator = e->getComponent<Animator>();
+		if (animator && animator->isFinished())
+			animator->play();
 	}
 }
 
@@ -478,12 +570,56 @@ void Renderer::updateCamera(Camera& camera)
 
 void Renderer::nextModel()
 {
-	//modelIndex = (++modelIndex) % (unsigned int)rootEntitis.size();
-	modelIndex = (++modelIndex) % 3;
+	modelIndex = (++modelIndex) % (unsigned int)rootEntitis.size();
+}
+
+void Renderer::renderScene(Shader::Ptr shader)
+{
+	if (rootEntitis.size() > 0)
+	{
+		for (auto [name, e] : rootEntitis)
+		{
+			auto models = e->getChildrenWithComponent<Renderable>();
+			auto animator = e->getComponent<Animator>();
+			std::vector<Entity::Ptr> renderEntities;
+			for (auto m : models)
+				if (!m->getComponent<Renderable>()->useBlending())
+					renderEntities.push_back(m);
+			for (auto m : models)
+				if (m->getComponent<Renderable>()->useBlending())
+					renderEntities.push_back(m);
+
+			for (auto m : renderEntities)
+			{
+				auto r = m->getComponent<Renderable>();
+				auto t = m->getComponent<Transform>();
+
+				if (r->isSkinnedMesh())
+				{
+					auto nodes = animator->getNodes();
+					Skin skin = r->getSkin();
+					skin.computeJoints(nodes);
+					auto boneTransforms = skin.getBoneTransform();
+					auto normalTransforms = skin.getNormalTransform();
+					shader->setUniform("hasAnimations", true);
+					shader->setUniform("bones[0]", boneTransforms);
+					shader->setUniform("normals[0]", normalTransforms);
+				}
+				else
+				{
+					shader->setUniform("hasAnimations", false);
+				}
+
+				t->setUniforms(shader);
+				r->render(shader);
+			}
+		}
+	}
 }
 
 void Renderer::render()
 {
+	glViewport(0, 0, width, height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	defaultShader->use();
@@ -492,85 +628,24 @@ void Renderer::render()
 	specularMap->use(6);
 	brdfLUT->use(7);
 
-	if (rootEntitis.size() > 0)
-	{
-		//auto e = rootEntitis[modelIndex];
-		for(auto e : rootEntitis)
-		{
-			auto animators = e->getChildrenWithComponent<Animator>();
-			if (animators.empty())
-			{
-				auto a = e->getComponent<Animator>();
-				if (a)
-				{
-					auto boneTransforms = a->getBoneTransform();
-					auto normalTransforms = a->getNormalTransform();
-					defaultShader->setUniform("hasAnimations", true);
-					defaultShader->setUniform("bones[0]", boneTransforms);
-					defaultShader->setUniform("normals[0]", normalTransforms);
-				}
-				else
-				{
-					defaultShader->setUniform("hasAnimations", false);
-				}
-			}
-			else
-			{
-				for (auto animEntity : animators)
-				{
-					auto a = animEntity->getComponent<Animator>();
-					if (a->hasRiggedAnim())
-					{
-						auto boneTransforms = a->getBoneTransform();
-						auto normalTransforms = a->getNormalTransform();
-						defaultShader->setUniform("hasAnimations", true);
-						defaultShader->setUniform("bones[0]", boneTransforms);
-						defaultShader->setUniform("normals[0]", normalTransforms);
-					}
-					else if (a->hasMorphAnim())
-					{
-						glm::vec2 weights = a->getWeights();
-						defaultShader->setUniform("w0", weights.x);
-						defaultShader->setUniform("w1", weights.y);
-					}
-					else
-						defaultShader->setUniform("hasAnimations", false);
-				}
-			}
+	for (int i = 0; i < shadowFBOs.size(); i++)
+		shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
+	renderScene(defaultShader);
 
-			// TODO: do depth/tansparent sorting
-			auto models = e->getChildrenWithComponent<Renderable>();
-			std::vector<Entity::Ptr> transparentEntities;
-			std::vector<Entity::Ptr> opaqueEntities;
-			for (auto m : models)
-			{
-				auto r = m->getComponent<Renderable>();
-				if (r->useBlending())
-					transparentEntities.push_back(m);
-				else
-					opaqueEntities.push_back(m);
-			}
-			for (auto m : opaqueEntities)
-			{
-				auto r = m->getComponent<Renderable>();
-				auto t = m->getComponent<Transform>();
-
-				t->setUniforms(defaultShader);
-				r->render(defaultShader);
-			}
-			for (auto m : transparentEntities)
-			{
-				auto r = m->getComponent<Renderable>();
-				auto t = m->getComponent<Transform>();
-
-				t->setUniforms(defaultShader);
-				r->render(defaultShader);
-			}
-		}
-	}
-
+	glCullFace(GL_FRONT);
 	skyboxShader->use();
 	cubeMap->use(0);
 	unitCube->draw();
+	glCullFace(GL_BACK);
+}
+
+void Renderer::renderText()
+{
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	textShader->use();
+	for (auto& textMesh : texts)
+		textMesh->draw(textShader);
+	glDisable(GL_BLEND);
 }

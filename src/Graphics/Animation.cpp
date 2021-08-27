@@ -1,6 +1,7 @@
 #include "Animation.h"
 
 #include <glm/gtc/matrix_inverse.hpp>
+#include <iostream>
 
 unsigned int Channel::findPosition(float currentTime)
 {
@@ -40,25 +41,23 @@ unsigned int Channel::findScaling(float currentTime)
 
 Animation::Animation() :
 	name(""),
-	duration(0.0f),
-	nodeIndex(0),
-	numBones(0)
+	currentTime(0.0f),
+	duration(0.0f)
 {
 
 }
 
-Animation::Animation(const std::string& name, float duration, unsigned int nodeIndex, unsigned int numBones) :
+Animation::Animation(const std::string& name, float duration) :
 	name(name),
-	duration(duration),
-	nodeIndex(nodeIndex),
-	numBones(numBones)
+	currentTime(0.0f),
+	duration(duration)
 {
 
 }
 
-void Animation::setBoneTree(BoneNode& root)
+Animation::~Animation()
 {
-	rootNode = root;
+	std::cout << "deleted Animation " << name << std::endl;
 }
 
 void Animation::addChannel(int index, Channel& channel)
@@ -66,13 +65,10 @@ void Animation::addChannel(int index, Channel& channel)
 	channels.insert(std::make_pair(index, channel));
 }
 
-glm::mat4 Animation::calcInterpPosition(int index)
+glm::vec3 Animation::calcInterpPosition(int index)
 {
 	if (channels.find(index) == channels.end())
-	{
-		//std::cout << "channel " << index << " not found" << std::endl;
-		return glm::mat4(1.0f);
-	}
+		return glm::vec3(0.0f);
 
 	glm::vec3 result(0.0f);
 	Channel& channel = channels[index];
@@ -80,7 +76,7 @@ glm::mat4 Animation::calcInterpPosition(int index)
 	{
 		result = channel.positions[0].second;
 	}
-	else if(channel.positions.size() > 1)
+	else if (channel.positions.size() > 1)
 	{
 		unsigned int positionIndex = channel.findPosition(currentTime);
 		unsigned int nextPositionIndex = positionIndex + 1;
@@ -90,17 +86,13 @@ glm::mat4 Animation::calcInterpPosition(int index)
 		glm::vec3 end = channel.positions[nextPositionIndex].second;
 		result = glm::mix(start, end, factor);
 	}
-	//pos = result;
-	return glm::translate(glm::mat4(1.0f), result);
+	return result;
 }
 
-glm::mat4 Animation::calcInterpRotation(int index)
+glm::quat Animation::calcInterpRotation(int index)
 {
 	if (channels.find(index) == channels.end())
-	{
-		//std::cout << "channel " << index << " not found" << std::endl;
-		return glm::mat4(1.0f);
-	}
+		return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 
 	glm::quat result(1.0f, 0.0f, 0.0f, 0.0f);
 	Channel& channel = channels[index];
@@ -108,7 +100,7 @@ glm::mat4 Animation::calcInterpRotation(int index)
 	{
 		result = channel.rotations[0].second;
 	}
-	else if(channel.rotations.size() > 1)
+	else if (channel.rotations.size() > 1)
 	{
 		unsigned int rotationIndex = channel.findRotation(currentTime);
 		unsigned int nextRotationIndex = rotationIndex + 1;
@@ -118,17 +110,13 @@ glm::mat4 Animation::calcInterpRotation(int index)
 		const glm::quat& end = channel.rotations[nextRotationIndex].second;
 		result = glm::slerp(start, end, factor);
 	}
-	//rot = result;
 	return glm::mat4_cast(result);
 }
 
-glm::mat4 Animation::calcInterpScaling(int index)
+glm::vec3 Animation::calcInterpScaling(int index)
 {
 	if (channels.find(index) == channels.end())
-	{
-		//std::cout << "channel " << index << " not found" << std::endl;
-		return glm::mat4(1.0f);
-	}
+		return glm::vec3(1.0f);
 
 	glm::vec3 result(1.0f);
 	Channel& channel = channels[index];
@@ -136,7 +124,7 @@ glm::mat4 Animation::calcInterpScaling(int index)
 	{
 		result = channel.scales[0].second;
 	}
-	else if(channel.scales.size() > 1)
+	else if (channel.scales.size() > 1)
 	{
 		unsigned int scaleIndex = channel.findScaling(currentTime);
 		unsigned int nextScaleIndex = scaleIndex + 1;
@@ -146,65 +134,52 @@ glm::mat4 Animation::calcInterpScaling(int index)
 		glm::vec3 end = channel.scales[nextScaleIndex].second;
 		result = glm::mix(start, end, factor);
 	}
-	//scale = result;
-	return glm::scale(glm::mat4(1.0f), result);
+	return result;
 }
 
-void Animation::readBoneTree(BoneNode& node, glm::mat4 parentTransform)
+void Animation::update(float dt, std::vector<Entity::Ptr>& nodes)
 {
-	//std::cout << "joint: " << node.boneIndex << std::endl;
-
-	glm::mat4 T = glm::translate(glm::mat4(1.0f), node.translation);
-	glm::mat4 R = glm::mat4_cast(node.rotation);
-	glm::mat4 S = glm::scale(glm::mat4(1.0f), node.scale);
-	glm::mat4 localTransform = T * R * S;
-	
-	if (channels.find(node.boneIndex) != channels.end())
+	// TODO: update the animation to the last keyframe
+	currentTime += dt;
+	if (currentTime > duration)
 	{
-		glm::mat4 translation = T;
-		if(!channels[node.boneIndex].positions.empty())
-			translation = calcInterpPosition(node.boneIndex);
-		glm::mat4 rotation = R;
-		if (!channels[node.boneIndex].rotations.empty())
-			rotation = calcInterpRotation(node.boneIndex);
-		glm::mat4 scale = S;
-		if (!channels[node.boneIndex].scales.empty())
-			scale = calcInterpScaling(node.boneIndex);
-		localTransform = translation * rotation * scale;
+		finished = true;
+		return;
+	}		
+
+	for (auto&& [nodeIndex, channel] : channels)
+	{
+		glm::vec3 translation = calcInterpPosition(nodeIndex);
+		glm::quat rotation = calcInterpRotation(nodeIndex);
+		glm::vec3 scale = calcInterpScaling(nodeIndex);
+		auto t = nodes[nodeIndex]->getComponent<Transform>();
+		if(!channel.positions.empty())
+			t->setPosition(translation);
+		if (!channel.rotations.empty())
+			t->setRotation(rotation);
+		if (!channel.scales.empty())
+			t->setScale(scale);
 	}
-
-	glm::mat4 globalTransform = parentTransform * localTransform;
-	glm::mat4 boneTransform = globalTransform * node.boneTransform;
-	glm::mat3 normalTransform = glm::inverseTranspose(glm::mat3(boneTransform));
-	//boneTransforms.push_back(boneTransform);
-	boneTransforms[node.jointIndex] = boneTransform;
-	normalTransforms[node.jointIndex] = normalTransform;
-
-	for (auto& c : node.children)
-		readBoneTree(c, globalTransform);
 }
 
-void Animation::update(float time)
+void Animation::reset()
 {
-	currentTime = fmodf(time, duration);
-
-	//boneTransforms.clear();
-	boneTransforms.resize(numBones);
-	normalTransforms.resize(numBones);
-	readBoneTree(rootNode, glm::mat4(1.0f));
+	currentTime = 0.0f;
+	finished = false;
 }
 
-std::vector<glm::mat4> Animation::getBoneTransform()
+bool Animation::isFinished()
 {
-	return boneTransforms;
+	return finished;
 }
 
-std::vector<glm::mat3> Animation::getNormalTransform()
+void Animation::print()
 {
-	return normalTransforms;
-}
-
-unsigned int Animation::getNodeIndex()
-{
-	return nodeIndex;
+	std::cout << "duration: " << duration << std::endl;
+	//for (auto&& [idx, ch] : channels)
+	//	std::cout << "target node index " << idx
+	//	<< " pos keys " << ch.positions.size()
+	//	<< " rot keys " << ch.rotations.size()
+	//	<< " scale keys " << ch.scales.size()
+	//	<< std::endl;
 }

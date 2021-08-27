@@ -42,6 +42,7 @@ public:
 
 	Mesh(const std::string& name, TriangleSurface& surface, unsigned int index);
 	~Mesh();
+	void flipWindingOrder();
 	void updatGeometry(TriangleSurface& surface);
 	unsigned int getMaterialIndex() { return materialIndex; }
 	void draw();

@@ -11,7 +11,7 @@
 #include <typeindex>
 #include <iostream>
 
-class Entity
+class Entity : public std::enable_shared_from_this<Entity>
 {
 private:
 	std::string name;
@@ -67,6 +67,9 @@ public:
 	std::vector<std::shared_ptr<T>> getComponentsInChildren()
 	{
 		std::vector<std::shared_ptr<T>> allComponents;
+		auto rootComponent = getComponent<T>();
+		if(rootComponent)
+			allComponents.push_back(rootComponent);
 		for (auto c : children)
 		{
 			auto component = c->getComponent<T>();
@@ -84,6 +87,8 @@ public:
 	std::vector<std::shared_ptr<Entity>> getChildrenWithComponent()
 	{
 		std::vector<std::shared_ptr<Entity>> entities;
+		if (getComponent<T>())
+			entities.push_back(shared_from_this());
 		for (auto c : children)
 		{
 			auto component = c->getComponent<T>();
@@ -156,6 +161,16 @@ public:
 	std::string getName() const
 	{
 		return name;
+	}
+
+	int numChildren()
+	{
+		return children.size();
+	}
+
+	std::shared_ptr<Entity> getChild(int index)
+	{
+		return children[index];
 	}
 
 	typedef std::shared_ptr<Entity> Ptr;

@@ -93,6 +93,25 @@ namespace IO
 		return fileNames;
 	}
 
+	std::vector<std::string> getAllDirNames(const std::string& path)
+	{
+		if (!fs::exists(path))
+			std::cout << "path " << path << " does not exist!" << std::endl;
+
+		if (!fs::is_directory(path))
+			std::cout << "path " << path << " is not a directory!" << std::endl;
+
+		std::vector<std::string> dirNames;
+		for (auto& file : fs::directory_iterator(path))
+		{
+			if (fs::is_directory(file))
+			{
+				dirNames.push_back(file.path().string());
+			}
+		}
+		return dirNames;
+	}
+
 	std::vector<Shader::Ptr> loadShadersFromPath(const std::string& path)
 	{
 		auto filenames = getAllFileNames(path); // check subdirectories...

@@ -27,6 +27,7 @@ public:
 	void setFilter(GL::TextureFilter filter);
 	void setWrap(GL::TextureWrap wrap);
 	void generateMipmaps();
+	void bind();
 	void use(GLuint unit);
 	GLuint getID();
 
@@ -49,6 +50,7 @@ public:
 	void upload(void** data);
 	void setFilter(GL::TextureFilter filter);
 	void setWrap(GL::TextureWrap wrap);
+	void setCompareMode();
 	void generateMipmaps();
 	void use(GLuint unit);
 	GLuint getID();

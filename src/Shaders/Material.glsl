@@ -25,7 +25,7 @@ struct PBRMetalRoughMaterial
 		vec4 baseColor = baseColorFactor;
 		if (useBaseColorTex)
 		{
-			baseColor = texture2D(baseColorTex, uv);
+			baseColor = baseColor * texture2D(baseColorTex, uv);
 			//baseColor = vec4(pow(texColor.rgb, vec3(2.2)), texColor.a);
 		}
 

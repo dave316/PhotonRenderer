@@ -7,34 +7,32 @@
 #include "Transform.h"
 
 #include <Graphics/Animation.h>
-#include <Graphics/NodeAnimation.h>
-#include <Graphics/MorphAnimation.h>
+#include <Graphics/Skin.h>
 
 
 
 class Animator : public Component
 {
 private:
+	std::vector<Entity::Ptr> nodes;
 	std::vector<Animation::Ptr> animations;
-	std::vector<NodeAnimation::Ptr> nodeAnims;
-	std::vector<MorphAnimation::Ptr> morphAnims;
+	bool playing = false;
 	unsigned int currentAnimation = 0;
-	
+	unsigned int numBones = 0;
+
 public:
 	Animator() {}
-	void setSkin(BoneNode& node);
+	void setNodes(std::vector<Entity::Ptr>& nodes);
 	void addAnimation(Animation::Ptr animation);
-	void addNodeAnim(NodeAnimation::Ptr animation);
-	void addMorphAnim(MorphAnimation::Ptr animation);
 	void update(float dt);
+	void play();
+	void stop();
 	void switchAnimation(unsigned int index);
-	void transform(Transform::Ptr transform);
-	bool hasMorphAnim();
-	bool hasRiggedAnim();
-	glm::vec2 getWeights();
-	std::vector<glm::mat4> getBoneTransform();
-	std::vector<glm::mat3> getNormalTransform();
-
+	int numAnimations();
+	bool isFinished();
+	void clear();
+	void printInfo();
+	std::vector<Entity::Ptr> getNodes();
 	typedef std::shared_ptr<Animator> Ptr;
 	static Ptr create()
 	{

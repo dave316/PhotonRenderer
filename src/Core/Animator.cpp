@@ -1,9 +1,8 @@
 #include "Animator.h"
 
-void Animator::setSkin(BoneNode& node)
+void Animator::setNodes(std::vector<Entity::Ptr>& nodes)
 {
-	for (auto anim : animations)
-		anim->setBoneTree(node);
+	this->nodes = nodes;
 }
 
 void Animator::addAnimation(Animation::Ptr animation)
@@ -11,79 +10,55 @@ void Animator::addAnimation(Animation::Ptr animation)
 	animations.push_back(animation);
 }
 
-void Animator::addNodeAnim(NodeAnimation::Ptr animation)
-{
-	nodeAnims.push_back(animation);
-}
-
-void Animator::addMorphAnim(MorphAnimation::Ptr animation)
-{
-	morphAnims.push_back(animation);
-}
-
 void Animator::update(float dt)
 {
-	if (currentAnimation < animations.size())
-		animations[currentAnimation]->update(dt);
+	if (playing)
+	{
+		auto anim = animations[currentAnimation];
+		anim->update(dt, nodes);
+	}
+}
 
-	if (currentAnimation < nodeAnims.size())
-		nodeAnims[currentAnimation]->update(dt);
+void Animator::play()
+{
+	animations[currentAnimation]->reset();
+	playing = true;
+}
 
-	if (currentAnimation < morphAnims.size())
-		morphAnims[currentAnimation]->update(dt);
+void Animator::stop()
+{
+	animations[currentAnimation]->reset();
+	playing = false;
+}
+
+bool Animator::isFinished()
+{
+	return animations[currentAnimation]->isFinished();
 }
 
 void Animator::switchAnimation(unsigned int index)
 {
-	// TODO: implement this proberly...
 	if (index < animations.size())
 		currentAnimation = index;
 }
 
-void Animator::transform(Transform::Ptr transform)
+int Animator::numAnimations()
 {
-	if (currentAnimation < nodeAnims.size())
-	{
-		auto anim = nodeAnims[currentAnimation];
-		if (anim->hasPositions())
-			transform->setPosition(anim->getPos());
-		if (anim->hasRotations())
-			transform->setRotation(anim->getRot());
-		if (anim->hasScale())
-			transform->setScale(anim->getScale());
-	}
+	return animations.size();
 }
 
-bool Animator::hasMorphAnim()
+void Animator::clear()
 {
-	return (!morphAnims.empty());
+	nodes.clear();
 }
 
-bool Animator::hasRiggedAnim()
+void Animator::printInfo()
 {
-	return (!animations.empty());
+	for (int i = 0; i < animations.size(); i++)
+		animations[i]->print();
 }
 
-glm::vec2 Animator::getWeights()
+std::vector<Entity::Ptr> Animator::getNodes()
 {
-	glm::vec2 weights(0.0);
-	if (currentAnimation < morphAnims.size())
-		weights = morphAnims[currentAnimation]->getWeights();
-	return weights;
-}
-
-std::vector<glm::mat4> Animator::getBoneTransform()
-{
-	std::vector<glm::mat4> boneTransforms;
-	if (currentAnimation < animations.size())
-		boneTransforms = animations[currentAnimation]->getBoneTransform();
-	return boneTransforms;
-}
-
-std::vector<glm::mat3> Animator::getNormalTransform()
-{
-	std::vector<glm::mat3> normalTransforms;
-	if (currentAnimation < animations.size())
-		normalTransforms = animations[currentAnimation]->getNormalTransform();
-	return normalTransforms;
+	return nodes;
 }

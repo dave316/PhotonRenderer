@@ -9,6 +9,7 @@ namespace GL
 {
 	enum TextureFormat
 	{
+		R8,
 		RGB8,
 		RGBA8,
 		SRGB8,
@@ -54,6 +55,7 @@ namespace GL
 		GLint internalFormat;
 		switch (format)
 		{
+		case R8: internalFormat = GL_RED; break;
 		case RGB8:	internalFormat = GL_RGB8; break;
 		case RGBA8:	internalFormat = GL_RGBA8; break;
 		case SRGB8:	internalFormat = GL_SRGB8; break;
@@ -74,6 +76,9 @@ namespace GL
 		GLenum dataFormat = GL_RGB;
 		switch (format)
 		{
+		case R8:
+			dataFormat = GL_RED;
+			break;
 		case RG16F:
 			dataFormat = GL_RG;
 			break;
@@ -104,6 +109,7 @@ namespace GL
 		GLenum dataType;
 		switch (format)
 		{
+		case R8:
 		case RGB8:
 		case RGBA8:
 		case SRGB8:
@@ -212,6 +218,14 @@ namespace GL
 			//glTexParameteri(Target, GL_TEXTURE_WRAP_S, wrapMode);
 			//glTexParameteri(Target, GL_TEXTURE_WRAP_T, wrapMode);
 			//unbind();
+		}
+
+		void setCompareMode()
+		{
+			bind();
+			glTexParameteri(Target, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+			glTexParameteri(Target, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+			unbind();
 		}
 
 		void generateMipmaps()

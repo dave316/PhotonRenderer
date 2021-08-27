@@ -10,15 +10,39 @@ layout(location = 0) out vec4 fragColor;
 
 #include "Camera.glsl"
 #include "Material.glsl"
+#include "Light.glsl"
 #include "BRDF.glsl"
-
-//uniform vec3 cameraPos;
 
 uniform samplerCube irradianceMap;
 uniform samplerCube specularMap;
 uniform sampler2D brdfLUT;
-
 uniform bool useSpecGlossMat = false;
+uniform int numLights;
+
+float getShadow(unsigned int index)
+{
+	Light light = lights[index];
+	vec3 f = wPosition - light.position;
+	float len = length(f);
+	float shadow = 0.0;
+	//float radius = 0.002;
+	float radius = 0.0015;
+	float depth = (len / 25.0) - 0.0005;
+
+	for(int x = -1; x <= 1; x++)
+	{
+		for(int y = -1; y <= 1; y++)
+		{
+			for(int z = -1; z <= 1; z++)
+			{
+				vec3 offset = vec3(x, y, z);
+				vec3 uvw = f + offset * radius;
+				shadow += texture(shadowMaps[index], vec4(uvw, depth));
+			}
+		}
+	}
+	return shadow / 27.0;
+}
 
 void main()
 {
@@ -73,26 +97,14 @@ void main()
 		vec3 tNormal = texture2D(material.normalTex, texCoord).rgb * 2.0 - 1.0;
 		n = normalize(wTBN * tNormal);
 	}
+	if(gl_FrontFacing == false)
+		n = -n;
 
-	vec3 lightPos = camera.position;
-//	vec3 lightPos = vec3(0,100,0);
-	vec3 l = normalize(lightPos - wPosition);
 	vec3 v = normalize(camera.position - wPosition);
-	vec3 h = normalize(l + v);
 	vec3 r = normalize(reflect(-v, n));
-
-	float NdotL = max(dot(n, l), 0.0);
 	float NdotV = max(dot(n, v), 0.0);
-	float NdotH = max(dot(n, h), 0.0);
-	float HdotV = max(dot(h, v), 0.0);
-	
-	vec3 F = F_Schlick(HdotV, F0);
 
-	vec3 lambert = c_diff;
-	vec3 f_diff  = (vec3(1.0) - F) * lambert;
-	vec3 f_spec = CookTorrance(F0, n, l, v, alpha);
-	vec3 lo = (f_diff + f_spec) * NdotL;
-		
+	// ambient light
 	vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
 	vec3 kD = (vec3(1.0) - F_ambient);
 
@@ -104,12 +116,40 @@ void main()
 	vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
 	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
 
-	vec3 ambient = (kD * diffuse + specular) * ao;
+	vec3 ambient = (kD * diffuse + specular) * ao; // TODO: fix ao baked in PBR texture
+
+	// direct light (diffuse+specular)
+	vec3 lo = vec3(0);
+	for(int i = 0; i < numLights; i++)
+	{
+		//vec3 lightPos = camera.position;
+		vec3 lightPos = lights[i].position;
+		vec3 l = normalize(lightPos - wPosition);
+		vec3 h = normalize(l + v);
+
+		float NdotL = max(dot(n, l), 0.0); 
+		float NdotH = max(dot(n, h), 0.0);
+		float HdotV = max(dot(h, v), 0.0);
 	
-	vec3 intensity = emission + ambient;// + lo;
-	float exposure = 1.0;
-	intensity = vec3(1.0) - exp(-intensity * exposure);
-	//color = color / (1.0 + color);
+		vec3 F = F_Schlick(HdotV, F0);
+
+		vec3 lambert = c_diff;
+		vec3 f_diff  = (vec3(1.0) - F) * lambert;
+		vec3 f_spec = CookTorrance(F0, n, l, v, alpha);
+		float shadow = getShadow(i); 
+		float d = length(wPosition - lightPos);
+		float att = clamp(1.0 - (d / 50.0), 0.0, 1.0);
+		float attenuation = att * att;
+		lo += (f_diff + f_spec) * lights[i].color * shadow * NdotL;
+	}
+	
+	lo /= float(numLights);
+	vec3 intensity = emission + ambient + lo;
+
+	//float exposure = 1.5; 
+	//intensity = vec3(1.0) - exp(-intensity * exposure); // EV
+	//intensity = intensity / (1.0 + intensity);			// reinhard
+
 	intensity = pow(intensity, vec3(1.0 / 2.2));
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)

@@ -7,6 +7,7 @@
 
 #include <Graphics/Material.h>
 #include <Graphics/Mesh.h>
+#include <Graphics/Skin.h>
 #include <Graphics/Shader.h>
 
 struct Primitive
@@ -18,15 +19,23 @@ struct Primitive
 class Renderable : public Component
 {
 	std::vector<Primitive> primitives;
+	std::string name;
+	Skin skin;
+	bool skinnedMesh = false;
 		
 public:
 	Renderable() {}
 	~Renderable();
-	void addMesh(Mesh::Ptr mesh, Material::Ptr material);
+	void addMesh(std::string name, Mesh::Ptr mesh, Material::Ptr material);
 	void render(Shader::Ptr shader);
 	void print();
+	void flipWindingOrder();
+	void setSkin(Skin& skin);
+	bool isSkinnedMesh();
 	bool useBlending();
+	std::string getName();
 	std::vector<Vertex> getVertices();
+	Skin getSkin();
 	typedef std::shared_ptr<Renderable> Ptr;
 	static Ptr create()
 	{

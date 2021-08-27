@@ -42,6 +42,12 @@ Mesh::~Mesh()
 	//std::cout << "mesh " << name << " destroyed" << std::endl;
 }
 
+void Mesh::flipWindingOrder()
+{
+	surface.flipWindingOrder();
+	updatGeometry(surface);
+}
+
 void Mesh::updatGeometry(TriangleSurface& surface)
 {
 	this->surface = surface;

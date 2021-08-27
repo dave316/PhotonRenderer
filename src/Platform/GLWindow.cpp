@@ -13,9 +13,12 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 		return;
 	}
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_DEPTH_BITS, GL_TRUE);
+	//glfwWindowHint(GLFW_DOUBLEBUFFER, GL_FALSE);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_SAMPLES, 4);
 
 	window = glfwCreateWindow(width, height, title, nullptr, nullptr);
@@ -26,7 +29,7 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 	}
 
 	glfwMakeContextCurrent(window);
-	glfwSwapInterval(1);
+	glfwSwapInterval(0);
 
 	glewExperimental = true;
 	if (glewInit() != GLEW_NO_ERROR)
