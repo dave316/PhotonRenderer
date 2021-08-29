@@ -3,8 +3,11 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <iostream>
 
-unsigned int Channel::findPosition(float currentTime)
+int Channel::findPosition(float currentTime)
 {
+	if (currentTime < positions[0].first)
+		return -1;
+
 	for (int i = 0; i < positions.size() - 1; i++)
 	{
 		if (currentTime < positions[i + 1].first)
@@ -12,11 +15,14 @@ unsigned int Channel::findPosition(float currentTime)
 			return i;
 		}
 	}
-	return 0;
+	return -1;
 }
 
-unsigned int Channel::findRotation(float currentTime)
+int Channel::findRotation(float currentTime)
 {
+	if (currentTime < rotations[0].first)
+		return -1;
+
 	for (int i = 0; i < rotations.size() - 1; i++)
 	{
 		if (currentTime < rotations[i + 1].first)
@@ -24,11 +30,15 @@ unsigned int Channel::findRotation(float currentTime)
 			return i;
 		}
 	}
-	return 0;
+
+	return -1;
 }
 
-unsigned int Channel::findScaling(float currentTime)
+int Channel::findScaling(float currentTime)
 {
+	if (currentTime < scales[0].first)
+		return -1;
+
 	for (int i = 0; i < scales.size() - 1; i++)
 	{
 		if (currentTime < scales[i + 1].first)
@@ -36,7 +46,7 @@ unsigned int Channel::findScaling(float currentTime)
 			return i;
 		}
 	}
-	return 0;
+	return -1;
 }
 
 Animation::Animation() :
@@ -78,8 +88,10 @@ glm::vec3 Animation::calcInterpPosition(int index)
 	}
 	else if (channel.positions.size() > 1)
 	{
-		unsigned int positionIndex = channel.findPosition(currentTime);
-		unsigned int nextPositionIndex = positionIndex + 1;
+		int positionIndex = channel.findPosition(currentTime);
+		if (positionIndex < 0)
+			return channel.positions[0].second;
+		int nextPositionIndex = positionIndex + 1;
 		float deltaTime = channel.positions[nextPositionIndex].first - channel.positions[positionIndex].first;
 		float factor = (currentTime - channel.positions[positionIndex].first) / deltaTime;
 		glm::vec3 start = channel.positions[positionIndex].second;
@@ -102,8 +114,10 @@ glm::quat Animation::calcInterpRotation(int index)
 	}
 	else if (channel.rotations.size() > 1)
 	{
-		unsigned int rotationIndex = channel.findRotation(currentTime);
-		unsigned int nextRotationIndex = rotationIndex + 1;
+		int rotationIndex = channel.findRotation(currentTime);
+		if (rotationIndex < 0)
+			return channel.rotations[0].second;
+		int nextRotationIndex = rotationIndex + 1;
 		float deltaTime = channel.rotations[nextRotationIndex].first - channel.rotations[rotationIndex].first;
 		float factor = (currentTime - channel.rotations[rotationIndex].first) / deltaTime;
 		const glm::quat& start = channel.rotations[rotationIndex].second;
@@ -126,8 +140,10 @@ glm::vec3 Animation::calcInterpScaling(int index)
 	}
 	else if (channel.scales.size() > 1)
 	{
-		unsigned int scaleIndex = channel.findScaling(currentTime);
-		unsigned int nextScaleIndex = scaleIndex + 1;
+		int scaleIndex = channel.findScaling(currentTime);
+		if (scaleIndex < 0)
+			return channel.scales[0].second;
+		int nextScaleIndex = scaleIndex + 1;
 		float deltaTime = channel.scales[nextScaleIndex].first - channel.scales[scaleIndex].first;
 		float factor = (currentTime - channel.scales[scaleIndex].first) / deltaTime;
 		glm::vec3 start = channel.scales[scaleIndex].second;

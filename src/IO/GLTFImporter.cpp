@@ -82,6 +82,11 @@ namespace IO
 			bufferView.buffer = bufferViewNode.FindMember("buffer")->value.GetInt();
 			if (bufferViewNode.HasMember("byteOffset"))
 				bufferView.byteOffset = bufferViewNode.FindMember("byteOffset")->value.GetInt();
+			if (bufferViewNode.HasMember("byteStride"))
+			{
+				bufferView.byteStride = bufferViewNode.FindMember("byteStride")->value.GetInt();
+				std::cout << "Byte stride: " << bufferView.byteStride << std::endl;
+			}
 			bufferView.byteLength = bufferViewNode.FindMember("byteLength")->value.GetInt();
 			//bufferView.target = bufferViewNode.FindMember("target")->value.GetInt(); 
 			bufferViews.push_back(bufferView);
@@ -347,6 +352,7 @@ namespace IO
 					std::vector<glm::vec3> scales;
 					loadData(input, times);
 					loadData(output, scales);
+
 					Channel& channel = channels[targetNodeIndex];
 					for (int i = 0; i < times.size(); i++)
 					{
@@ -355,12 +361,9 @@ namespace IO
 						channel.scales.push_back(std::make_pair(times[i], scales[i]));
 					}
 				}
-			}
+			}			
 
-			//std::cout << "minTime: " << minTime << " maxTime: " << maxTime << std::endl;
-
-			// Ok, so each animation can target multiple skins... need to store all skins in each animation for now
-			auto animation = Animation::create("blub", maxTime);
+			auto animation = Animation::create("animation", maxTime);
 			for (auto it : channels)
 				animation->addChannel(it.first, it.second);
 			animations.push_back(animation);
@@ -679,6 +682,13 @@ namespace IO
 				std::string name = materialNode["name"].GetString();
 				//std::cout << "loading material " << name << std::endl;
 			}
+			if (materialNode.HasMember("doubleSided"))
+			{
+				bool doubleSided = materialNode["doubleSided"].GetBool();
+				material->setDoubleSided(doubleSided);
+
+				std::cout << "material doubleSided: " << doubleSided << std::endl;
+			}
 			std::string alphaMode = "OPAQUE";
 			int alphaModeEnum = 0;
 			if (materialNode.HasMember("alphaMode"))
@@ -906,6 +916,11 @@ namespace IO
 			if (imagesNode.HasMember("uri"))
 			{
 				std::string filename = imagesNode["uri"].GetString();
+
+				int index; // TODO: add proper parsing of URIs
+				while ((index = filename.find("%20")) >= 0)
+					filename.replace(index, 3, " ");
+
 				imageFiles.push_back(filename);
 			}
 			else

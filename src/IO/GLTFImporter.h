@@ -30,6 +30,7 @@ namespace IO
 		{
 			int buffer;
 			int byteOffset = 0;
+			int byteStride = 0;
 			int byteLength;
 			int target;
 		};
@@ -105,7 +106,19 @@ namespace IO
 			Buffer& buffer = buffers[bv.buffer];
 			int offset = bv.byteOffset + acc.byteOffset;
 			data.resize(acc.count);
-			memcpy(data.data(), &buffer.data[offset], acc.count * sizeof(T));
+
+			if (bv.byteStride > 0)
+			{
+				for (int i = 0; i < data.size(); i++)
+				{
+					memcpy(&data[i], &buffer.data[offset], sizeof(T));
+					offset += bv.byteStride;
+				}
+			}
+			else
+			{
+				memcpy(data.data(), &buffer.data[offset], acc.count * sizeof(T));
+			}
 		}
 
 	public:

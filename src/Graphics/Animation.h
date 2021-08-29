@@ -20,9 +20,9 @@ struct Channel
 	std::vector<std::pair<float, glm::quat>> rotations;
 	std::vector<std::pair<float, glm::vec3>> scales;
 
-	unsigned int findPosition(float currentTime);
-	unsigned int findRotation(float currentTime);
-	unsigned int findScaling(float currentTime);
+	int findPosition(float currentTime);
+	int findRotation(float currentTime);
+	int findScaling(float currentTime);
 	unsigned int nodeIndex;
 };
 

@@ -40,7 +40,10 @@ void Renderable::render(Shader::Ptr shader)
 
 	for (auto& p : primitives)
 	{
-		if (p.material->blend())
+		if (p.material->isDoubleSided())
+			glDisable(GL_CULL_FACE);
+
+		if (p.material->useBlending())
 		{
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -51,15 +54,21 @@ void Renderable::render(Shader::Ptr shader)
 		p.material->setUniforms(shader);
 		p.mesh->draw();
 
-		if (p.material->blend())
+		if (p.material->useBlending())
 			glDisable(GL_BLEND);
+
+		if (p.material->isDoubleSided())
+		{
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_BACK);
+		}
 	}
 }
 
 bool Renderable::useBlending()
 {
 	for (auto& p : primitives)
-		if (p.material->blend())
+		if (p.material->useBlending())
 			return true;
 	return false;
 }

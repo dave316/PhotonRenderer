@@ -57,7 +57,8 @@ class Material
 	//std::string name;
 	std::vector<Texture2D::Ptr> textures;
 	std::map<std::string, IProperty::Ptr> properties;
-	bool useBlending = false;
+	bool blending = false;
+	bool doubleSided = false;
 
 	Material(const Material&) = delete;
 	Material& operator=(const Material&) = delete;
@@ -76,13 +77,21 @@ public:
 		textures.push_back(texture);
 		properties[name] = Property<int>::create(name, index, true);
 	}
-	void setBlending(bool useBlending)
+	void setDoubleSided(bool doubleSided)
 	{
-		this->useBlending = useBlending;
+		this->doubleSided = doubleSided;
 	}
-	bool blend()
+	void setBlending(bool blending)
 	{
-		return useBlending;
+		this->blending = blending;
+	}
+	bool isDoubleSided()
+	{
+		return doubleSided;
+	}
+	bool useBlending()
+	{
+		return blending;
 	}
 
 	void setUniforms(Shader::Ptr shader);

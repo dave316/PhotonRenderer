@@ -26,8 +26,8 @@ float getShadow(unsigned int index)
 	float len = length(f);
 	float shadow = 0.0;
 	//float radius = 0.002;
-	float radius = 0.0015;
-	float depth = (len / 25.0) - 0.0005;
+	float radius = 0.0005;
+	float depth = (len / 25.0) - 0.00005;
 
 	for(int x = -1; x <= 1; x++)
 	{
@@ -117,6 +117,7 @@ void main()
 	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
 
 	vec3 ambient = (kD * diffuse + specular) * ao; // TODO: fix ao baked in PBR texture
+	//vec3 ambient = 0.05 * (kD * c_diff + (F_ambient * brdf.x + brdf.y)) * ao; // TODO: add constant ambient light
 
 	// direct light (diffuse+specular)
 	vec3 lo = vec3(0);
@@ -140,7 +141,7 @@ void main()
 		float d = length(wPosition - lightPos);
 		float att = clamp(1.0 - (d / 50.0), 0.0, 1.0);
 		float attenuation = att * att;
-		lo += (f_diff + f_spec) * lights[i].color * shadow * NdotL;
+		lo += (f_diff + f_spec) * lights[i].color * shadow * NdotL * attenuation;
 	}
 	
 	lo /= float(numLights);

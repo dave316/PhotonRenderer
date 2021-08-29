@@ -18,12 +18,21 @@ namespace IO
 		stbi_set_flip_vertically_on_load(false);
 		std::unique_ptr<unsigned char> data(stbi_load(filename.c_str(), &w, &h, &c, 0));
 
-		//int size = 256;
-		//unsigned int memSize = size * size * c;
-		//unsigned char* output = new unsigned char[memSize];
-		//stbir_resize_uint8(data.get(), w, h, 0, output, size, size, 0, c);
+		if ((w & (w - 1)) != 0 || (h & (h - 1)) != 0)
+		{
+			std::cout << "warning, texture is not power of 2!" << std::endl;
 
-		//std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
+			int size = 256; // TODO: find best size for texture
+			unsigned int memSize = size * size * c;
+			unsigned char* output = new unsigned char[memSize];
+			stbir_resize_uint8(data.get(), w, h, 0, output, size, size, 0, c);
+
+			data.reset(output);
+			w = size;
+			h = size;
+		}
+
+		std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
 
 		GL::TextureFormat format = GL::RGB8;
 		if (sRGB)
