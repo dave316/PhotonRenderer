@@ -13,7 +13,8 @@ namespace IO
 {
 	Texture2D::Ptr loadTexture(const std::string& filename, bool sRGB)
 	{
-		// TODO: check number of channels etc.
+		// TODO: handling of 1 and 2 channel images
+
 		int w, h, c;
 		stbi_set_flip_vertically_on_load(false);
 		std::unique_ptr<unsigned char> data(stbi_load(filename.c_str(), &w, &h, &c, 0));

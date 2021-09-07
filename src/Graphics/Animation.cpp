@@ -100,19 +100,56 @@ glm::vec3 Animation::calcInterpPosition(int index)
 	Channel& channel = channels[index];
 	if (channel.positions.size() == 1)
 	{
-		result = channel.positions[0].second;
+		result = channel.positions[0].second[0];
 	}
 	else if (channel.positions.size() > 1)
 	{
 		int positionIndex = channel.findPosition(currentTime);
 		if (positionIndex < 0)
-			return channel.positions[0].second;
+			return channel.positions[0].second[0];
 		int nextPositionIndex = positionIndex + 1;
 		float deltaTime = channel.positions[nextPositionIndex].first - channel.positions[positionIndex].first;
 		float factor = (currentTime - channel.positions[positionIndex].first) / deltaTime;
-		glm::vec3 start = channel.positions[positionIndex].second;
-		glm::vec3 end = channel.positions[nextPositionIndex].second;
-		result = glm::mix(start, end, factor);
+		glm::vec3 start = channel.positions[positionIndex].second[0];
+		glm::vec3 end = channel.positions[nextPositionIndex].second[0];
+
+		switch (channel.interpolation)
+		{
+		case Interpolation::STEP:
+			if (factor < 0.5f)
+				result = start;
+			else
+				result = end;
+			break;
+		case Interpolation::LINEAR:
+			result = glm::mix(start, end, factor);
+			break;
+		case Interpolation::CUBIC: // TODO: check out of bounds ....
+			glm::vec3 a_k1 = channel.positions[nextPositionIndex].second[0];
+			glm::vec3 v_k = channel.positions[positionIndex].second[1];
+			glm::vec3 v_k1 = channel.positions[nextPositionIndex].second[1];
+			glm::vec3 b_k = channel.positions[positionIndex].second[2];
+
+			float t_k = channel.positions[positionIndex].first;
+			float t_k1 = channel.positions[nextPositionIndex].first;
+			float t_current = currentTime;
+			float t = (t_current - t_k) / (t_k1 - t_k);
+			glm::vec3 p_0 = v_k;
+			glm::vec3 m_0 = (t_k1 - t_k) * b_k;
+			glm::vec3 p_1 = v_k1;
+			glm::vec3 m_1 = (t_k1 - t_k) * a_k1;
+
+			float t2 = t * t;
+			float t3 = t2 * t;
+			glm::vec3 p = (2 * t3 - 3 * t2 + 1) * p_0 +
+				(t3 - 2 * t2 + t) * m_0 +
+				(-2 * t3 + 3 * t2) * p_1 +
+				(t3 - t2) * m_1;
+
+			result = p;
+
+			break;
+		}
 	}
 	return result;
 }
@@ -126,19 +163,56 @@ glm::quat Animation::calcInterpRotation(int index)
 	Channel& channel = channels[index];
 	if (channel.rotations.size() == 1)
 	{
-		result = channel.rotations[0].second;
+		result = channel.rotations[0].second[0];
 	}
 	else if (channel.rotations.size() > 1)
 	{
 		int rotationIndex = channel.findRotation(currentTime);
 		if (rotationIndex < 0)
-			return channel.rotations[0].second;
+			return channel.rotations[0].second[0];
 		int nextRotationIndex = rotationIndex + 1;
 		float deltaTime = channel.rotations[nextRotationIndex].first - channel.rotations[rotationIndex].first;
 		float factor = (currentTime - channel.rotations[rotationIndex].first) / deltaTime;
-		const glm::quat& start = channel.rotations[rotationIndex].second;
-		const glm::quat& end = channel.rotations[nextRotationIndex].second;
-		result = glm::slerp(start, end, factor);
+		const glm::quat& start = channel.rotations[rotationIndex].second[0];
+		const glm::quat& end = channel.rotations[nextRotationIndex].second[0];
+		
+		switch (channel.interpolation)
+		{
+		case Interpolation::STEP:
+			if (factor < 0.5f)
+				result = start;
+			else
+				result = end;
+			break;
+		case Interpolation::LINEAR:
+			result = glm::slerp(start, end, factor);
+			break;
+		case Interpolation::CUBIC:
+			glm::quat a_k1 = channel.rotations[nextRotationIndex].second[0];
+			glm::quat v_k = channel.rotations[rotationIndex].second[1];
+			glm::quat v_k1 = channel.rotations[nextRotationIndex].second[1];
+			glm::quat b_k = channel.rotations[rotationIndex].second[2];
+
+			float t_k = channel.rotations[rotationIndex].first;
+			float t_k1 = channel.rotations[nextRotationIndex].first;
+			float t_current = currentTime;
+			float t = (t_current - t_k) / (t_k1 - t_k);
+			glm::quat p_0 = v_k;
+			glm::quat m_0 = (t_k1 - t_k) * b_k;
+			glm::quat p_1 = v_k1;
+			glm::quat m_1 = (t_k1 - t_k) * a_k1;
+
+			float t2 = t * t;
+			float t3 = t2 * t;
+			glm::quat q = (2 * t3 - 3 * t2 + 1) * p_0 +
+				(t3 - 2 * t2 + t) * m_0 +
+				(-2 * t3 + 3 * t2) * p_1 +
+				(t3 - t2) * m_1;
+
+			result = glm::normalize(q);
+
+			break;
+		}
 	}
 	return glm::mat4_cast(result);
 }
@@ -152,19 +226,56 @@ glm::vec3 Animation::calcInterpScaling(int index)
 	Channel& channel = channels[index];
 	if (channel.scales.size() == 1)
 	{
-		result = channel.scales[0].second;
+		result = channel.scales[0].second[0];
 	}
 	else if (channel.scales.size() > 1)
 	{
 		int scaleIndex = channel.findScaling(currentTime);
 		if (scaleIndex < 0)
-			return channel.scales[0].second;
+			return channel.scales[0].second[0];
 		int nextScaleIndex = scaleIndex + 1;
 		float deltaTime = channel.scales[nextScaleIndex].first - channel.scales[scaleIndex].first;
 		float factor = (currentTime - channel.scales[scaleIndex].first) / deltaTime;
-		glm::vec3 start = channel.scales[scaleIndex].second;
-		glm::vec3 end = channel.scales[nextScaleIndex].second;
-		result = glm::mix(start, end, factor);
+		glm::vec3 start = channel.scales[scaleIndex].second[0];
+		glm::vec3 end = channel.scales[nextScaleIndex].second[0];
+
+		switch (channel.interpolation)
+		{
+		case Interpolation::STEP:
+			if (factor < 0.5f)
+				result = start;
+			else
+				result = end;
+			break;
+		case Interpolation::LINEAR:
+			result = glm::mix(start, end, factor);
+			break;
+		case Interpolation::CUBIC:
+			glm::vec3 a_k1 = channel.scales[nextScaleIndex].second[0];
+			glm::vec3 v_k = channel.scales[scaleIndex].second[1];
+			glm::vec3 v_k1 = channel.scales[nextScaleIndex].second[1];
+			glm::vec3 b_k = channel.scales[scaleIndex].second[2];
+
+			float t_k = channel.scales[scaleIndex].first;
+			float t_k1 = channel.scales[nextScaleIndex].first;
+			float t_current = currentTime;
+			float t = (t_current - t_k) / (t_k1 - t_k);
+			glm::vec3 p_0 = v_k;
+			glm::vec3 m_0 = (t_k1 - t_k) * b_k;
+			glm::vec3 p_1 = v_k1;
+			glm::vec3 m_1 = (t_k1 - t_k) * a_k1;
+
+			float t2 = t * t;
+			float t3 = t2 * t;
+			glm::vec3 p = (2 * t3 - 3 * t2 + 1) * p_0 +
+				(t3 - 2 * t2 + t) * m_0 +
+				(-2 * t3 + 3 * t2) * p_1 +
+				(t3 - t2) * m_1;
+
+			result = p;
+
+			break;
+		}
 	}
 	return result;
 }

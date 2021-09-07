@@ -39,12 +39,16 @@ void Skin::computeJoints(std::vector<Entity::Ptr>& nodes)
 		jointMatrices.push_back(jointMatrix);
 		normalMatrices.push_back(normalMatrix);
 	}
-
 }
 
 int Skin::numJoints()
 {
 	return joints.size();
+}
+
+std::vector<int> Skin::getJoints()
+{
+	return joints;
 }
 
 std::vector<glm::mat4> Skin::getBoneTransform()

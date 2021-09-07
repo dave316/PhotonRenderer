@@ -91,9 +91,9 @@ public:
 			entities.push_back(shared_from_this());
 		for (auto c : children)
 		{
-			auto component = c->getComponent<T>();
-			if (component)
-				entities.push_back(c);
+			//auto component = c->getComponent<T>();
+			//if (component)
+			//	entities.push_back(c);
 
 			auto chiledEntities = c->getChildrenWithComponent<T>();
 			for (auto child : chiledEntities)

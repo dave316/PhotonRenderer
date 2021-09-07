@@ -283,20 +283,26 @@ namespace IO
 			{
 				float time = (float)node->mPositionKeys[j].mTime;
 				glm::vec3 pos(node->mPositionKeys[j].mValue.x, node->mPositionKeys[j].mValue.y, node->mPositionKeys[j].mValue.z);
-				channel.positions.push_back(std::pair<float, glm::vec3>(time, pos));
+				std::vector<glm::vec3> positions;
+				positions.push_back(pos);
+				channel.positions.push_back(std::make_pair(time, positions));
 			}
 			for (unsigned int j = 0; j < node->mNumRotationKeys; j++)
 			{
 				float time = (float)node->mRotationKeys[j].mTime;
 				aiQuaternion aiQuat = node->mRotationKeys[j].mValue;
 				glm::quat q(aiQuat.w, aiQuat.x, aiQuat.y, aiQuat.z);
-				channel.rotations.push_back(std::pair<float, glm::quat>(time, q));
+				std::vector<glm::quat> rotations;
+				rotations.push_back(q);
+				channel.rotations.push_back(std::make_pair(time, rotations));
 			}
 			for (unsigned int j = 0; j < node->mNumScalingKeys; j++)
 			{
 				float time = (float)node->mScalingKeys[j].mTime;
 				glm::vec3 scale(node->mScalingKeys[j].mValue.x, node->mScalingKeys[j].mValue.y, node->mScalingKeys[j].mValue.z);
-				channel.scales.push_back(std::pair<float, glm::vec3>(time, scale));
+				std::vector<glm::vec3> scales;
+				scales.push_back(scale);
+				channel.scales.push_back(std::make_pair(time, scales));
 			}
 
 			std::cout << i << " " << node->mNodeName.C_Str() << std::endl;

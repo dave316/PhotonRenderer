@@ -157,44 +157,43 @@ namespace GL
 			GLenum dataFormat = getDataFormat(format);
 			GLenum dataType = getDataType(format);
 
-			// TODO: add wrap & filtering methods
 			bind(); 
 			glTexImage2D(target, 0, internalFormat, width, height, 0, dataFormat, dataType, data);
 			unbind();
 		}
 
-		void setFilter(TextureFilter filter)
+		void setFilter(TextureFilter minFilter, TextureFilter magFilter)
 		{
-			GLint minFilter = GL_LINEAR;
-			GLint magFilter = GL_LINEAR;
+			//GLint minFilter = GL_LINEAR;
+			//GLint magFilter = GL_LINEAR;
 
-			switch (filter)
-			{
-			case TextureFilter::NEAREST:
-				minFilter = GL_NEAREST;
-				magFilter = GL_NEAREST;
-				break;
-			case TextureFilter::LINEAR:
-				minFilter = GL_LINEAR;
-				magFilter = GL_LINEAR;
-				break;
-			case TextureFilter::NEAREST_MIPMAP_NEAREST:
-				minFilter = GL_NEAREST_MIPMAP_NEAREST;
-				magFilter = GL_NEAREST;
-				break;
-			case TextureFilter::NEAREST_MIPMAP_LINEAR:
-				minFilter = GL_NEAREST_MIPMAP_LINEAR;
-				magFilter = GL_NEAREST;
-				break;
-			case TextureFilter::LINEAR_MIPMAP_NEAREST:
-				minFilter = GL_LINEAR_MIPMAP_NEAREST;
-				magFilter = GL_LINEAR;
-				break;
-			case TextureFilter::LINEAR_MIPMAP_LINEAR:
-				minFilter = GL_LINEAR_MIPMAP_LINEAR;
-				magFilter = GL_LINEAR;
-				break;
-			}
+			//switch (filter)
+			//{
+			//case TextureFilter::NEAREST:
+			//	minFilter = GL_NEAREST;
+			//	magFilter = GL_NEAREST;
+			//	break;
+			//case TextureFilter::LINEAR:
+			//	minFilter = GL_LINEAR;
+			//	magFilter = GL_LINEAR;
+			//	break;
+			//case TextureFilter::NEAREST_MIPMAP_NEAREST:
+			//	minFilter = GL_NEAREST_MIPMAP_NEAREST;
+			//	magFilter = GL_NEAREST;
+			//	break;
+			//case TextureFilter::NEAREST_MIPMAP_LINEAR:
+			//	minFilter = GL_NEAREST_MIPMAP_LINEAR;
+			//	magFilter = GL_NEAREST;
+			//	break;
+			//case TextureFilter::LINEAR_MIPMAP_NEAREST:
+			//	minFilter = GL_LINEAR_MIPMAP_NEAREST;
+			//	magFilter = GL_LINEAR;
+			//	break;
+			//case TextureFilter::LINEAR_MIPMAP_LINEAR:
+			//	minFilter = GL_LINEAR_MIPMAP_LINEAR;
+			//	magFilter = GL_LINEAR;
+			//	break;
+			//}
 
 			bind();
 			glTexParameteri(Target, GL_TEXTURE_MIN_FILTER, minFilter);
@@ -202,7 +201,7 @@ namespace GL
 			unbind();
 		}
 
-		void setWrap(TextureWrap wrap)
+		void setWrap(TextureWrap wrapS, TextureWrap wrapT, TextureWrap wrapR = TextureWrap::REPEAT)
 		{
 			//GLint wrapMode;
 
@@ -267,41 +266,41 @@ namespace GL
 	typedef Texture<GL_TEXTURE_2D_MULTISAMPLE_ARRAY> Texture2DMultisampleArray;
 
 	template<>
-	void Texture2D::setWrap(TextureWrap wrap)
+	void Texture2D::setWrap(TextureWrap wrapS, TextureWrap wrapT, TextureWrap)
 	{
-		GLint wrapMode = GL_REPEAT;
+		//GLint wrapMode = GL_REPEAT;
 
-		switch (wrap)
-		{
-		case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
-		case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
-		case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
-		case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
-		}
+		//switch (wrap)
+		//{
+		//case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
+		//case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
+		//case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
+		//case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
+		//}
 
 		glBindTexture(GL_TEXTURE_2D, id);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
 	template<>
-	void TextureCubeMap::setWrap(TextureWrap wrap)
+	void TextureCubeMap::setWrap(TextureWrap wrapS, TextureWrap wrapT, TextureWrap wrapR)
 	{
-		GLint wrapMode;
+		//GLint wrapMode;
 
-		switch (wrap)
-		{
-		case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
-		case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
-		case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
-		case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
-		}
+		//switch (wrap)
+		//{
+		//case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
+		//case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
+		//case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
+		//case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
+		//}
 
 		glBindTexture(GL_TEXTURE_CUBE_MAP, id);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, wrapMode);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, wrapMode);
-		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, wrapMode);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, wrapR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, wrapS);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, wrapT);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	}
 

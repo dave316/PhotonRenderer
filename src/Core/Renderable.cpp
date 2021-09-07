@@ -132,3 +132,8 @@ Skin Renderable::getSkin()
 {
 	return skin;
 }
+
+void Renderable::computeJoints(std::vector<Entity::Ptr>& nodes)
+{
+	skin.computeJoints(nodes);
+}

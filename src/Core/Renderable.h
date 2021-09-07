@@ -40,6 +40,7 @@ public:
 	std::string getName();
 	std::vector<float> getWeights();
 	std::vector<Vertex> getVertices();
+	void computeJoints(std::vector<Entity::Ptr>& nodes);
 	Skin getSkin();
 	typedef std::shared_ptr<Renderable> Ptr;
 	static Ptr create()

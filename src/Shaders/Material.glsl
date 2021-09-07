@@ -44,7 +44,7 @@ struct PBRMetalRoughMaterial
 	{
 		vec3 emission = emissiveFactor;
 		if (useEmissiveTex)
-			emission = texture2D(emissiveTex, emissiveUVIndex == 0 ? uv0 : uv1).rgb;
+			emission = emission * texture2D(emissiveTex, emissiveUVIndex == 0 ? uv0 : uv1).rgb;
 		return emission;
 	}
 

@@ -20,6 +20,7 @@ public:
 	void addJoint(int index, glm::mat4 ibm);
 	void computeJoints(std::vector<Entity::Ptr>& nodes);
 	int numJoints();
+	std::vector<int> getJoints();
 	std::vector<glm::mat4> getBoneTransform();
 	std::vector<glm::mat3> getNormalTransform();
 };

@@ -94,8 +94,8 @@ void Atlas::loadAtlas(FT_Face& face)
 
 	//texture.loadEmptyTexture(width, height, 8, GL::COLOR, GL::LINEAR, GL::CLAMP_TO_EDGE);
 	texture = Texture2D::create(width, height, GL::R8);
-	texture->setFilter(GL::LINEAR);
-	texture->setWrap(GL::CLAMP_TO_EDGE);
+	texture->setFilter(GL::LINEAR, GL::LINEAR);
+	texture->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
 	charList.resize(maxSize - minSize + 1, std::vector<CharInfo>(128));
 
 	int y = 0;

@@ -69,18 +69,18 @@ bool Renderer::init()
 
 	std::string assetPath = "../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "TextureLinearInterpolationTest";
-	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	std::string name = "InterpolationTest";
+	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 
-	//IO::AssimpImporter assImporter;
-	//auto model = assImporter.importModel(assetPath + "/plane.obj");
-	//model->getComponent<Transform>()->setPosition(glm::vec3(0,-0.5, 0));
-	//model->getComponent<Transform>()->setScale(glm::vec3(10.0f));
-	//if (model != nullptr)
-	//	rootEntitis.insert(std::make_pair("Aplane", model));
-	//assImporter.clear();
+	IO::AssimpImporter assImporter;
+	auto model = assImporter.importModel(assetPath + "/plane.obj");
+	model->getComponent<Transform>()->setPosition(glm::vec3(0,-0.5, 0));
+	model->getComponent<Transform>()->setScale(glm::vec3(10.0f));
+	if (model != nullptr)
+		rootEntitis.insert(std::make_pair("Aplane", model));
+	assImporter.clear();
 
-	loadGLTFModels(gltfPath);
+	//loadGLTFModels(gltfPath);
 	//loadAssimpModels(path);
 
 	for (auto [_, e] : rootEntitis)
@@ -133,7 +133,7 @@ void Renderer::initEnvMaps()
 		int size = 1024;
 		cubeMap = TextureCubeMap::create(size, size, GL::RGB32F);
 		cubeMap->generateMipmaps();
-		cubeMap->setFilter(GL::LINEAR_MIPMAP_LINEAR);
+		cubeMap->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
 
 		auto envFBO = Framebuffer::create(size, size);
 		envFBO->addRenderTexture(GL::COLOR0, cubeMap);
@@ -170,7 +170,7 @@ void Renderer::initEnvMaps()
 		int size = 1024;
 		specularMap = TextureCubeMap::create(size, size, GL::RGB32F);
 		specularMap->generateMipmaps();
-		specularMap->setFilter(GL::LINEAR_MIPMAP_LINEAR);
+		specularMap->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
 
 		auto specFBO = Framebuffer::create(size, size);
 		unsigned int maxMipLevel = 8;
@@ -197,7 +197,7 @@ void Renderer::initEnvMaps()
 	{
 		int size = 512;
 		brdfLUT = Texture2D::create(size, size, GL::RG16F);
-		brdfLUT->setWrap(GL::CLAMP_TO_EDGE);
+		brdfLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
 
 		integrateBRDFShader->use();
 		auto brdfFBO = Framebuffer::create(size, size);
@@ -386,7 +386,7 @@ void Renderer::loadGLTFModels(std::string path)
 			auto it2 = it->value.FindMember("glTF");
 			if (it2 != it->value.MemberEnd())
 			{
-				if (name.compare("RecursiveSkeletons") != 0)
+				if (name.compare("TextureEncodingTest") != 0)
 				{
 					std::cout << "loading model " << name << "...";
 					std::string fn = name + "/glTF/" + name + ".gltf";
@@ -592,6 +592,16 @@ void Renderer::renderScene(Shader::Ptr shader)
 			for (auto m : models)
 				if (m->getComponent<Renderable>()->useBlending())
 					renderEntities.push_back(m);
+
+			//for (auto m : renderEntities)
+			//{
+			//	auto r = m->getComponent<Renderable>();
+			//	if (r->isSkinnedMesh())
+			//	{
+			//		auto nodes = animator->getNodes();
+			//		r->computeJoints(nodes);
+			//	}
+			//}
 
 			for (auto m : renderEntities)
 			{

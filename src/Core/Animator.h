@@ -17,11 +17,12 @@ private:
 	std::vector<Entity::Ptr> nodes;
 	std::vector<Animation::Ptr> animations;
 	bool playing = false;
+	bool playAllAnimations = false;
 	unsigned int currentAnimation = 0;
 	unsigned int numBones = 0;
 
 public:
-	Animator() {}
+	Animator(bool playAllAnimations) : playAllAnimations(playAllAnimations) {}
 	void setNodes(std::vector<Entity::Ptr>& nodes);
 	void addAnimation(Animation::Ptr animation);
 	void update(float dt);
@@ -35,9 +36,9 @@ public:
 	std::vector<float> getWeights();
 	std::vector<Entity::Ptr> getNodes();
 	typedef std::shared_ptr<Animator> Ptr;
-	static Ptr create()
+	static Ptr create(bool playAllAnimations)
 	{
-		return std::make_shared<Animator>();
+		return std::make_shared<Animator>(playAllAnimations);
 	}
 
 };

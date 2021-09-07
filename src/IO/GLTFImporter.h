@@ -64,6 +64,21 @@ namespace IO
 			//glm::mat4 transform = glm::mat4(1.0f);
 		};
 
+		struct Sampler
+		{
+			int minFilter = GL::TextureFilter::LINEAR;
+			int magFilter = GL::TextureFilter::LINEAR;
+			int wrapS = GL::TextureWrap::REPEAT;
+			int wrapT = GL::TextureWrap::REPEAT;
+		};
+
+		struct TextureInfo
+		{
+			std::string filename;
+			Sampler sampler;
+		};
+		std::vector<TextureInfo> textures;
+
 		std::vector<Skin> skins;
 
 		// GLTF related data
@@ -72,31 +87,30 @@ namespace IO
 		std::vector<Accessor> accessors;
 		std::vector<GLTFNode> nodes;
 
-		//std::vector<Mesh::Ptr> meshes;
+		struct GLTFMesh
+		{
+			std::vector<Primitive> primitives;
+			std::vector<float> morphWeights;
+		};
+		std::vector<GLTFMesh> meshes;
+
 		std::vector<Material::Ptr> materials;
-		std::vector<Renderable::Ptr> renderables;
 		std::vector<Animator::Ptr> animators;
-		std::vector<Texture2D::Ptr> textures;
 		std::vector<Animation::Ptr> animations;
-		//std::vector<Animation::Ptr> animations;
-		//std::vector<NodeAnimation::Ptr> nodeAnims;
-		//std::map<int, NodeAnimation::Ptr> nodeAnims;
-		//std::vector<MorphAnimation::Ptr> morphAnims;
 		std::vector<Entity::Ptr> entities;
 
 		GLTFImporter(const GLTFImporter&) = delete;
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
 
 		void loadBuffers(const json::Document& doc, const std::string& path);
-		//void loadAnimations(const json::Document& doc);
 		void loadAnimations(const json::Document& doc);
 		void loadSkins(const json::Document& doc);
 		void loadMeshes(const json::Document& doc);
-		void loadMaterials(const json::Document& doc);
+		void loadMaterials(const json::Document& doc, const std::string& path);
 		void loadTextures(const json::Document& doc, const std::string& path);
 		Entity::Ptr loadScene(const json::Document& doc);
-		Entity::Ptr traverse(int nodeIndex, int& depth);
-		//void buildBoneTree(int nodeIndex, BoneNode& node, Skin& skin);
+		Entity::Ptr traverse(int nodeIndex);
+		Texture2D::Ptr loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB);
 
 		template<typename T>
 		void loadData(int accIndex, std::vector<T>& data)

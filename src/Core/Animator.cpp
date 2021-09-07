@@ -14,26 +14,63 @@ void Animator::update(float dt)
 {
 	if (playing)
 	{
-		auto anim = animations[currentAnimation];
-		anim->update(dt, nodes);
+		if (playAllAnimations)
+		{
+			for (auto a : animations)
+				a->update(dt, nodes);
+		}
+		else
+		{
+			auto anim = animations[currentAnimation];
+			anim->update(dt, nodes);
+		}
 	}
 }
 
 void Animator::play()
 {
-	animations[currentAnimation]->reset();
+	if (playAllAnimations)
+	{
+		for (auto a : animations)
+			a->reset();
+	}
+	else
+	{
+		animations[currentAnimation]->reset(); 
+	}
+	
 	playing = true;
 }
 
 void Animator::stop()
 {
-	animations[currentAnimation]->reset();
+	if (playAllAnimations)
+	{
+		for (auto a : animations)
+			a->reset();
+	}
+	else
+	{
+		animations[currentAnimation]->reset();
+	}
+	
 	playing = false;
 }
 
 bool Animator::isFinished()
 {
-	return animations[currentAnimation]->isFinished();
+	bool finished = true;
+	if (playAllAnimations)
+	{		
+		for (auto a : animations)
+			finished &= a->isFinished();
+	}
+	else
+	{
+		finished &= animations[currentAnimation]->isFinished();
+	}
+
+	return finished;
 }
 
 void Animator::switchAnimation(unsigned int index)

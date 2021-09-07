@@ -6,8 +6,8 @@ Texture2D::Texture2D(unsigned int width, unsigned int height, GL::TextureFormat 
 	format(format)
 {
 	texture.upload(nullptr, width, height, format);
-	texture.setFilter(GL::LINEAR);
-	texture.setWrap(GL::REPEAT);
+	texture.setFilter(GL::LINEAR, GL::LINEAR);
+	texture.setWrap(GL::REPEAT, GL::REPEAT);
 }
 
 void Texture2D::upload(void* data)
@@ -15,14 +15,14 @@ void Texture2D::upload(void* data)
 	texture.upload(data, width, height, format);
 }
 
-void Texture2D::setFilter(GL::TextureFilter filter)
+void Texture2D::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
 {
-	texture.setFilter(filter);
+	texture.setFilter(minFilter, magFilter);
 }
 
-void Texture2D::setWrap(GL::TextureWrap wrap)
+void Texture2D::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT)
 {
-	texture.setWrap(wrap);
+	texture.setWrap(wrapS, wrapT);
 }
 
 void Texture2D::generateMipmaps()
@@ -55,8 +55,8 @@ TextureCubeMap::TextureCubeMap(unsigned int width, unsigned int height, GL::Text
 	for (int f = 0; f < NUM_CUBEMAP_FACES; f++)
 		texture.upload(nullptr, width, height, format, GL::POS_X + f);
 
-	setFilter(GL::LINEAR);
-	setWrap(GL::CLAMP_TO_EDGE);
+	setFilter(GL::LINEAR, GL::LINEAR);
+	setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
 }
 
 void TextureCubeMap::upload(void** data)
@@ -67,14 +67,14 @@ void TextureCubeMap::upload(void** data)
 	}
 }
 
-void TextureCubeMap::setFilter(GL::TextureFilter filter)
+void TextureCubeMap::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
 {
-	texture.setFilter(filter);
+	texture.setFilter(minFilter, magFilter);
 }
 
-void TextureCubeMap::setWrap(GL::TextureWrap wrap)
+void TextureCubeMap::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR)
 {
-	texture.setWrap(wrap);
+	texture.setWrap(wrapS, wrapT, wrapR);
 }
 
 void TextureCubeMap::setCompareMode()

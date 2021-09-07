@@ -14,29 +14,30 @@
 #include <string>
 #include <vector>
 
+enum Interpolation
+{
+	STEP,
+	LINEAR,
+	CUBIC
+};
+
 struct Channel
 {
-	std::vector<std::pair<float, glm::vec3>> positions;
-	std::vector<std::pair<float, glm::quat>> rotations;
-	std::vector<std::pair<float, glm::vec3>> scales;
+	std::vector<std::pair<float, std::vector<glm::vec3>>> positions;
+	std::vector<std::pair<float, std::vector<glm::quat>>> rotations;
+	std::vector<std::pair<float, std::vector<glm::vec3>>> scales;
 	std::vector<std::pair<float, std::vector<float>>> weights;
 
 	int findPosition(float currentTime);
 	int findRotation(float currentTime);
 	int findScaling(float currentTime);
 	int findWeight(float currentTime);
-	unsigned int nodeIndex;
+
+	Interpolation interpolation = Interpolation::LINEAR;
 };
 
 class Animation
 {
-public:
-	enum Interpolation
-	{
-		STEP,
-		LINEAR,
-		CUBIC
-	};
 private:
 	std::string name;
 	std::map<int, Channel> channels;
