@@ -73,15 +73,32 @@ bool Renderable::useBlending()
 	return false;
 }
 
+// TODO: get whole array of morph weights
+std::vector<float> Renderable::getWeights()
+{
+	return morphWeights;
+}
+
 void Renderable::setSkin(Skin& skin)
 {
 	this->skin = skin;
 	skinnedMesh = true;
 }
 
+void Renderable::setMorphWeights(std::vector<float>& weights)
+{
+	this->morphWeights = weights;
+	morphTagets = true;
+}
+
 bool Renderable::isSkinnedMesh()
 {
 	return skinnedMesh;
+}
+
+bool Renderable::useMorphTargets()
+{
+	return morphTagets;
 }
 
 std::string Renderable::getName()

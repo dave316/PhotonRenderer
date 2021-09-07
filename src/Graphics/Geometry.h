@@ -1,6 +1,8 @@
 #ifndef INCLUDED_GEOMETRY
 #define INCLUDED_GEOMETRY
 
+#define MORPH_TARGETS
+
 #pragma once
 
 #include <glm/glm.hpp>
@@ -12,33 +14,47 @@ struct Vertex
 	glm::vec3 position;
 	glm::vec4 color;
 	glm::vec3 normal;
-	glm::vec2 texCoord;
+	glm::vec2 texCoord0;
+	glm::vec2 texCoord1;
 	glm::vec4 tangent;
 	glm::vec4 boneIDs;
 	glm::vec4 boneWeights;
-	//glm::vec3 targetPosition0;
-	//glm::vec3 targetNormal0;
-	//glm::vec3 targetTangent0;
-	//glm::vec3 targetPosition1;
-	//glm::vec3 targetNormal1;
-	//glm::vec3 targetTangent1;
+#ifdef MORPH_TARGETS
+	glm::vec3 targetPosition0;
+	glm::vec3 targetNormal0;
+	glm::vec3 targetTangent0;
+	glm::vec3 targetPosition1;
+	glm::vec3 targetNormal1;
+	glm::vec3 targetTangent1;
+#endif
+
 	Vertex(glm::vec3 position = glm::vec3(0), 
 		glm::vec4 color = glm::vec4(1.0f), 
 		glm::vec3 normal = glm::vec3(0), 
-		glm::vec2 texCoord = glm::vec2(0), 
+		glm::vec2 texCoord0 = glm::vec2(0),
+		glm::vec2 texCoord1 = glm::vec2(0),
 		glm::vec4 tangent = glm::vec4(0),
 		glm::vec4 boneIDs = glm::vec4(0),
-		glm::vec4 boneWeights = glm::vec4(0)) :
+		glm::vec4 boneWeights = glm::vec4(0)
+	):
 
 		position(position),
 		color(color),
 		normal(normal),
-		texCoord(texCoord),
+		texCoord0(texCoord0),
+		texCoord1(texCoord1),
 		tangent(tangent),
 		boneIDs(boneIDs),
 		boneWeights(boneWeights)
 	{
-
+#ifdef MORPH_TARGETS
+		targetPosition0 = glm::vec3(0);
+		targetNormal0 = glm::vec3(0);
+		targetTangent0 = glm::vec3(0);
+		targetPosition1 = glm::vec3(0);
+		targetNormal1 = glm::vec3(0);
+		targetTangent1 = glm::vec3(0);
+#endif
 	}
 };
 
@@ -103,6 +119,7 @@ struct TriangleSurface
 
 	void calcTangentSpace()
 	{
+		// TODO: calc tanget space on correct uv set
 		for (auto& t : triangles)
 		{
 			Vertex& v0 = vertices[t.v0];
@@ -112,9 +129,9 @@ struct TriangleSurface
 			glm::vec3 p0 = v0.position;
 			glm::vec3 p1 = v1.position;
 			glm::vec3 p2 = v2.position;
-			glm::vec2 uv0 = v0.texCoord;
-			glm::vec2 uv1 = v1.texCoord;
-			glm::vec2 uv2 = v2.texCoord;
+			glm::vec2 uv0 = v0.texCoord0;
+			glm::vec2 uv1 = v1.texCoord0;
+			glm::vec2 uv2 = v2.texCoord0;
 
 			glm::vec3 e1 = p1 - p0;
 			glm::vec3 e2 = p2 - p0;

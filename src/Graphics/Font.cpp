@@ -35,10 +35,10 @@ void CharInfo::createQuad(std::vector<Vertex>& vertices, std::vector<GLuint>& in
 	v1.position = glm::vec3(x + w, y, 0);
 	v2.position = glm::vec3(x + w, y + h, 0);
 	v3.position = glm::vec3(x, y + h, 0);
-	v0.texCoord = glm::vec2(offset.x, offset.y + v);
-	v1.texCoord = glm::vec2(offset.x + u, offset.y + v);
-	v2.texCoord = glm::vec2(offset.x + u, offset.y);
-	v3.texCoord = glm::vec2(offset.x, offset.y);
+	v0.texCoord0 = glm::vec2(offset.x, offset.y + v);
+	v1.texCoord0 = glm::vec2(offset.x + u, offset.y + v);
+	v2.texCoord0 = glm::vec2(offset.x + u, offset.y);
+	v3.texCoord0 = glm::vec2(offset.x, offset.y);
 	vertices.push_back(v0);
 	vertices.push_back(v1);
 	vertices.push_back(v2);

@@ -32,7 +32,7 @@ namespace IO
 			h = size;
 		}
 
-		std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
+		//std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
 
 		GL::TextureFormat format = GL::RGB8;
 		if (sRGB)

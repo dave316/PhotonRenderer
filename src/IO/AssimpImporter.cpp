@@ -399,7 +399,7 @@ namespace IO
 				v.normal = glm::normalize(toVec3(pMesh->mNormals[i]));
 
 			if (pMesh->HasTextureCoords(0))
-				v.texCoord = toVec2(pMesh->mTextureCoords[0][i]);
+				v.texCoord0 = toVec2(pMesh->mTextureCoords[0][i]);
 
 			// TODO: fix morph targets
 			//if (pMesh->mNumAnimMeshes == 2)

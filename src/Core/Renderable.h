@@ -19,9 +19,11 @@ struct Primitive
 class Renderable : public Component
 {
 	std::vector<Primitive> primitives;
+	std::vector<float> morphWeights;
 	std::string name;
 	Skin skin;
 	bool skinnedMesh = false;
+	bool morphTagets = false;
 		
 public:
 	Renderable() {}
@@ -31,9 +33,12 @@ public:
 	void print();
 	void flipWindingOrder();
 	void setSkin(Skin& skin);
+	void setMorphWeights(std::vector<float>& weights);
 	bool isSkinnedMesh();
+	bool useMorphTargets();
 	bool useBlending();
 	std::string getName();
+	std::vector<float> getWeights();
 	std::vector<Vertex> getVertices();
 	Skin getSkin();
 	typedef std::shared_ptr<Renderable> Ptr;

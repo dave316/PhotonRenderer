@@ -54,7 +54,7 @@ namespace GL
 		std::string getErrorLog() const
 		{
 			GLint len;
-			glGetShaderiv(id, GL_INFO_LOG_LENGTH, &len);
+			glGetProgramiv(id, GL_INFO_LOG_LENGTH, &len);
 			std::string log(len + 1, '\0');
 			glGetProgramInfoLog(id, len, 0, &log[0]);
 			return log;

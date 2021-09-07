@@ -32,6 +32,7 @@ public:
 	bool isFinished();
 	void clear();
 	void printInfo();
+	std::vector<float> getWeights();
 	std::vector<Entity::Ptr> getNodes();
 	typedef std::shared_ptr<Animator> Ptr;
 	static Ptr create()

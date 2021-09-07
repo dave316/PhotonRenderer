@@ -69,18 +69,18 @@ bool Renderer::init()
 
 	std::string assetPath = "../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "TwoSidedPlane";
-	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	std::string name = "TextureLinearInterpolationTest";
+	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 
 	//IO::AssimpImporter assImporter;
 	//auto model = assImporter.importModel(assetPath + "/plane.obj");
-	////model->getComponent<Transform>()->setPosition(glm::vec3(0,-0.5, 0));
+	//model->getComponent<Transform>()->setPosition(glm::vec3(0,-0.5, 0));
 	//model->getComponent<Transform>()->setScale(glm::vec3(10.0f));
 	//if (model != nullptr)
 	//	rootEntitis.insert(std::make_pair("Aplane", model));
 	//assImporter.clear();
 
-	//loadGLTFModels(gltfPath);
+	loadGLTFModels(gltfPath);
 	//loadAssimpModels(path);
 
 	for (auto [_, e] : rootEntitis)
@@ -88,7 +88,7 @@ bool Renderer::init()
 		auto animator = e->getComponent<Animator>();
 		if (animator)
 		{
-			//animator->switchAnimation(2);
+			//animator->switchAnimation(1);
 			animator->play();
 		}			
 	}
@@ -597,6 +597,21 @@ void Renderer::renderScene(Shader::Ptr shader)
 			{
 				auto r = m->getComponent<Renderable>();
 				auto t = m->getComponent<Transform>();
+
+				if (r->useMorphTargets())
+				{
+					std::vector<float> weights;
+					if (animator)
+						weights = animator->getWeights();
+					else
+						weights = r->getWeights();
+					shader->setUniform("numMorphTargets", (int)weights.size());
+					shader->setUniform("morphWeights[0]", weights);
+				}
+				else
+				{
+					shader->setUniform("hasMorphTargets", 0);
+				}
 
 				if (r->isSkinnedMesh())
 				{

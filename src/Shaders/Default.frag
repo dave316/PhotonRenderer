@@ -4,7 +4,8 @@ in vec3 wPosition;
 in vec3 wNormal;
 in mat3 wTBN;
 in vec4 vertexColor;
-in vec2 texCoord;
+in vec2 texCoord0;
+in vec2 texCoord1;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -54,13 +55,13 @@ void main()
 	float transparency = 1.0;
 	if(useSpecGlossMat)
 	{
-		vec4 diffuseColor = material2.getDiffuseColor(texCoord);
+		vec4 diffuseColor = material2.getDiffuseColor(texCoord0);
 		float transparency = diffuseColor.a;
 		if(material2.alphaMode == 1)
 			if(transparency < material2.alphaCutOff)
 				discard;
 
-		vec4 specGlossColor = material2.getSpecularColor(texCoord);
+		vec4 specGlossColor = material2.getSpecularColor(texCoord0);
 		vec3 specularColor = specGlossColor.rgb;
 		float glossiness = specGlossColor.a;
 		roughness = 1.0 - glossiness;
@@ -71,13 +72,13 @@ void main()
 	}
 	else
 	{
-		vec4 baseColor = vertexColor * material.getBaseColor(texCoord);
+		vec4 baseColor = vertexColor * material.getBaseColor(texCoord0);
 		transparency = baseColor.a;
 		if(material.alphaMode == 1)
 			if(transparency < material.alphaCutOff)
 				discard;
 
-		vec3 pbrValues = material.getPBRValues(texCoord);
+		vec3 pbrValues = material.getPBRValues(texCoord0);
 		float metallic = pbrValues.b;
 		roughness = clamp(pbrValues.g, 0.1, 1.0);
 
@@ -86,15 +87,13 @@ void main()
 		alpha = roughness * roughness;
 	}
 
-	vec3 emission = material.getEmission(texCoord);
-	float ao = 1.0;
-	if(material.useOcclusionTex)
-		ao = texture(material.occlusionTex, texCoord).r;
+	vec3 emission = material.getEmission(texCoord0, texCoord1);
+	float ao = material.getOcclusionFactor(texCoord0, texCoord1);
 
 	vec3 n = normalize(wNormal);
 	if(material.useNormalTex)
 	{
-		vec3 tNormal = texture2D(material.normalTex, texCoord).rgb * 2.0 - 1.0;
+		vec3 tNormal = texture2D(material.normalTex, texCoord0).rgb * 2.0 - 1.0;
 		n = normalize(wTBN * tNormal);
 	}
 	if(gl_FrontFacing == false)

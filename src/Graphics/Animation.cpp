@@ -49,6 +49,22 @@ int Channel::findScaling(float currentTime)
 	return -1;
 }
 
+int Channel::findWeight(float currentTime)
+{
+	if (currentTime < weights[0].first)
+		return -1;
+
+	for (int i = 0; i < weights.size() - 1; i++)
+	{
+		if (currentTime < weights[i + 1].first)
+		{
+			return i;
+		}
+	}
+
+	return -1;
+}
+
 Animation::Animation() :
 	name(""),
 	currentTime(0.0f),
@@ -153,6 +169,42 @@ glm::vec3 Animation::calcInterpScaling(int index)
 	return result;
 }
 
+std::vector<float> Animation::calcInterpWeight(int index)
+{
+	if (channels.find(index) == channels.end())
+		return std::vector<float>();
+
+	std::vector<float> result;
+	Channel& channel = channels[index];
+	if (channel.weights.size() == 1)
+	{
+		return channel.weights[0].second;
+	}
+	else
+	{
+		int numWeights = channel.weights[0].second.size();
+		int weightIndex = channel.findWeight(currentTime);
+		if(weightIndex < 0)
+			return channel.weights[0].second;
+		int nextWeightIndex = weightIndex + 1;
+		float deltaTime = channel.weights[nextWeightIndex].first - channel.weights[weightIndex].first;
+		float factor = (currentTime - channel.weights[weightIndex].first) / deltaTime;
+		for (int i = 0; i < numWeights; i++)
+		{
+			float start = channel.weights[weightIndex].second[i];
+			float end = channel.weights[nextWeightIndex].second[i];
+			float w = glm::mix(start, end, factor);
+			result.push_back(w);
+		}
+	}
+	return result;
+}
+
+std::vector<float> Animation::getWeights()
+{
+	return currentWeights;
+}
+
 void Animation::update(float dt, std::vector<Entity::Ptr>& nodes)
 {
 	// TODO: update the animation to the last keyframe
@@ -175,6 +227,8 @@ void Animation::update(float dt, std::vector<Entity::Ptr>& nodes)
 			t->setRotation(rotation);
 		if (!channel.scales.empty())
 			t->setScale(scale);
+		if (!channel.weights.empty())
+			currentWeights = calcInterpWeight(nodeIndex);
 	}
 }
 

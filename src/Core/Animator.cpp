@@ -58,6 +58,11 @@ void Animator::printInfo()
 		animations[i]->print();
 }
 
+std::vector<float> Animator::getWeights()
+{
+	return animations[currentAnimation]->getWeights();
+}
+
 std::vector<Entity::Ptr> Animator::getNodes()
 {
 	return nodes;

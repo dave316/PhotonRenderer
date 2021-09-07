@@ -20,23 +20,31 @@ struct PBRMetalRoughMaterial
 	bool useEmissiveTex;
 	bool useOcclusionTex;
 
+	int occlusionUVIndex;
+	int emissiveUVIndex;
+
 	vec4 getBaseColor(vec2 uv)
 	{
 		vec4 baseColor = baseColorFactor;
 		if (useBaseColorTex)
-		{
 			baseColor = baseColor * texture2D(baseColorTex, uv);
-			//baseColor = vec4(pow(texColor.rgb, vec3(2.2)), texColor.a);
-		}
 
 		return baseColor;
 	}
 
-	vec3 getEmission(vec2 uv)
+	float getOcclusionFactor(vec2 uv0, vec2 uv1)
+	{
+		float ao = 1.0;
+		if (useOcclusionTex)
+			ao = ao * texture(occlusionTex, occlusionUVIndex == 0 ? uv0 : uv1).r;
+		return ao;
+	}
+
+	vec3 getEmission(vec2 uv0, vec2 uv1)
 	{
 		vec3 emission = emissiveFactor;
 		if (useEmissiveTex)
-			emission = texture2D(emissiveTex, uv).rgb;
+			emission = texture2D(emissiveTex, emissiveUVIndex == 0 ? uv0 : uv1).rgb;
 		return emission;
 	}
 

@@ -19,10 +19,12 @@ struct Channel
 	std::vector<std::pair<float, glm::vec3>> positions;
 	std::vector<std::pair<float, glm::quat>> rotations;
 	std::vector<std::pair<float, glm::vec3>> scales;
+	std::vector<std::pair<float, std::vector<float>>> weights;
 
 	int findPosition(float currentTime);
 	int findRotation(float currentTime);
 	int findScaling(float currentTime);
+	int findWeight(float currentTime);
 	unsigned int nodeIndex;
 };
 
@@ -38,6 +40,7 @@ public:
 private:
 	std::string name;
 	std::map<int, Channel> channels;
+	std::vector<float> currentWeights; // TODO: should be put in renderable
 
 	float currentTime;
 	float duration;
@@ -53,6 +56,8 @@ public:
 	glm::vec3 calcInterpPosition(int index);
 	glm::quat calcInterpRotation(int index);
 	glm::vec3 calcInterpScaling(int index);
+	std::vector<float> calcInterpWeight(int index);
+	std::vector<float> getWeights();
 
 	void addChannel(int index, Channel& channel);
 	void update(float dt, std::vector<Entity::Ptr>& nodes);

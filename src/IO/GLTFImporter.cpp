@@ -85,7 +85,7 @@ namespace IO
 			if (bufferViewNode.HasMember("byteStride"))
 			{
 				bufferView.byteStride = bufferViewNode.FindMember("byteStride")->value.GetInt();
-				std::cout << "Byte stride: " << bufferView.byteStride << std::endl;
+				//std::cout << "Byte stride: " << bufferView.byteStride << std::endl;
 			}
 			bufferView.byteLength = bufferViewNode.FindMember("byteLength")->value.GetInt();
 			//bufferView.target = bufferViewNode.FindMember("target")->value.GetInt(); 
@@ -361,6 +361,36 @@ namespace IO
 						channel.scales.push_back(std::make_pair(times[i], scales[i]));
 					}
 				}
+#ifdef MORPH_TARGETS
+				else if (targetPath.compare("weights") == 0)
+				{
+					std::vector<float> times;
+					std::vector<float> weights;
+					loadData(input, times);
+					loadData(output, weights);
+
+					std::cout << "times: " << times.size() << std::endl;
+					std::cout << "weights: " << weights.size() << std::endl;
+
+					int numTargets = weights.size() / times.size();
+					const int maxtargets = 2;
+					//std::cout << "num morph target: " << numTargets << std::endl;
+					if (numTargets > maxtargets)
+						std::cout << "Warning, max. 2 morph targets are supported!" << std::endl;
+
+					Channel& channel = channels[targetNodeIndex];
+					for (int i = 0; i < times.size(); i++)
+					{
+						minTime = std::min(minTime, times[i]);
+						maxTime = std::max(maxTime, times[i]);
+
+						std::vector<float> w;
+						for (int j = 0; j < maxtargets; j++)
+							w.push_back(weights[i * numTargets + j]);
+						channel.weights.push_back(std::make_pair(times[i], w));
+					}
+				}
+#endif // MORPH_TARGETS
 			}			
 
 			auto animation = Animation::create("animation", maxTime);
@@ -430,6 +460,18 @@ namespace IO
 			if(meshNode.HasMember("name"))
 				name = nameNode->value.GetString();
 
+			std::vector<float> weights;
+#ifdef MORPH_TARGETS
+			if (meshNode.HasMember("weights"))
+			{
+				auto weightsNode = meshNode.FindMember("weights");
+				for (auto& weightNode : weightsNode->value.GetArray())
+				{
+					weights.push_back(weightNode.GetFloat());
+				}
+			}
+#endif // MORPH_TARGETS
+
 			auto primitvesNode = meshNode.FindMember("primitives");
 			for (auto& primitiveNode : primitvesNode->value.GetArray())
 			{
@@ -441,7 +483,8 @@ namespace IO
 				std::vector<glm::vec3> positions;
 				std::vector<glm::vec4> colors; // TODO colors can be RGB or RGBA!!!
 				std::vector<glm::vec3> normals;
-				std::vector<glm::vec2> texCoords;
+				std::vector<glm::vec2> texCoords0;
+				std::vector<glm::vec2> texCoords1;
 				std::vector<glm::vec4> tangets;
 				std::vector<GLuint> indices;
 				std::vector<glm::u16vec4> boneIndices; // TODO check index type!
@@ -472,7 +515,13 @@ namespace IO
 				if (attributesNode.HasMember("TEXCOORD_0"))
 				{
 					int accIndex = attributesNode["TEXCOORD_0"].GetInt();
-					loadData(accIndex, texCoords);
+					loadData(accIndex, texCoords0);
+				}
+
+				if (attributesNode.HasMember("TEXCOORD_1"))
+				{
+					int accIndex = attributesNode["TEXCOORD_1"].GetInt();
+					loadData(accIndex, texCoords1);
 				}
 
 				if (attributesNode.HasMember("TANGENT"))
@@ -587,41 +636,40 @@ namespace IO
 					if (i < colors.size())
 						v.color = colors[i];
 					if (i < normals.size())
-					{
 						v.normal = normals[i];
-					}						
-					if (i < texCoords.size())
-						v.texCoord = texCoords[i];
+					if (i < texCoords0.size())
+						v.texCoord0 = texCoords0[i];
+					if (i < texCoords1.size())
+						v.texCoord1 = texCoords1[i];
 					if (i < tangets.size())
 						v.tangent = tangets[i];
 					if (i < boneIndices.size())
-					{						
 						v.boneIDs = glm::vec4(boneIndices[i].x, boneIndices[i].y, boneIndices[i].z, boneIndices[i].w) + glm::vec4(numJoints);
-					}
 					if (i < boneWeights.size())
 					{
 						float weightSum = boneWeights[i].x + boneWeights[i].y + boneWeights[i].z + boneWeights[i].w;
 						v.boneWeights = boneWeights[i] / weightSum;
-						//v.boneWeights = boneWeights[i];
+					}
+
+#ifdef MORPH_TARGETS
+					if (morphTargets.size() > 0)
+					{
+						v.targetPosition0 = morphTargets[0].positions[i];
+						if (i < morphTargets[0].normals.size())
+							v.targetNormal0 = morphTargets[0].normals[i];
+						if (i < morphTargets[0].tangents.size())
+							v.targetTangent0 = morphTargets[0].tangents[i];
 					}
 					
-					//if (morphTargets.size() == 2) // TODO: add support for more thant 2...
-					//{
-					//	v.targetPosition0 = morphTargets[0].positions[i];
-					//	v.targetPosition1 = morphTargets[1].positions[i];
-					//	if (i < morphTargets[0].normals.size() &&
-					//		i < morphTargets[1].normals.size())
-					//	{
-					//		v.targetNormal0 = morphTargets[0].normals[i];
-					//		v.targetNormal1 = morphTargets[1].normals[i];
-					//	}
-					//	if (i < morphTargets[0].tangents.size() &&
-					//		i < morphTargets[1].tangents.size())
-					//	{
-					//		v.targetTangent0 = morphTargets[0].tangents[i];
-					//		v.targetTangent1 = morphTargets[1].tangents[i];
-					//	}
-					//}
+					if (morphTargets.size() > 1)
+					{
+						v.targetPosition1 = morphTargets[1].positions[i];
+						if (i < morphTargets[1].normals.size())
+							v.targetNormal1 = morphTargets[1].normals[i];
+						if (i < morphTargets[1].tangents.size())
+							v.targetTangent1 = morphTargets[1].tangents[i];
+					}
+#endif
 
 					surface.addVertex(v);
 				}
@@ -657,6 +705,9 @@ namespace IO
 				renderable->addMesh(name, mesh, material);
 
 			}
+			if (!weights.empty())
+				renderable->setMorphWeights(weights);
+				
 			renderables.push_back(renderable);
 
 			//std::cout << "bone indices: " << boneMapping.size() << std::endl;
@@ -687,7 +738,7 @@ namespace IO
 				bool doubleSided = materialNode["doubleSided"].GetBool();
 				material->setDoubleSided(doubleSided);
 
-				std::cout << "material doubleSided: " << doubleSided << std::endl;
+				//std::cout << "material doubleSided: " << doubleSided << std::endl;
 			}
 			std::string alphaMode = "OPAQUE";
 			int alphaModeEnum = 0;
@@ -742,6 +793,7 @@ namespace IO
 					material->addProperty("material.baseColorFactor", color);
 					material->addProperty("material.useBaseColorTex", false);
 				}
+
 				if (pbrNode.HasMember("baseColorTexture"))
 				{
 					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
@@ -754,26 +806,41 @@ namespace IO
 					else
 						std::cout << "texture index " << texIndex << " not found" << std::endl;
 				}
+
+				if (pbrNode.HasMember("roughnessFactor"))
+				{
+					float roughnessFactor = pbrNode["roughnessFactor"].GetFloat();
+					material->addProperty("material.roughnessFactor", roughnessFactor);
+					material->addProperty("material.usePbrTex", false);
+				}
+				else
+				{
+					material->addProperty("material.roughnessFactor", 1.0f);
+				}
+
+				if (pbrNode.HasMember("metallicFactor"))
+				{
+					float metallicFactor = pbrNode["metallicFactor"].GetFloat();
+					material->addProperty("material.metallicFactor", metallicFactor);
+					material->addProperty("material.usePbrTex", false);
+				}
+				else
+				{
+					material->addProperty("material.metallicFactor", 1.0f);
+				}
 	
 				if (pbrNode.HasMember("metallicRoughnessTexture"))
 				{
 					unsigned int texIndex = pbrNode["metallicRoughnessTexture"]["index"].GetInt();
 					if (texIndex < textures.size())
 					{
-						//std::cout << "added metallicRoughnessTexture texture index " << texIndex << std::endl;
 						material->addTexture("material.pbrTex", textures[texIndex]);
 						material->addProperty("material.usePbrTex", true);
-					}						
+					}
 					else
+					{
 						std::cout << "texture index " << texIndex << " not found" << std::endl;
-					//std::cout << "implement loading of metallicRoughnessTexture" << std::endl;
-				}
-				else
-				{
-					// TODO: read these values from GLTF
-					material->addProperty("material.roughnessFactor", 1.0f);
-					material->addProperty("material.metallicFactor", 0.0f);
-					material->addProperty("material.usePbrTex", false);
+					}
 				}
 			}
 
@@ -797,11 +864,17 @@ namespace IO
 			// TODO: check for occlusion texture (can be packed with metalRough tex)
 			if (materialNode.HasMember("occlusionTexture"))
 			{
-				unsigned int texIndex = materialNode["occlusionTexture"]["index"].GetInt();
+				const auto& occlTexNode = materialNode["occlusionTexture"];
+				unsigned int texIndex = occlTexNode["index"].GetInt();
 				if (texIndex < textures.size())
 				{
 					material->addTexture("material.occlusionTex", textures[texIndex]);
 					material->addProperty("material.useOcclusionTex", true);
+
+					int texCoordIdx = 0;
+					if (occlTexNode.HasMember("texCoord"))
+						texCoordIdx = occlTexNode["texCoord"].GetInt();
+					material->addProperty("material.occlusionUVIndex", texCoordIdx);
 				}					
 				else
 				{
@@ -815,12 +888,17 @@ namespace IO
 
 			if (materialNode.HasMember("emissiveTexture"))
 			{
-				unsigned int texIndex = materialNode["emissiveTexture"]["index"].GetInt();
+				const auto& emissiveTexNode = materialNode["emissiveTexture"];
+				unsigned int texIndex = emissiveTexNode["index"].GetInt();
 				if (texIndex < textures.size())
 				{
-					//std::cout << "added emissiveTexture texture index " << texIndex << std::endl;
 					material->addTexture("material.emissiveTex", textures[texIndex]);
 					material->addProperty("material.useEmissiveTex", true);
+
+					int texCoordIdx = 0;
+					if (emissiveTexNode.HasMember("texCoord"))
+						texCoordIdx = emissiveTexNode["texCoord"].GetInt();
+					material->addProperty("material.emissiveUVIndex", texCoordIdx);
 				}
 				else
 					std::cout << "texture index " << texIndex << " not found" << std::endl;

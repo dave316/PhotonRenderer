@@ -27,10 +27,10 @@ namespace Primitives
 		v[2].normal = n;
 		v[3].normal = n;
 
-		v[0].texCoord = glm::vec2(0.0f, 0.0f);
-		v[1].texCoord = glm::vec2(1.0f, 0.0f);
-		v[2].texCoord = glm::vec2(1.0f, 1.0f);
-		v[3].texCoord = glm::vec2(0.0f, 1.0f);
+		v[0].texCoord0 = glm::vec2(0.0f, 0.0f);
+		v[1].texCoord0 = glm::vec2(1.0f, 0.0f);
+		v[2].texCoord0 = glm::vec2(1.0f, 1.0f);
+		v[3].texCoord0 = glm::vec2(0.0f, 1.0f);
 
 		surface.addVertex(v[0]);
 		surface.addVertex(v[1]);
