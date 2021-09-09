@@ -67,6 +67,21 @@ namespace IO
 		return tex;
 	}
 
+	Texture2D::Ptr loadTexture16(const std::string& filename, bool sRGB)
+	{
+		int w, h, c;
+		stbi_set_flip_vertically_on_load(false);
+		std::unique_ptr<unsigned short> data(stbi_load_16(filename.c_str(), &w, &h, &c, 0));
+
+		std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
+
+		auto tex = Texture2D::create(w, h, GL::RG16F);
+		tex->bind();
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_UNSIGNED_SHORT, data.get());
+
+		return tex;
+	}
+
 	Texture2D::Ptr loadTextureHDR(const std::string& filename)
 	{
 		// TODO: check number of channels etc.

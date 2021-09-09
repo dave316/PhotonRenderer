@@ -29,11 +29,14 @@ class Renderer
 	GL::UniformBuffer<Camera::UniformData> cameraUBO;
 	GL::UniformBuffer<Light::UniformData> lightUBO;
 	
+	Mesh::Ptr screenQuad;
 	Mesh::Ptr unitCube;
 	TextureCubeMap::Ptr cubeMap;
 	TextureCubeMap::Ptr irradianceMap;
 	TextureCubeMap::Ptr specularMap;
 	Texture2D::Ptr brdfLUT;
+	Texture2D::Ptr charlieLUT;
+	Texture2D::Ptr lutSheenE; // TODO: generate based on https://dassaultsystemes-technology.github.io/EnterprisePBRShadingModel/spec-2021x.md.html#components/sheen
 	
 	std::map<std::string, Entity::Ptr> rootEntitis;
 	unsigned int modelIndex = 0;

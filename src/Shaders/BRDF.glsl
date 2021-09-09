@@ -20,14 +20,79 @@ float G_Smith(float NdotV, float NdotL, float k)
 	return g1 * g2;
 }
 
+float V_GGX(float NdotL, float NdotV, float alphaRoughness)
+{
+	float alphaRoughnessSq = alphaRoughness * alphaRoughness;
+
+	float GGXV = NdotL * sqrt(NdotV * NdotV * (1.0 - alphaRoughnessSq) + alphaRoughnessSq);
+	float GGXL = NdotV * sqrt(NdotL * NdotL * (1.0 - alphaRoughnessSq) + alphaRoughnessSq);
+
+	float GGX = GGXV + GGXL;
+	if (GGX > 0.0)
+	{
+		return 0.5 / GGX;
+	}
+	return 0.0;
+}
+
 vec3 F_Schlick(float HdotV, vec3 F0)
 {
-	return max(F0 + (1.0 - F0) * pow(1.0 - HdotV, 5.0), F0);
+	return max(F0 + (vec3(1.0) - F0) * pow(1.0 - HdotV, 5.0), F0);
 }
 
 vec3 F_Schlick_Rough(float HdotV, vec3 F0, float roughness)
 {
 	return max(F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - HdotV, 5.0), F0);
+}
+
+// https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_sheen
+float l(float x, float alphaG)
+{
+	float oneMinusAlphaSq = (1.0 - alphaG) * (1.0 - alphaG);
+	float a = mix(21.5473, 25.3245, oneMinusAlphaSq);
+	float b = mix(3.82987, 3.32435, oneMinusAlphaSq);
+	float c = mix(0.19823, 0.16801, oneMinusAlphaSq);
+	float d = mix(-1.97760, -1.27393, oneMinusAlphaSq);
+	float e = mix(-4.32054, -4.85967, oneMinusAlphaSq);
+	return a / (1.0 + b * pow(x, c)) + d * x + e;
+}
+
+float lambdaSheen(float cosTheta, float alphaG)
+{
+	if (abs(cosTheta) < 0.5)
+	{
+		return exp(l(cosTheta, alphaG));
+	}
+	else
+	{
+		return exp(2.0 * l(0.5, alphaG) - l(1.0 - cosTheta, alphaG));
+	}
+}
+
+float V_Sheen(float NdotL, float NdotV, float sheenRoughness)
+{
+	sheenRoughness = max(sheenRoughness, 0.000001);
+	float alphaG = sheenRoughness * sheenRoughness;
+	float sheenVisibility = 1.0 / ((1.0 + lambdaSheen(NdotV, alphaG) + lambdaSheen(NdotL, alphaG)) * (4.0 * NdotV * NdotL));
+	return clamp(sheenVisibility, 0.0, 1.0);
+}
+
+float D_Charlie(float sheenRoughness, float NdotH)
+{
+	sheenRoughness = max(sheenRoughness, 0.000001);
+	float alphaG = sheenRoughness * sheenRoughness;
+	float invR = 1.0 / alphaG;
+	float cos2h = NdotH * NdotH;
+	float sin2h = 1.0 - cos2h;
+	float sheenDistribution = (2.0 + invR) * pow(sin2h, invR * 0.5) / (2.0 * PI);
+	return sheenDistribution;
+}
+
+vec3 SpecularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float NdotV, float NdotH)
+{
+	float sheenVisibility = V_Sheen(NdotL, NdotV, sheenRoughness);
+	float sheenDistribution = D_Charlie(sheenRoughness, NdotH);
+	return sheenColor * sheenDistribution * sheenVisibility;
 }
 
 vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha)
@@ -39,11 +104,12 @@ vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha)
 	float HdotV = max(dot(h, v), 0.0);
 
 	float D = D_GGX_TR(NdotH, alpha);
-	float G = G_Smith(NdotV, NdotL, alpha);
+	//float G = G_Smith(NdotV, NdotL, alpha);
+	float V = V_GGX(NdotL, NdotV, alpha);
 	vec3 F = F_Schlick(HdotV, F0);
 
-	vec3 f_spec = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
-	return f_spec;
+	//vec3 f_spec = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
+	return D * V * F;
 }
 
 vec3 importanceSampleGGX(vec2 x, vec3 n, float roughness)

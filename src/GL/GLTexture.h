@@ -19,6 +19,7 @@ namespace GL
 		DEPTH32,
 		DEPTH32F,
 		RGB32F,
+		RGB16F,
 		RG16F
 	};
 
@@ -65,6 +66,7 @@ namespace GL
 		case DEPTH32:	internalFormat = GL_DEPTH_COMPONENT32; break;
 		case DEPTH32F:	internalFormat = GL_DEPTH_COMPONENT32F; break;
 		case RGB32F: internalFormat = GL_RGB32F; break;
+		case RGB16F: internalFormat = GL_RGB16F; break;
 		case RG16F: internalFormat = GL_RG16F; break;
 		default:	internalFormat = GL_RGBA8; break;
 		}
@@ -83,6 +85,7 @@ namespace GL
 			dataFormat = GL_RG;
 			break;
 		case RGB8:
+		case RGB16F:
 		case RGB32F:
 		case SRGB8:  
 			dataFormat = GL_RGB;
@@ -117,6 +120,8 @@ namespace GL
 			dataType = GL_UNSIGNED_BYTE;
 			break;
 		case RG16F:
+			dataType = GL_UNSIGNED_SHORT;
+			break;
 		case DEPTH16:
 			dataType = GL_HALF_FLOAT;
 			break;

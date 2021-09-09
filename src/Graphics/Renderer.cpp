@@ -69,18 +69,21 @@ bool Renderer::init()
 
 	std::string assetPath = "../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "InterpolationTest";
-	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	std::string name = "SheenChair";
+	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 
-	IO::AssimpImporter assImporter;
-	auto model = assImporter.importModel(assetPath + "/plane.obj");
-	model->getComponent<Transform>()->setPosition(glm::vec3(0,-0.5, 0));
-	model->getComponent<Transform>()->setScale(glm::vec3(10.0f));
-	if (model != nullptr)
-		rootEntitis.insert(std::make_pair("Aplane", model));
-	assImporter.clear();
+	lutSheenE = IO::loadTexture(assetPath + "/lut_sheen_E.png", false);	
+	charlieLUT = IO::loadTexture(assetPath + "/lut_charlie.png", false);
 
-	//loadGLTFModels(gltfPath);
+	//IO::AssimpImporter assImporter;
+	//auto model = assImporter.importModel(assetPath + "/plane.obj");
+	//model->getComponent<Transform>()->setPosition(glm::vec3(0,-0.5, 0));
+	//model->getComponent<Transform>()->setScale(glm::vec3(10.0f));
+	//if (model != nullptr)
+	//	rootEntitis.insert(std::make_pair("Aplane", model));
+	//assImporter.clear();
+
+	loadGLTFModels(gltfPath);
 	//loadAssimpModels(path);
 
 	for (auto [_, e] : rootEntitis)
@@ -110,7 +113,9 @@ void Renderer::initEnvMaps()
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
 	std::string assetPath = "../../assets";
-	auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/neutral.hdr");
 
 	glm::vec3 position = glm::vec3(0);
 	std::vector<glm::mat4> VP;
@@ -192,7 +197,7 @@ void Renderer::initEnvMaps()
 
 	glEnable(GL_DEPTH_TEST);
 
-	auto screenQuad = Primitives::createQuad(glm::vec3(0.0f), 2.0f);
+	screenQuad = Primitives::createQuad(glm::vec3(0.0f), 2.0f);
 
 	{
 		int size = 512;
@@ -251,8 +256,8 @@ void Renderer::initLights()
 		float x = distX(gen);
 		float y = distY(gen);
 		float z = distZ(gen);
-		auto light = Light::create(glm::vec3(x, y, z), glm::vec3(0.25f, 0.61f, 1.0f));
-		//auto light = Light::create(glm::vec3(0, 0.1, 0), glm::vec3(1.0f));
+		//auto light = Light::create(glm::vec3(x, y, z), glm::vec3(0.25f, 0.61f, 1.0f));
+		auto light = Light::create(glm::vec3(0, 10, 5), glm::vec3(1.0f));
 		std::string lightName = "light_" + std::to_string(i);
 		lights.insert(std::make_pair(lightName, light));
 	}
@@ -285,12 +290,19 @@ void Renderer::initShader()
 	defaultShader->setUniform("material.normalTex", 2);
 	defaultShader->setUniform("material.occlusionTex", 3);
 	defaultShader->setUniform("material.emissiveTex", 4);
-	defaultShader->setUniform("irradianceMap", 5);
-	defaultShader->setUniform("specularMap", 6);
-	defaultShader->setUniform("brdfLUT", 7);
+	defaultShader->setUniform("material.sheenColortex", 5);
+	defaultShader->setUniform("material.sheenRoughtex", 6);
+	defaultShader->setUniform("material.clearCoatTex", 7);
+	defaultShader->setUniform("material.clearCoatRoughTex", 8);
+	defaultShader->setUniform("material.clearCoatNormalTex", 9);
+	defaultShader->setUniform("irradianceMap", 10);
+	defaultShader->setUniform("specularMap", 11);
+	defaultShader->setUniform("brdfLUT", 12);
+	defaultShader->setUniform("charlieLUT", 13);
+	defaultShader->setUniform("sheenLUTE", 14);
 
 	std::vector<int> units;
-	for (int i = 10; i < 20; i++)
+	for (int i = 15; i < 20; i++)
 		units.push_back(i);
 	defaultShader->setUniform("shadowMaps[0]", units);
 	defaultShader->setUniform("numLights", (int)lights.size());
@@ -303,8 +315,9 @@ void Renderer::initShader()
 	textShader->setUniform("atlas", 0);
 
 	auto unlitShader = shaders["Unlit"];
-	unlitShader->setUniform("orthoProjection", false);
+	unlitShader->setUniform("orthoProjection", true);
 	unlitShader->setUniform("useTex", true);
+	unlitShader->setUniform("tex", 0);
 }
 
 void Renderer::initFonts()
@@ -650,15 +663,17 @@ void Renderer::render()
 {
 	glViewport(0, 0, width, height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	
+
 	defaultShader->use();
 
-	irradianceMap->use(5);
-	specularMap->use(6);
-	brdfLUT->use(7);
+	irradianceMap->use(10);
+	specularMap->use(11);
+	brdfLUT->use(12);
+	charlieLUT->use(13);
+	lutSheenE->use(14);
 
 	for (int i = 0; i < shadowFBOs.size(); i++)
-		shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
+		shadowFBOs[i]->useTexture(GL::DEPTH, 15 + i);
 
 	renderScene(defaultShader);
 

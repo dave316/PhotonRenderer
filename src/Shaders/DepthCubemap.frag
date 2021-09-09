@@ -4,13 +4,14 @@
 #include "light.glsl"
 
 in vec3 wPosition;
-in vec2 fTexCoord;
+in vec2 fTexCoord0;
+in vec2 fTexCoord1;
 
 uniform int lightIndex;
 
 void main()
 {
-	vec4 baseColor = material.getBaseColor(fTexCoord);
+	vec4 baseColor = material.getBaseColor(fTexCoord0, fTexCoord1);
 	float transparency = baseColor.a;
 	if(material.alphaMode == 1)
 		if(transparency < material.alphaCutOff)

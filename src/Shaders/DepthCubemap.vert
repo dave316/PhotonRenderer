@@ -4,6 +4,7 @@
 
 layout(location = 0) in vec3 vPosition;
 layout(location = 3) in vec2 vTexCoord0;
+layout(location = 4) in vec2 vTexCoord1;
 layout(location = 6) in vec4 boneIDs;
 layout(location = 7) in vec4 boneWeights;
 #ifdef MORPH_TARGETS
@@ -11,7 +12,8 @@ layout(location = 8) in vec3 vTargetPosition0;
 layout(location = 11) in vec3 vTargetPosition1;
 #endif
 
-out vec2 texCoord;
+out vec2 texCoord0;
+out vec2 texCoord1;
 
 uniform mat4 M;
 uniform mat4 bones[64];
@@ -42,6 +44,7 @@ void main()
 		mPosition = vec3(B * vec4(mPosition, 1.0));
 	}
 
-	texCoord = vTexCoord0;
+	texCoord0 = vTexCoord0;
+	texCoord1 = vTexCoord1;
 	gl_Position = M * vec4(mPosition, 1.0);
 }

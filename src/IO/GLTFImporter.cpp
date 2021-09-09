@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
-#include <set>
 namespace IO
 {
 	std::vector<unsigned char> readBinaryFile(const std::string& filename, unsigned int byteLength)
@@ -24,6 +23,13 @@ namespace IO
 			std::cout << "error opening file " << filename << std::endl;
 		}
 		return buffer;
+	}
+
+	GLTFImporter::GLTFImporter()
+	{
+		supportedExtensions.insert("KHR_texture_transform");
+		supportedExtensions.insert("KHR_materials_sheen");
+		supportedExtensions.insert("KHR_materials_clearcoat");
 	}
 
 	Entity::Ptr GLTFImporter::importModel(const std::string& filename)
@@ -44,6 +50,7 @@ namespace IO
 		json::Document doc;
 		doc.Parse(content.c_str());
 
+		checkExtensions(doc);
 		loadBuffers(doc, path);
 		loadTextures(doc, path);
 		loadMaterials(doc, path);
@@ -54,6 +61,21 @@ namespace IO
 		auto root = loadScene(doc);
 
  		return root;
+	}
+
+	void GLTFImporter::checkExtensions(const json::Document& doc)
+	{
+		// TODO: check required extensions
+		if (doc.HasMember("extensionsUsed"))
+		{
+			auto extensionsNode = doc.FindMember("extensionsUsed");
+			for (auto& extNode : extensionsNode->value.GetArray())
+			{
+				std::string extension(extNode.GetString());
+				if (supportedExtensions.find(extension) == supportedExtensions.end())
+					std::cout << "extension " << extension << " not supported" << std::endl;
+			}
+		}
 	}
 
 	void GLTFImporter::loadBuffers(const json::Document& doc, const std::string& path)
@@ -109,165 +131,8 @@ namespace IO
 		//std::cout << "Accesssors: " << accessors.size() << std::endl;
 	}
 
-	//void GLTFImporter::loadAnimations(const json::Document& doc)
-	//{
-	//	// TODO there has to be a sepperation of node animations and skin animations
-	//	if (!doc.HasMember("animations"))
-	//		return;
-
-	//	for (auto& animationNode : doc["animations"].GetArray())
-	//	{
-	//		std::vector<AnimationSampler> samplers;
-	//		auto samplersNode = animationNode.FindMember("samplers");
-	//		for (auto& samplerNode : samplersNode->value.GetArray())
-	//		{
-	//			AnimationSampler sampler;
-	//			sampler.input = samplerNode.FindMember("input")->value.GetInt();
-	//			sampler.output = samplerNode.FindMember("output")->value.GetInt();
-	//			if(samplerNode.HasMember("interpolation"))
-	//				sampler.interpolation = samplerNode.FindMember("interpolation")->value.GetString();
-	//			samplers.push_back(sampler);
-	//		}
-
-	//		// TODO: this needs to be changed since a node can be target of multiple channels (translation, rotation,...)
-	//		auto channelsNode = animationNode.FindMember("channels");
-	//		for (auto& channelNode : channelsNode->value.GetArray())
-	//		{
-	//			//std::vector<std::pair<float, glm::vec3>> positionKeys;
-	//			//std::vector<std::pair<float, glm::quat>> rotationKeys;
-	//			//std::vector<std::pair<float, glm::vec3>> scaleKeys;
-	//			std::vector<std::pair<float, std::pair<float, float>>> timeWeights;
-	//			bool isMorphAnim = false;
-	//			float minTime = 1000.0f;
-	//			float maxTime = 0.0f;
-	//			int tartetNodeIndex = -1;
-
-	//			int samplerIndex = channelNode.FindMember("sampler")->value.GetInt();
-	//			auto targetNode = channelNode.FindMember("target")->value.GetObject();
-	//			tartetNodeIndex = targetNode.FindMember("node")->value.GetInt();
-	//			std::string targetPath = targetNode.FindMember("path")->value.GetString();
-
-	//			int input = samplers[samplerIndex].input;
-	//			int output = samplers[samplerIndex].output;
-	//			std::string interpolation = samplers[samplerIndex].interpolation;
-
-	//			NodeAnimation::Interpolation interp;
-	//			if (interpolation.compare("STEP") == 0)
-	//				interp = NodeAnimation::Interpolation::STEP;
-	//			else if (interpolation.compare("LINEAR") == 0)
-	//				interp = NodeAnimation::Interpolation::LINEAR;
-	//			else if (interpolation.compare("CUBICSPLINE") == 0)
-	//				interp = NodeAnimation::Interpolation::CUBIC;
-	//			else
-	//				interp = NodeAnimation::Interpolation::LINEAR;
-
-	//			std::vector<float> times;
-	//			std::vector<glm::vec3> translations;
-	//			std::vector<glm::quat> rotations;
-	//			std::vector<glm::vec3> scales;
-
-	//			if (targetPath.compare("translation") == 0)
-	//			{
-	//				//std::vector<float> times;
-	//				//std::vector<glm::vec3> translations;
-	//				times.clear();
-	//				loadData(input, times);
-	//				loadData(output, translations);
-
-	//				for (int i = 0; i < times.size(); i++)
-	//				{
-	//					minTime = std::min(minTime, times[i]);
-	//					maxTime = std::max(maxTime, times[i]);
-	//					//positionKeys.push_back(std::make_pair(times[i], translations[i]));
-	//				}
-	//			}
-	//			else if (targetPath.compare("rotation") == 0)
-	//			{
-	//				//std::vector<float> times;
-	//				//std::vector<glm::quat> rotations;
-	//				times.clear();
-	//				loadData(input, times);
-	//				loadData(output, rotations);
-
-	//				for (int i = 0; i < times.size(); i++)
-	//				{
-	//					minTime = std::min(minTime, times[i]);
-	//					maxTime = std::max(maxTime, times[i]);
-	//					//rotationKeys.push_back(std::make_pair(times[i], rotations[i]));
-	//				}
-	//			}
-	//			else if (targetPath.compare("scale") == 0)
-	//			{
-	//				//std::vector<float> times;
-	//				//std::vector<glm::vec3> scales;
-	//				times.clear();
-	//				loadData(input, times);
-	//				loadData(output, scales);
-
-	//				//std::cout << "times: " << times.size() << " scales: " << scales.size() << std::endl;
-
-	//				for (int i = 0; i < times.size(); i++)
-	//				{
-	//					minTime = std::min(minTime, times[i]);
-	//					maxTime = std::max(maxTime, times[i]);
-	//					//scaleKeys.push_back(std::make_pair(times[i], scales[i]));
-	//				}
-	//			}
-	//			else if (targetPath.compare("weights") == 0)
-	//			{
-	//				isMorphAnim = true;
-
-	//				std::vector<float> times;
-	//				std::vector<float> weights;
-	//				loadData(input, times);
-	//				loadData(output, weights);
-
-	//				//std::cout << "times: " << times.size() << std::endl;
-	//				//std::cout << "weights: " << weights.size() << std::endl;
-
-	//				for (int i = 0; i < times.size(); i++)
-	//				{
-	//					minTime = std::min(minTime, times[i]);
-	//					maxTime = std::max(maxTime, times[i]);
-	//					auto weight = std::make_pair(weights[i * 2], weights[i * 2 + 1]);
-	//					timeWeights.push_back(std::make_pair(times[i], weight));
-	//				}
-	//			}
-	//			else
-	//			{
-	//				std::cout << "ERROR: animation path " << targetPath << " not implemented!!!" << std::endl;
-	//			}
-
-	//			if (isMorphAnim)
-	//			{
-	//				MorphAnimation::Ptr anim(new MorphAnimation("morph", 0.0f, maxTime, tartetNodeIndex, timeWeights));
-	//				morphAnims.push_back(anim);
-	//			}
-	//			else
-	//			{
-	//				NodeAnimation::Ptr anim;
-	//				if (nodeAnims.find(tartetNodeIndex) == nodeAnims.end())
-	//				{
-	//					anim = NodeAnimation::Ptr(new NodeAnimation("blub", interp, 0, minTime, maxTime, maxTime, tartetNodeIndex));
-	//					nodeAnims.insert(std::make_pair(tartetNodeIndex, anim));
-	//				}
-	//				anim = nodeAnims[tartetNodeIndex];
-	//				anim->setTimes(times);
-	//				if (!translations.empty())
-	//					anim->setPositions(translations);
-	//				if (!rotations.empty())
-	//					anim->setRotations(rotations);
-	//				if (!scales.empty())
-	//					anim->setScales(scales);
-	//			}
-	//		}
-	//	}
-	//}
-
 	void GLTFImporter::loadAnimations(const json::Document& doc)
 	{
-		// TODO: add interpolation methods here
-
 		if (!doc.HasMember("animations"))
 			return;
 
@@ -489,15 +354,17 @@ namespace IO
 				unsigned int materialIndex = 0;
 
 				primitivNum++;
+
+				// TODO: check accessor component type and cast data accordingly
 				
 				std::vector<glm::vec3> positions;
-				std::vector<glm::u8vec4> colors; // TODO colors can be RGB or RGBA!!!
+				std::vector<glm::vec4> colors;
 				std::vector<glm::vec3> normals;
 				std::vector<glm::vec2> texCoords0;
 				std::vector<glm::vec2> texCoords1;
 				std::vector<glm::vec4> tangets;
 				std::vector<GLuint> indices;
-				std::vector<glm::u16vec4> boneIndices; // TODO check index type!
+				std::vector<glm::u16vec4> boneIndices;
 				//std::vector<GLushort> boneIndices;
 				std::vector<glm::vec4> boneWeights;
 				bool calcNormals = true;
@@ -512,7 +379,18 @@ namespace IO
 				if (attributesNode.HasMember("COLOR_0"))
 				{
 					int accIndex = attributesNode["COLOR_0"].GetInt();
-					loadData(accIndex, colors);
+					if (accessors[accIndex].componentType == 5121)
+					{
+						std::vector<glm::u8vec4> colorsUI8;
+						loadData(accIndex, colorsUI8);
+						colors.resize(colorsUI8.size());
+						for (int i = 0; i < colors.size(); i++)
+							colors[i] = glm::vec4(colorsUI8[i]) / 255.0f;
+					}
+					else
+					{
+						loadData(accIndex, colors);
+					}
 				}
 
 				if (attributesNode.HasMember("NORMAL"))
@@ -629,7 +507,7 @@ namespace IO
 				{
 					Vertex v(positions[i]);
 					if (i < colors.size())
-						v.color = glm::vec4(colors[i]) / 255.0f;
+						v.color = colors[i];
 					if (i < normals.size())
 						v.normal = normals[i];
 					if (i < texCoords0.size())
@@ -720,8 +598,48 @@ namespace IO
 		return tex;
 	}
 
+	glm::mat3 getTexTransform(const json::Value& texTransNode)
+	{
+		glm::vec2 offset(0.0f);
+		glm::vec2 scale(1.0f);
+		float rotation = 0.0f;
+
+		if (texTransNode.HasMember("offset"))
+		{
+			offset.x = texTransNode["offset"].GetArray()[0].GetFloat();
+			offset.y = texTransNode["offset"].GetArray()[1].GetFloat();
+		}
+		if (texTransNode.HasMember("rotation"))
+		{
+			rotation = texTransNode["rotation"].GetFloat();
+		}
+		if (texTransNode.HasMember("scale"))
+		{
+			scale.x = texTransNode["scale"].GetArray()[0].GetFloat();
+			scale.y = texTransNode["scale"].GetArray()[1].GetFloat();
+		}
+
+		glm::mat3 T(1.0f);
+		T[2][0] = offset.x;
+		T[2][1] = offset.y;
+
+		glm::mat3 S(1.0f);
+		S[0][0] = scale.x;
+		S[1][1] = scale.y;
+
+		glm::mat3 R(1.0f);
+		R[0][0] = glm::cos(rotation);
+		R[1][0] = glm::sin(rotation);
+		R[0][1] = -glm::sin(rotation);
+		R[1][1] = glm::cos(rotation);
+
+		return T * R * S;
+	}
+
 	void GLTFImporter::loadMaterials(const json::Document& doc, const std::string& path)
 	{
+		// TODO: abstract texture info and extension loading to optimize code
+
 		if (!doc.HasMember("materials"))
 			return;
 
@@ -791,14 +709,32 @@ namespace IO
 
 				if (pbrNode.HasMember("baseColorTexture"))
 				{
-					unsigned int texIndex = pbrNode["baseColorTexture"]["index"].GetInt();
+					auto& baseColorTexNode = pbrNode["baseColorTexture"];
+					unsigned int texIndex = baseColorTexNode["index"].GetInt();
 					if (texIndex < textures.size())
 					{
-						//std::cout << "added baseColorTexture texture index " << texIndex << std::endl;
 						auto tex = loadTexture(textures[texIndex], path, true);
 							
 						material->addTexture("material.baseColorTex", tex);
 						material->addProperty("material.useBaseColorTex", true);
+						material->addProperty("material.hasBaseColorUVTransform", false);
+
+						int texCoordIdx = 0;
+						if (baseColorTexNode.HasMember("texCoord"))
+							texCoordIdx = baseColorTexNode["texCoord"].GetInt();
+						material->addProperty("material.baseColorUVIndex", texCoordIdx);
+
+						if (baseColorTexNode.HasMember("extensions"))
+						{
+							auto& extNode = baseColorTexNode["extensions"];
+							if (extNode.HasMember("KHR_texture_transform"))
+							{
+								glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+								material->addProperty("material.baseColorUVTransform", texTransform);
+								material->addProperty("material.hasBaseColorUVTransform", true);
+							}
+						}
 					}
 					else
 						std::cout << "texture index " << texIndex << " not found" << std::endl;
@@ -823,18 +759,37 @@ namespace IO
 				}
 				else
 				{
-					material->addProperty("material.metallicFactor", 0.0f);
+					material->addProperty("material.metallicFactor", 1.0f);
 				}
 	
 				if (pbrNode.HasMember("metallicRoughnessTexture"))
 				{
-					unsigned int texIndex = pbrNode["metallicRoughnessTexture"]["index"].GetInt();
+					auto& metallicRoughTexNode = pbrNode["metallicRoughnessTexture"];
+					unsigned int texIndex = metallicRoughTexNode["index"].GetInt();
 					if (texIndex < textures.size())
 					{
 						auto tex = loadTexture(textures[texIndex], path, false);
 
 						material->addTexture("material.pbrTex", tex);
 						material->addProperty("material.usePbrTex", true);
+						material->addProperty("material.hasPbrTexUVTransform", false);
+
+						int texCoordIdx = 0;
+						if (metallicRoughTexNode.HasMember("texCoord"))
+							texCoordIdx = metallicRoughTexNode["texCoord"].GetInt();
+						material->addProperty("material.pbrTexUVIndex", texCoordIdx);
+
+						if (metallicRoughTexNode.HasMember("extensions"))
+						{
+							auto& extNode = metallicRoughTexNode["extensions"];
+							if (extNode.HasMember("KHR_texture_transform"))
+							{
+								glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+								material->addProperty("material.pbrTexUVTransform", texTransform);
+								material->addProperty("material.hasPbrTexUVTransform", true);
+							}
+						}
 					}
 					else
 					{
@@ -845,13 +800,32 @@ namespace IO
 
 			if (materialNode.HasMember("normalTexture"))
 			{
-				unsigned int texIndex = materialNode["normalTexture"]["index"].GetInt();
+				auto& normalTexNode = materialNode["normalTexture"];
+				unsigned int texIndex = normalTexNode["index"].GetInt();
 				if (texIndex < textures.size())
 				{
 					auto tex = loadTexture(textures[texIndex], path, false);
 
 					material->addTexture("material.normalTex", tex);
 					material->addProperty("material.useNormalTex", true);
+					material->addProperty("material.hasNormalUVTransform", false);
+
+					int texCoordIdx = 0;
+					if (normalTexNode.HasMember("texCoord"))
+						texCoordIdx = normalTexNode["texCoord"].GetInt();
+					material->addProperty("material.normalUVIndex", texCoordIdx);
+
+					if (normalTexNode.HasMember("extensions"))
+					{
+						auto& extNode = normalTexNode["extensions"];
+						if (extNode.HasMember("KHR_texture_transform"))
+						{
+							glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+							material->addProperty("material.normalUVTransform", texTransform);
+							material->addProperty("material.hasNormalUVTransform", true);
+						}
+					}
 				}					
 				else
 					std::cout << "texture index " << texIndex << " not found" << std::endl;
@@ -872,11 +846,24 @@ namespace IO
 
 					material->addTexture("material.occlusionTex", tex);
 					material->addProperty("material.useOcclusionTex", true);
+					material->addProperty("material.hasOcclusionUVTransform", false);
 
 					int texCoordIdx = 0;
 					if (occlTexNode.HasMember("texCoord"))
 						texCoordIdx = occlTexNode["texCoord"].GetInt();
 					material->addProperty("material.occlusionUVIndex", texCoordIdx);
+
+					if (occlTexNode.HasMember("extensions"))
+					{
+						auto& extNode = occlTexNode["extensions"];
+						if (extNode.HasMember("KHR_texture_transform"))
+						{
+							glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+							material->addProperty("material.occlusionUVTransform", texTransform);
+							material->addProperty("material.hasOcclusionUVTransform", true);
+						}
+					}
 				}					
 				else
 				{
@@ -911,11 +898,24 @@ namespace IO
 
 					material->addTexture("material.emissiveTex", tex);
 					material->addProperty("material.useEmissiveTex", true);
+					material->addProperty("material.hasEmissiveUVTransform", false);
 
 					int texCoordIdx = 0;
 					if (emissiveTexNode.HasMember("texCoord"))
 						texCoordIdx = emissiveTexNode["texCoord"].GetInt();
 					material->addProperty("material.emissiveUVIndex", texCoordIdx);
+
+					if (emissiveTexNode.HasMember("extensions"))
+					{
+						auto& extNode = emissiveTexNode["extensions"];
+						if (extNode.HasMember("KHR_texture_transform"))
+						{
+							glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+							material->addProperty("material.emissiveUVTransform", texTransform);
+							material->addProperty("material.hasEmissiveUVTransform", true);
+						}
+					}
 				}
 				else
 					std::cout << "texture index " << texIndex << " not found" << std::endl;
@@ -925,80 +925,310 @@ namespace IO
 				material->addProperty("material.useEmissiveTex", false);
 			}
 
+			material->addProperty("useSpecGlossMat", false);
+			material->addProperty("material.sheenColorFactor", glm::vec3(0));
+			material->addProperty("material.sheenRoughnessFactor", 0.0f);
+			material->addProperty("material.useSheenColorTex", false);
+			material->addProperty("material.useSheenRoughTex", false);
+			material->addProperty("material.clearcoatFactor", 0.0f);
+			material->addProperty("material.clearcoatRoughnessFactor", 0.0f);
+			material->addProperty("material.useClearCoatTex", false);			
+			material->addProperty("material.useClearCoatRoughTex", false);
+			material->addProperty("material.useClearCoatNormalTex", false);
 			if (materialNode.HasMember("extensions"))
 			{
 				const auto& extensionNode = materialNode["extensions"];
+				if (extensionNode.HasMember("KHR_materials_pbrSpecularGlossiness"))
 				{
-					if (extensionNode.HasMember("KHR_materials_pbrSpecularGlossiness"))
+					material->addProperty("useSpecGlossMat", true);
+					const auto& pbrSpecGlossNode = extensionNode["KHR_materials_pbrSpecularGlossiness"];
+					if (pbrSpecGlossNode.HasMember("diffuseFactor"))
 					{
-						material->addProperty("useSpecGlossMat", true);
-						const auto& pbrSpecGlossNode = extensionNode["KHR_materials_pbrSpecularGlossiness"];
-						if (pbrSpecGlossNode.HasMember("diffuseFactor"))
+						const auto& baseColorNode = pbrSpecGlossNode["diffuseFactor"];
+						auto array = baseColorNode.GetArray();
+						glm::vec4 color;
+						color.r = array[0].GetFloat();
+						color.g = array[1].GetFloat();
+						color.b = array[2].GetFloat();
+						color.a = array[3].GetFloat();
+						material->addProperty("material2.diffuseFactor", color);
+						material->addProperty("material2.useDiffuseTex", false);
+					}
+					if (pbrSpecGlossNode.HasMember("diffuseTexture")) 
+					{
+						unsigned int texIndex = pbrSpecGlossNode["diffuseTexture"]["index"].GetInt();
+						if (texIndex < textures.size())
 						{
-							const auto& baseColorNode = pbrSpecGlossNode["diffuseFactor"];
-							auto array = baseColorNode.GetArray();
-							glm::vec4 color;
-							color.r = array[0].GetFloat();
-							color.g = array[1].GetFloat();
-							color.b = array[2].GetFloat();
-							color.a = array[3].GetFloat();
-							material->addProperty("material2.diffuseFactor", color);
-							material->addProperty("material2.useDiffuseTex", false);
-						}
-						if (pbrSpecGlossNode.HasMember("diffuseTexture")) 
-						{
-							unsigned int texIndex = pbrSpecGlossNode["diffuseTexture"]["index"].GetInt();
-							if (texIndex < textures.size())
-							{
-								auto tex = loadTexture(textures[texIndex], path, true);
+							auto tex = loadTexture(textures[texIndex], path, true);
 
-								//std::cout << "added normalTexture texture index " << texIndex << std::endl;
-								material->addTexture("material2.diffuseTex", tex);
-								material->addProperty("material2.useDiffuseTex", true);
-							}
-							else
-								std::cout << "texture index " << texIndex << " not found" << std::endl;
+							material->addTexture("material2.diffuseTex", tex);
+							material->addProperty("material2.useDiffuseTex", true);
 						}
-						if (pbrSpecGlossNode.HasMember("specularFactor"))
+						else
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+					}
+					if (pbrSpecGlossNode.HasMember("specularFactor"))
+					{
+						const auto& baseColorNode = pbrSpecGlossNode["specularFactor"];
+						auto array = baseColorNode.GetArray();
+						glm::vec3 color;
+						color.r = array[0].GetFloat();
+						color.g = array[1].GetFloat();
+						color.b = array[2].GetFloat();
+						material->addProperty("material2.specularFactor", color);
+						material->addProperty("material2.useSpecularTex", false);
+					}
+					if (pbrSpecGlossNode.HasMember("glossinessFactor"))
+					{
+						float glossiness = pbrSpecGlossNode["glossinessFactor"].GetFloat();
+						material->addProperty("material2.glossFactor", glossiness);
+						material->addProperty("material2.useSpecularTex", false);
+					}
+					if (pbrSpecGlossNode.HasMember("specularGlossinessTexture"))
+					{
+						unsigned int texIndex = pbrSpecGlossNode["specularGlossinessTexture"]["index"].GetInt();
+						if (texIndex < textures.size())
 						{
-							const auto& baseColorNode = pbrSpecGlossNode["specularFactor"];
-							auto array = baseColorNode.GetArray();
-							glm::vec3 color;
-							color.r = array[0].GetFloat();
-							color.g = array[1].GetFloat();
-							color.b = array[2].GetFloat();
-							material->addProperty("material2.specularFactor", color);
-							material->addProperty("material2.useSpecularTex", false);
-						}
-						if (pbrSpecGlossNode.HasMember("glossinessFactor"))
-						{
-							float glossiness = pbrSpecGlossNode["glossinessFactor"].GetFloat();
-							material->addProperty("material2.glossFactor", glossiness);
-							material->addProperty("material2.useSpecularTex", false);
-						}
-						if (pbrSpecGlossNode.HasMember("specularGlossinessTexture"))
-						{
-							unsigned int texIndex = pbrSpecGlossNode["specularGlossinessTexture"]["index"].GetInt();
-							if (texIndex < textures.size())
-							{
-								auto tex = loadTexture(textures[texIndex], path, true);
+							auto tex = loadTexture(textures[texIndex], path, true);
 
-								//std::cout << "added normalTexture texture index " << texIndex << std::endl;
-								material->addTexture("material2.specGlossTex", tex);
-								material->addProperty("material2.useSpecularTex", true);
-							}
-							else
-								std::cout << "texture index " << texIndex << " not found" << std::endl;
+							material->addTexture("material2.specGlossTex", tex);
+							material->addProperty("material2.useSpecularTex", true);
 						}
+						else
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+					}
+				}
+
+				if (extensionNode.HasMember("KHR_materials_sheen"))
+				{
+					const auto& sheenNode = extensionNode["KHR_materials_sheen"];
+
+					material->addProperty("material.sheenColorFactor", glm::vec3(0.0f));
+					if (sheenNode.HasMember("sheenColorFactor"))
+					{
+						const auto& baseColorNode = sheenNode["sheenColorFactor"];
+						auto array = baseColorNode.GetArray();
+						glm::vec3 color;
+						color.r = array[0].GetFloat();
+						color.g = array[1].GetFloat();
+						color.b = array[2].GetFloat();
+						material->addProperty("material.sheenColorFactor", color);
+						material->addProperty("material.useSheenColorTex", false);
+					}
+
+					if (sheenNode.HasMember("sheenColorTexture"))
+					{
+						auto& sheenColorTexNode = sheenNode["sheenColorTexture"];
+						unsigned int texIndex = sheenColorTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, true);
+
+							material->addTexture("material.sheenColortex", tex);
+							material->addProperty("material.useSheenColorTex", true);
+							material->addProperty("material.hasSheenColorUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (sheenColorTexNode.HasMember("texCoord"))
+								texCoordIdx = sheenColorTexNode["texCoord"].GetInt();
+							material->addProperty("material.sheenColorUVIndex", texCoordIdx);
+
+							if (sheenColorTexNode.HasMember("extensions"))
+							{
+								auto& extNode = sheenColorTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.sheenColorUVTransform", texTransform);
+									material->addProperty("material.hasSheenColorUVTransform", true);
+								}
+							}
+						}
+						else
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+					}
+
+					if (sheenNode.HasMember("sheenRoughnessFactor"))
+					{
+						float sheenRoughness = sheenNode["sheenRoughnessFactor"].GetFloat();
+						material->addProperty("material.sheenRoughnessFactor", sheenRoughness);
+						material->addProperty("material.useSheenRoughTex", false);
 					}
 					else
 					{
-						std::cout << "extension not supported!" << std::endl;
+						material->addProperty("material.sheenRoughnessFactor", 0.0f);
+					}
+
+					if (sheenNode.HasMember("sheenRoughnessTexture"))
+					{
+						auto& sheenRoughTexNode = sheenNode["sheenRoughnessTexture"];
+						unsigned int texIndex = sheenRoughTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.sheenRoughtex", tex);
+							material->addProperty("material.useSheenRoughTex", true);
+							material->addProperty("material.hasSheenRoughUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (sheenRoughTexNode.HasMember("texCoord"))
+								texCoordIdx = sheenRoughTexNode["texCoord"].GetInt();
+							material->addProperty("material.sheenRoughUVIndex", texCoordIdx);
+
+							if (sheenRoughTexNode.HasMember("extensions"))
+							{
+								auto& extNode = sheenRoughTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.sheenRoughUVTransform", texTransform);
+									material->addProperty("material.hasSheenRoughUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+				}		
+
+				if (extensionNode.HasMember("KHR_materials_clearcoat"))
+				{
+					const auto& clearCoatNode = extensionNode["KHR_materials_clearcoat"];
+					if (clearCoatNode.HasMember("clearcoatFactor"))
+					{
+						float clearCoat = clearCoatNode["clearcoatFactor"].GetFloat();
+						material->addProperty("material.clearcoatFactor", clearCoat);
+						material->addProperty("material.useClearCoatTex", false);
+					}
+					else
+					{
+						material->addProperty("material.clearcoatFactor", 0.0f);
+					}
+
+					if (clearCoatNode.HasMember("clearcoatTexture"))
+					{
+						auto& clearCoatTexNode = clearCoatNode["clearcoatTexture"];
+						unsigned int texIndex = clearCoatTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.clearCoatTex", tex);
+							material->addProperty("material.useClearCoatTex", true);
+							material->addProperty("material.hasClearCoatUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (clearCoatTexNode.HasMember("texCoord"))
+								texCoordIdx = clearCoatTexNode["texCoord"].GetInt();
+							material->addProperty("material.clearCoatUVIndex", texCoordIdx);
+
+							if (clearCoatTexNode.HasMember("extensions"))
+							{
+								auto& extNode = clearCoatTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.clearCoatUVTransform", texTransform);
+									material->addProperty("material.hasClearCoatUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+
+					if (clearCoatNode.HasMember("clearcoatRoughnessFactor"))
+					{
+						float clearCoatRoughness = clearCoatNode["clearcoatRoughnessFactor"].GetFloat();
+						material->addProperty("material.clearcoatRoughnessFactor", clearCoatRoughness);
+						material->addProperty("material.useClearCoatRoughTex", false);
+					}
+					else
+					{
+						material->addProperty("material.clearcoatRoughnessFactor", 0.0f);
+					}
+
+					if (clearCoatNode.HasMember("clearcoatRoughnessTexture"))
+					{
+						auto& clearCoatRoughTexNode = clearCoatNode["clearcoatRoughnessTexture"];
+						unsigned int texIndex = clearCoatRoughTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.clearCoatRoughTex", tex);
+							material->addProperty("material.useClearCoatRoughTex", true);
+							material->addProperty("material.hasClearCoatRoughUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (clearCoatRoughTexNode.HasMember("texCoord"))
+								texCoordIdx = clearCoatRoughTexNode["texCoord"].GetInt();
+							material->addProperty("material.clearCoatRoughUVIndex", texCoordIdx);
+
+							if (clearCoatRoughTexNode.HasMember("extensions"))
+							{
+								auto& extNode = clearCoatRoughTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.clearCoatRoughUVTransform", texTransform);
+									material->addProperty("material.hasClearCoatRoughUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+
+					if (clearCoatNode.HasMember("clearcoatNormalTexture"))
+					{
+						auto& normalTexNode = clearCoatNode["clearcoatNormalTexture"];
+						unsigned int texIndex = normalTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.clearCoatNormalTex", tex);
+							material->addProperty("material.useClearCoatNormalTex", true);
+							material->addProperty("material.hasClearCoatNormalUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (normalTexNode.HasMember("texCoord"))
+								texCoordIdx = normalTexNode["texCoord"].GetInt();
+							material->addProperty("material.clearCoatNormalUVIndex", texCoordIdx);
+
+							if (normalTexNode.HasMember("extensions"))
+							{
+								auto& extNode = normalTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.clearCoatNormalUVTransform", texTransform);
+									material->addProperty("material.hasClearCoatNormalUVTransform", true);
+								}
+							}
+						}
+						else
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+					}
+					else
+					{
+						material->addProperty("material.useClearCoatNormalTex", false);
 					}
 				}
-			}
-			else
-				material->addProperty("useSpecGlossMat", false);
+			}				
 
 			materials.push_back(material);
 		}
@@ -1154,29 +1384,7 @@ namespace IO
 				Skin& skin = skins[node.skinIndex];
 				auto joints = skin.getJoints();
 
-				//int commonRootIdx = -1;
-				//for (auto i : joints)
-				//{
-				//	int parentIndex = nodes[i].parentIndex;
-				//	bool jointRoot = false;
-				//	for (auto j : joints)
-				//	{
-				//		if (j == parentIndex)
-				//		{
-				//			jointRoot = true;
-				//			break;
-				//		}
-				//	}
-				//	if (!jointRoot)
-				//	{
-				//		commonRootIdx = parentIndex;
-				//		break;
-				//	}
-				//}
-
-				//if (commonRootIdx < 0)
-				//	commonRootIdx = joints[0];
-
+				// TODO: check if there is a skeleton node defined
 				skin.setSkeleton(nodeIndex);
 
 				auto r = entity->getComponent<Renderable>();
@@ -1242,15 +1450,8 @@ namespace IO
 		entities.resize(nodes.size());
 		entities[0] = root;
 
-		// TODO: a GLTF scene can define more than one root node! 
-		//	     Now each root not is traversed seperatly resulting in many duplicated nodes!!!
-		// 
-		// Solution: All those root nodes should be collected under one "root" node.
-		//			 From this root the scene hierarchy should be traversed to make sure each node is instanced once
-
 		if (doc.HasMember("scenes") && doc["scenes"][0].HasMember("nodes"))
 		{
-			std::cout << "number of root nodes: " << doc["scenes"][0]["nodes"].Size() << std::endl;
 			for (auto& nodeIndex : doc["scenes"][0]["nodes"].GetArray())
 			{
 				auto childEntity = traverse(nodeIndex.GetInt());

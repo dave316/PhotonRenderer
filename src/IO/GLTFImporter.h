@@ -13,6 +13,7 @@
 #include <rapidjson/document.h>
 
 #include <map>
+#include <set>
 
 namespace json = rapidjson;
 
@@ -98,10 +99,12 @@ namespace IO
 		std::vector<Animator::Ptr> animators;
 		std::vector<Animation::Ptr> animations;
 		std::vector<Entity::Ptr> entities;
+		std::set<std::string> supportedExtensions;
 
 		GLTFImporter(const GLTFImporter&) = delete;
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
 
+		void checkExtensions(const json::Document& doc);
 		void loadBuffers(const json::Document& doc, const std::string& path);
 		void loadAnimations(const json::Document& doc);
 		void loadSkins(const json::Document& doc);
@@ -136,7 +139,7 @@ namespace IO
 		}
 
 	public:
-		GLTFImporter() {}
+		GLTFImporter();
 
 		Entity::Ptr importModel(const std::string& filename);
 		std::vector<Entity::Ptr> getEntities();

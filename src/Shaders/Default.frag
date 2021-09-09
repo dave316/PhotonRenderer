@@ -17,6 +17,8 @@ layout(location = 0) out vec4 fragColor;
 uniform samplerCube irradianceMap;
 uniform samplerCube specularMap;
 uniform sampler2D brdfLUT;
+uniform sampler2D charlieLUT;
+uniform sampler2D sheenLUTE;
 uniform bool useSpecGlossMat = false;
 uniform int numLights;
 
@@ -43,6 +45,47 @@ float getShadow(unsigned int index)
 		}
 	}
 	return shadow / 27.0;
+}
+
+float max3(vec3 v)
+{
+	return max(max(v.x,v.y),v.z);
+}
+
+float E(float NdotV, float sheenRoughness)
+{
+	return texture(sheenLUTE, vec2(NdotV, sheenRoughness)).r;
+}
+
+vec3 getIBLRadianceCharlie(vec3 n, vec3 v, float sheenRoughness, vec3 sheenColor)
+{
+	float NdotV = max(dot(n, v), 0.0);
+    float lod = sheenRoughness * float(6);
+    vec3 reflection = normalize(reflect(-v, n));
+
+    vec2 brdfSamplePoint = clamp(vec2(NdotV, sheenRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
+    float brdf = texture(charlieLUT, brdfSamplePoint).b;
+    vec4 sheenSample = textureLod(specularMap, reflection, lod); // TODO: get from charlie specular envmap
+
+    vec3 sheenLight = sheenSample.rgb;
+    return sheenLight * sheenColor * brdf;
+}
+
+vec3 getIBLRadiance(vec3 n, vec3 v, float roughness, vec3 F0)
+{
+	vec3 r = normalize(reflect(-v, n));
+	float NdotV = max(dot(n, v), 0.0);
+
+	// ambient light
+	vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
+	vec3 kD = (vec3(1.0) - F_ambient);
+
+	const float MAX_REFLECTION_LOD = 7.0;
+	vec3 specularColor = textureLod(specularMap, r, roughness * MAX_REFLECTION_LOD).rgb;
+	vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
+
+	return specular;
 }
 
 void main()
@@ -72,13 +115,13 @@ void main()
 	}
 	else
 	{
-		vec4 baseColor = vertexColor * material.getBaseColor(texCoord0);
+		vec4 baseColor = vertexColor * material.getBaseColor(texCoord0, texCoord1);
 		transparency = baseColor.a;
 		if(material.alphaMode == 1)
 			if(transparency < material.alphaCutOff)
 				discard;
 
-		vec3 pbrValues = material.getPBRValues(texCoord0);
+		vec3 pbrValues = material.getPBRValues(texCoord0, texCoord1);
 		float metallic = pbrValues.b;
 		roughness = clamp(pbrValues.g, 0.1, 1.0);
 
@@ -93,11 +136,26 @@ void main()
 	vec3 n = normalize(wNormal);
 	if(material.useNormalTex)
 	{
-		vec3 tNormal = texture2D(material.normalTex, texCoord0).rgb * 2.0 - 1.0;
+		vec3 uvTransform = vec3(material.normalUVIndex == 0 ? texCoord0 : texCoord1, 1.0);
+		if (material.hasNormalUVTransform)
+			uvTransform = material.normalUVTransform * uvTransform;
+		vec3 tNormal = texture2D(material.normalTex,uvTransform.xy).rgb * 2.0 - 1.0;
 		n = normalize(wTBN * tNormal);
 	}
 	if(gl_FrontFacing == false)
 		n = -n;
+
+	vec3 clearCoatNormal = normalize(wNormal);
+	if(material.useClearCoatNormalTex)
+	{
+		vec3 uvTransform = vec3(material.clearCoatNormalUVIndex == 0 ? texCoord0 : texCoord1, 1.0);
+		if (material.hasClearCoatNormalUVTransform)
+			uvTransform = material.clearCoatNormalUVTransform * uvTransform;
+		vec3 tNormal = texture2D(material.clearCoatNormalTex, uvTransform.xy).rgb * 2.0 - 1.0;
+		clearCoatNormal = normalize(wTBN * tNormal);
+	}
+	if(gl_FrontFacing == false)
+		clearCoatNormal = -clearCoatNormal;
 
 	vec3 v = normalize(camera.position - wPosition);
 	vec3 r = normalize(reflect(-v, n));
@@ -115,11 +173,27 @@ void main()
 	vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
 	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
 
-	vec3 ambient = (kD * diffuse + specular) * ao; // TODO: fix ao baked in PBR texture
+	//vec3 ambient = (kD * diffuse + specular) * ao; // TODO: fix ao baked in PBR texture
 	//vec3 ambient = 0.05 * (kD * c_diff + (F_ambient * brdf.x + brdf.y)) * ao; // TODO: add constant ambient light
+
+	// sheen
+	vec3 sheenColor = material.getSheenColor(texCoord0, texCoord1);
+	float sheenRoughness = material.getSheenRoughness(texCoord0, texCoord1);
+	vec3 sheen = getIBLRadianceCharlie(n, v, sheenRoughness, sheenColor);
+	float albedoScalingIBL = 1.0 - max3(sheenColor) * E(NdotV, sheenRoughness);
+
+	// clear coat
+	float clearCoatFactor = material.getClearCoat(texCoord0, texCoord1);
+	float clearCoatRoughness = material.getClearCoatRoughness(texCoord0, texCoord1);
+	vec3 clearCoat = getIBLRadiance(clearCoatNormal, v, clearCoatRoughness, F0) * ao;
+	vec3 clearCoatFresnel = F_Schlick(clamp(dot(clearCoatNormal, v), 0.0, 1.0), vec3(0.04));
+
+	vec3 ambient = ((kD * diffuse + specular) + sheen) * ao; // TODO: fix ao baked in PBR texture
+	ambient = ambient * (1.0 - clearCoatFactor * clearCoatFresnel) + clearCoat * clearCoatFactor;
 
 	// direct light (diffuse+specular)
 	vec3 lo = vec3(0);
+	vec3 f_clearCoat = vec3(0);
 	for(int i = 0; i < numLights; i++)
 	{
 		//vec3 lightPos = camera.position;
@@ -130,25 +204,39 @@ void main()
 		float NdotL = max(dot(n, l), 0.0); 
 		float NdotH = max(dot(n, h), 0.0);
 		float HdotV = max(dot(h, v), 0.0);
-	
+
 		vec3 F = F_Schlick(HdotV, F0);
 
 		vec3 lambert = c_diff;
 		vec3 f_diff  = (vec3(1.0) - F) * lambert;
 		vec3 f_spec = CookTorrance(F0, n, l, v, alpha);
-		float shadow = getShadow(i); 
+
+		// TODO: make optional
+		vec3 f_sheen = SpecularSheen(sheenColor, sheenRoughness, NdotL, NdotV, NdotH);
+		float albedoScaling = min(1.0 - max3(sheenColor) * E(NdotV, sheenRoughness), 1.0 - max3(sheenColor) * E(NdotL, sheenRoughness));
+		//float albedoScaling = 1.0 - max3(sheenColor) * E(NdotV, sheenRoughness);
+		
+		float shadow = 1.0; //getShadow(i); 
 		float d = length(wPosition - lightPos);
 		float att = clamp(1.0 - (d / 50.0), 0.0, 1.0);
 		float attenuation = att * att;
-		lo += (f_diff + f_spec) * lights[i].color * shadow * NdotL * attenuation;
+
+		vec3 lightIntensity = lights[i].color * shadow * attenuation;
+		vec3 color = ((f_diff + f_spec) * albedoScaling + f_sheen) * NdotL * lightIntensity;
+		if(clearCoatFactor > 0.0)
+		{
+			f_clearCoat = CookTorrance(vec3(0.04), clearCoatNormal, l, v, clearCoatRoughness * clearCoatRoughness);
+			f_clearCoat = f_clearCoat * lightIntensity * clamp(dot(clearCoatNormal, l), 0.0, 1.0);
+			color = color * (1.0 - clearCoatFactor * clearCoatFresnel) + f_clearCoat * clearCoatFactor;
+		}			
+		lo += color;
 	}
-	
-	lo /= float(numLights);
+
 	vec3 intensity = emission + ambient + lo;
 
-	//float exposure = 1.5; 
-	//intensity = vec3(1.0) - exp(-intensity * exposure); // EV
-	//intensity = intensity / (1.0 + intensity);			// reinhard
+//	float exposure = 1.0; 
+//	intensity = vec3(1.0) - exp(-intensity * exposure); // EV
+//	intensity = intensity / (1.0 + intensity);			// reinhard
 
 	intensity = pow(intensity, vec3(1.0 / 2.2));
 
