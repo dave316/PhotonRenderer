@@ -59,6 +59,7 @@ class Material
 	std::map<std::string, IProperty::Ptr> properties;
 	bool blending = false;
 	bool doubleSided = false;
+	bool transmissive = false;
 
 	Material(const Material&) = delete;
 	Material& operator=(const Material&) = delete;
@@ -85,9 +86,17 @@ public:
 	{
 		this->blending = blending;
 	}
+	void setTransmissive(bool transmissive)
+	{
+		this->transmissive = transmissive;
+	}
 	bool isDoubleSided()
 	{
 		return doubleSided;
+	}
+	bool isTransmissive()
+	{
+		return transmissive;
 	}
 	bool useBlending()
 	{

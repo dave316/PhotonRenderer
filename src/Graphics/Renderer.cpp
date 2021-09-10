@@ -69,8 +69,11 @@ bool Renderer::init()
 
 	std::string assetPath = "../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "SheenChair";
+	std::string name = "TransmissionTest";
+	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	//name = "SheenChair";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	//rootEntitis["SheenChair"]->getComponent<Transform>()->setPosition(glm::vec3(0, 0, -5));
 
 	lutSheenE = IO::loadTexture(assetPath + "/lut_sheen_E.png", false);	
 	charlieLUT = IO::loadTexture(assetPath + "/lut_charlie.png", false);
@@ -83,7 +86,7 @@ bool Renderer::init()
 	//	rootEntitis.insert(std::make_pair("Aplane", model));
 	//assImporter.clear();
 
-	loadGLTFModels(gltfPath);
+	//loadGLTFModels(gltfPath);
 	//loadAssimpModels(path);
 
 	for (auto [_, e] : rootEntitis)
@@ -217,6 +220,13 @@ void Renderer::initEnvMaps()
 
 void Renderer::initFBOs()
 {
+	screenTex = Texture2D::create(width, height, GL::RGBA32F);
+	screenTex->generateMipmaps();
+	screenTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+	screenFBO = Framebuffer::create(width, height);
+	screenFBO->addRenderTexture(GL::COLOR0, screenTex);
+	screenFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
+
 	for (auto it : lights)
 	{
 		auto light = it.second;
@@ -300,6 +310,7 @@ void Renderer::initShader()
 	defaultShader->setUniform("brdfLUT", 12);
 	defaultShader->setUniform("charlieLUT", 13);
 	defaultShader->setUniform("sheenLUTE", 14);
+	defaultShader->setUniform("transmissionTex", 20);
 
 	std::vector<int> units;
 	for (int i = 15; i < 20; i++)
@@ -370,7 +381,7 @@ void Renderer::updateShadows()
 		depthShader->use();
 		depthShader->setUniform("lightIndex", i);
 		depthShader->setUniform("VP[0]", views[i]);
-		renderScene(depthShader);
+		renderScene(depthShader, false);
 		shadowFBOs[i]->end();
 		glCullFace(GL_BACK);
 	}
@@ -590,7 +601,7 @@ void Renderer::nextModel()
 	modelIndex = (++modelIndex) % (unsigned int)rootEntitis.size();
 }
 
-void Renderer::renderScene(Shader::Ptr shader)
+void Renderer::renderScene(Shader::Ptr shader, bool transmission)
 {
 	if (rootEntitis.size() > 0)
 	{
@@ -600,21 +611,16 @@ void Renderer::renderScene(Shader::Ptr shader)
 			auto animator = e->getComponent<Animator>();
 			std::vector<Entity::Ptr> renderEntities;
 			for (auto m : models)
-				if (!m->getComponent<Renderable>()->useBlending())
+				if(!m->getComponent<Renderable>()->useBlending() && 
+				   !m->getComponent<Renderable>()->isTransmissive())
 					renderEntities.push_back(m);
+			if (transmission)
+				for (auto m : models)
+					if (m->getComponent<Renderable>()->isTransmissive())
+						renderEntities.push_back(m);
 			for (auto m : models)
 				if (m->getComponent<Renderable>()->useBlending())
 					renderEntities.push_back(m);
-
-			//for (auto m : renderEntities)
-			//{
-			//	auto r = m->getComponent<Renderable>();
-			//	if (r->isSkinnedMesh())
-			//	{
-			//		auto nodes = animator->getNodes();
-			//		r->computeJoints(nodes);
-			//	}
-			//}
 
 			for (auto m : renderEntities)
 			{
@@ -661,11 +667,6 @@ void Renderer::renderScene(Shader::Ptr shader)
 
 void Renderer::render()
 {
-	glViewport(0, 0, width, height);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	defaultShader->use();
-
 	irradianceMap->use(10);
 	specularMap->use(11);
 	brdfLUT->use(12);
@@ -675,10 +676,33 @@ void Renderer::render()
 	for (int i = 0; i < shadowFBOs.size(); i++)
 		shadowFBOs[i]->useTexture(GL::DEPTH, 15 + i);
 
-	renderScene(defaultShader);
+	// offscreen pass for transmission
+	screenFBO->begin();
+	glCullFace(GL_FRONT);
+	skyboxShader->use();
+	skyboxShader->setUniform("useGammaEncoding", false);
+	cubeMap->use(0);
+	unitCube->draw();
+	glCullFace(GL_BACK);
+
+	defaultShader->use();
+	defaultShader->setUniform("useGammaEncoding", false);
+	renderScene(defaultShader, false);
+	screenFBO->end();
+	screenTex->generateMipmaps();
+
+	// main render pass
+	glViewport(0, 0, width, height);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	screenTex->use(20);
+	defaultShader->use();
+	defaultShader->setUniform("useGammaEncoding", true);
+	renderScene(defaultShader, true);
 
 	glCullFace(GL_FRONT);
 	skyboxShader->use();
+	skyboxShader->setUniform("useGammaEncoding", true);
 	cubeMap->use(0);
 	unitCube->draw();
 	glCullFace(GL_BACK);

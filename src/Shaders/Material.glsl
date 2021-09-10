@@ -1,6 +1,22 @@
+struct TextureInfo
+{
+	sampler2D texSampler;
+	mat3 texUVTransform;
+	int texUVIndex;
+	bool hasUVTransform;
+	vec4 getTexel(vec2 uv0, vec2 uv1)
+	{
+		vec3 uvTransform = vec3(texUVIndex == 0 ? uv0 : uv1, 1.0);
+		if (hasUVTransform)
+			uvTransform = texUVTransform * uvTransform;
+		return texture2D(texSampler, uvTransform.xy);
+	}
+};
+
 struct PBRMetalRoughMaterial
 {
 	// TODO: need to tidy this up a bit...
+	// TODO: dont load a texture for every sampler... thats a bit much :D
 	vec4 baseColorFactor;
 	float roughnessFactor;
 	float metallicFactor;
@@ -12,39 +28,7 @@ struct PBRMetalRoughMaterial
 	float sheenRoughnessFactor;
 	float clearcoatFactor;
 	float clearcoatRoughnessFactor;
-
-	sampler2D baseColorTex;
-	sampler2D normalTex;
-	sampler2D pbrTex;
-	sampler2D emissiveTex;
-	sampler2D occlusionTex;
-	sampler2D sheenColortex;
-	sampler2D sheenRoughtex;
-	sampler2D clearCoatTex;
-	sampler2D clearCoatRoughTex;
-	sampler2D clearCoatNormalTex;
-
-	mat3 baseColorUVTransform;
-	mat3 normalUVTransform;
-	mat3 pbrTexUVTransform;
-	mat3 emissiveUVTransform;
-	mat3 occlusionUVTransform;
-	mat3 sheenColorUVTransform;
-	mat3 sheenRoughUVTransform;
-	mat3 clearCoatUVTransform;
-	mat3 clearCoatRoughUVTransform;
-	mat3 clearCoatNormalUVTransform;
-
-	bool hasBaseColorUVTransform;
-	bool hasNormalUVTransform;
-	bool hasPbrTexUVTransform;
-	bool hasEmissiveUVTransform;
-	bool hasOcclusionUVTransform;
-	bool hasSheenColorUVTransform;
-	bool hasSheenRoughUVTransform;
-	bool hasClearCoatUVTransform;
-	bool hasClearCoatRoughUVTransform;
-	bool hasClearCoatNormalUVTransform;
+	float transmissionFactor;
 
 	bool useBaseColorTex;
 	bool useNormalTex;
@@ -56,6 +40,43 @@ struct PBRMetalRoughMaterial
 	bool useClearCoatTex;
 	bool useClearCoatRoughTex;
 	bool useClearCoatNormalTex;
+	bool useTransmissionTex;
+
+	sampler2D baseColorTex;
+	sampler2D normalTex;
+	sampler2D pbrTex;
+	sampler2D emissiveTex;
+	sampler2D occlusionTex;
+	sampler2D sheenColortex;
+	sampler2D sheenRoughtex;
+	sampler2D clearCoatTex;
+	sampler2D clearCoatRoughTex;
+	sampler2D clearCoatNormalTex;
+	sampler2D transmissionTex;
+
+	mat3 baseColorUVTransform;
+	mat3 normalUVTransform;
+	mat3 pbrTexUVTransform;
+	mat3 emissiveUVTransform;
+	mat3 occlusionUVTransform;
+	mat3 sheenColorUVTransform;
+	mat3 sheenRoughUVTransform;
+	mat3 clearCoatUVTransform;
+	mat3 clearCoatRoughUVTransform;
+	mat3 clearCoatNormalUVTransform;
+	mat3 transmissionUVTransform;
+
+	bool hasBaseColorUVTransform;
+	bool hasNormalUVTransform;
+	bool hasPbrTexUVTransform;
+	bool hasEmissiveUVTransform;
+	bool hasOcclusionUVTransform;
+	bool hasSheenColorUVTransform;
+	bool hasSheenRoughUVTransform;
+	bool hasClearCoatUVTransform;
+	bool hasClearCoatRoughUVTransform;
+	bool hasClearCoatNormalUVTransform;
+	bool hasTransmissionUVTransform;
 
 	int baseColorUVIndex;
 	int normalUVIndex;
@@ -67,6 +88,7 @@ struct PBRMetalRoughMaterial
 	int clearCoatUVIndex;
 	int clearCoatRoughUVIndex;
 	int clearCoatNormalUVIndex;
+	int transmissionUVIndex;
 
 	vec4 getBaseColor(vec2 uv0, vec2 uv1)
 	{
@@ -83,7 +105,7 @@ struct PBRMetalRoughMaterial
 
 	float getOcclusionFactor(vec2 uv0, vec2 uv1)
 	{
-		float ao = 1.0;
+		float ao = 1.0; // TODO: get occlusion factor
 		if (useOcclusionTex)
 		{
 			vec3 uvTransform = vec3(occlusionUVIndex == 0 ? uv0 : uv1, 1.0);
@@ -115,7 +137,7 @@ struct PBRMetalRoughMaterial
 			vec3 uvTransform = vec3(pbrTexUVIndex == 0 ? uv0 : uv1, 1.0);
 			if (hasPbrTexUVTransform)
 				uvTransform = pbrTexUVTransform * uvTransform;
-			pbrValues = texture2D(pbrTex, uvTransform.xy).rgb;
+			pbrValues = pbrValues * texture2D(pbrTex, uvTransform.xy).rgb;
 		}			
 		return pbrValues;
 	}
@@ -170,6 +192,19 @@ struct PBRMetalRoughMaterial
 			clearCoatRoughness = clearCoatRoughness * texture(clearCoatRoughTex, uvTransform.xy).g;
 		}
 		return clearCoatRoughness;
+	}
+
+	float getTransmission(vec2 uv0, vec2 uv1)
+	{
+		float transmission = transmissionFactor;
+		if (useTransmissionTex)
+		{
+			vec3 uvTransform = vec3(transmissionUVIndex == 0 ? uv0 : uv1, 1.0);
+			if (hasTransmissionUVTransform)
+				uvTransform = transmissionUVTransform * uvTransform;
+			transmission = transmission * texture(transmissionTex, uvTransform.xy).r;
+		}
+		return transmission;
 	}
 };
 uniform PBRMetalRoughMaterial material;

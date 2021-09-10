@@ -19,8 +19,11 @@ uniform samplerCube specularMap;
 uniform sampler2D brdfLUT;
 uniform sampler2D charlieLUT;
 uniform sampler2D sheenLUTE;
+uniform sampler2D transmissionTex;
+uniform bool useGammaEncoding = false;
 uniform bool useSpecGlossMat = false;
 uniform int numLights;
+uniform mat4 M;
 
 float getShadow(unsigned int index)
 {
@@ -88,6 +91,68 @@ vec3 getIBLRadiance(vec3 n, vec3 v, float roughness, vec3 F0)
 	return specular;
 }
 
+float applyIorToRoughness(float roughness, float ior)
+{
+    return roughness * clamp(ior * 2.0 - 2.0, 0.0, 1.0);
+}
+
+vec3 getVolumeTransmissionRay(vec3 n, vec3 v, float thickness, float ior, mat4 modelMatrix)
+{
+    // Direction of refracted light.
+    vec3 refractionVector = refract(-v, normalize(n), 1.0 / ior);
+
+    // Compute rotation-independant scaling of the model matrix.
+    vec3 modelScale;
+    modelScale.x = length(vec3(modelMatrix[0].xyz));
+    modelScale.y = length(vec3(modelMatrix[1].xyz));
+    modelScale.z = length(vec3(modelMatrix[2].xyz));
+
+    // The thickness is specified in local space.
+    return normalize(refractionVector) * thickness * modelScale;
+}
+
+vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float roughness, vec3 color, vec3 F0, vec3 F90, vec3 pos)
+{
+	// TODO: add thickness parameter!
+	vec3 transmissionRay = getVolumeTransmissionRay(n, v, 0.0, 1.5, M);
+    vec3 refractedRayExit = pos + transmissionRay;
+
+	vec4 ndcPos = camera.P * camera.V * vec4(refractedRayExit, 1.0);
+	vec2 refractionCoords = ndcPos.xy / ndcPos.w;
+	refractionCoords += 1.0;
+	refractionCoords /= 2.0;
+
+	ivec2 texSize = textureSize(transmissionTex, 0);
+	float lod = log2(float(texSize.x)) * applyIorToRoughness(roughness, 1.5); // TODO: change to ior
+	vec3 transmittedLight = textureLod(transmissionTex, refractionCoords, lod).rgb; 
+	
+	float NdotV = clamp(dot(n,v),0.0,1.0);
+	vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0), vec2(1.0));
+	vec2 brdf = texture(brdfLUT, brdfSamplePoint).rg;
+	vec3 specularColor = F0 * brdf.x + F90 * brdf.y;
+
+	return (1.0 - specularColor) * transmittedLight * color; // T = 1 - R
+}
+
+vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness,
+    vec3 f0, vec3 f90, vec3 baseColor, float ior)
+{
+    float transmissionRougness = applyIorToRoughness(alphaRoughness, ior);
+
+    vec3 n = normalize(normal);           // Outward direction of surface point
+    vec3 v = normalize(view);             // Direction from surface point to view
+    vec3 l = normalize(pointToLight);
+    vec3 l_mirror = normalize(l + 2.0*n*dot(-l, n));     // Mirror light reflection vector on surface
+    vec3 h = normalize(l_mirror + v);            // Halfway vector between transmission light vector and v
+
+    float D = D_GGX_TR(clamp(dot(n, h), 0.0, 1.0), transmissionRougness);
+    vec3 F = F_Schlick(clamp(dot(v, h), 0.0, 1.0), f0);
+    float Vis = V_GGX(clamp(dot(n, l_mirror), 0.0, 1.0), clamp(dot(n, v), 0.0, 1.0), transmissionRougness);
+
+    // Transmission BTDF
+    return (1.0 - F) * baseColor * D * Vis;
+}
+
 void main()
 {
 	// main material parameters
@@ -96,6 +161,7 @@ void main()
 	float roughness = 0.0;
 	float alpha = 0.0;
 	float transparency = 1.0;
+	vec4 baseColor = vec4(1.0);
 	if(useSpecGlossMat)
 	{
 		vec4 diffuseColor = material2.getDiffuseColor(texCoord0);
@@ -115,7 +181,7 @@ void main()
 	}
 	else
 	{
-		vec4 baseColor = vertexColor * material.getBaseColor(texCoord0, texCoord1);
+		baseColor = vertexColor * material.getBaseColor(texCoord0, texCoord1);
 		transparency = baseColor.a;
 		if(material.alphaMode == 1)
 			if(transparency < material.alphaCutOff)
@@ -166,12 +232,19 @@ void main()
 	vec3 kD = (vec3(1.0) - F_ambient);
 
 	vec3 irradiance = texture(irradianceMap, n).rgb;
-	vec3 diffuse = irradiance * c_diff;
+	vec3 diffuse = kD * irradiance * c_diff;
 
 	const float MAX_REFLECTION_LOD = 7.0;
 	vec3 specularColor = textureLod(specularMap, r, roughness * MAX_REFLECTION_LOD).rgb;
 	vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
 	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
+
+	// apply ao before transmission
+	diffuse *= ao;
+	float transmissionFactor = material.getTransmission(texCoord0, texCoord1);
+	vec3 transmission = transmissionFactor * getIBLVolumeRefraction(n, v, roughness, baseColor.rgb, F0, vec3(1.0), wPosition);
+	if(transmissionFactor > 0.0)
+		diffuse = mix(diffuse, transmission, transmissionFactor);
 
 	//vec3 ambient = (kD * diffuse + specular) * ao; // TODO: fix ao baked in PBR texture
 	//vec3 ambient = 0.05 * (kD * c_diff + (F_ambient * brdf.x + brdf.y)) * ao; // TODO: add constant ambient light
@@ -188,8 +261,10 @@ void main()
 	vec3 clearCoat = getIBLRadiance(clearCoatNormal, v, clearCoatRoughness, F0) * ao;
 	vec3 clearCoatFresnel = F_Schlick(clamp(dot(clearCoatNormal, v), 0.0, 1.0), vec3(0.04));
 
-	vec3 ambient = ((kD * diffuse + specular) + sheen) * ao; // TODO: fix ao baked in PBR texture
+	vec3 ambient = diffuse + (specular + sheen) * ao; // TODO: fix ao baked in PBR texture
 	ambient = ambient * (1.0 - clearCoatFactor * clearCoatFresnel) + clearCoat * clearCoatFactor;
+
+//	vec3 ambient = diffuse + specular * ao;
 
 	// direct light (diffuse+specular)
 	vec3 lo = vec3(0);
@@ -214,21 +289,35 @@ void main()
 		// TODO: make optional
 		vec3 f_sheen = SpecularSheen(sheenColor, sheenRoughness, NdotL, NdotV, NdotH);
 		float albedoScaling = min(1.0 - max3(sheenColor) * E(NdotV, sheenRoughness), 1.0 - max3(sheenColor) * E(NdotL, sheenRoughness));
-		//float albedoScaling = 1.0 - max3(sheenColor) * E(NdotV, sheenRoughness);
 		
 		float shadow = 1.0; //getShadow(i); 
 		float d = length(wPosition - lightPos);
 		float att = clamp(1.0 - (d / 50.0), 0.0, 1.0);
 		float attenuation = att * att;
-
 		vec3 lightIntensity = lights[i].color * shadow * attenuation;
-		vec3 color = ((f_diff + f_spec) * albedoScaling + f_sheen) * NdotL * lightIntensity;
+
+		vec3 tLight = vec3(0);
+
+		f_diff = f_diff * NdotL * lightIntensity;
+		if(transmissionFactor > 0.0)
+		{
+//		    vec3 transmissionRay = getVolumeTransmissionRay(n, v, 0.0, 1.5, M);
+//			vec3 pointToLight = lightPos - wPosition;
+//			pointToLight -= transmissionRay;
+//			l = normalize(pointToLight);
+
+			vec3 f_transmission = lightIntensity * getPunctualRadianceTransmission(n, v, l, alpha,F0, vec3(1.0), baseColor.rgb, 1.5);
+			f_transmission *= transmissionFactor;
+			f_diff = mix(f_diff, f_transmission, transmissionFactor);
+		}	
+
+		vec3 color = f_diff * albedoScaling + (f_spec * albedoScaling + f_sheen) * NdotL * lightIntensity;
 		if(clearCoatFactor > 0.0)
 		{
 			f_clearCoat = CookTorrance(vec3(0.04), clearCoatNormal, l, v, clearCoatRoughness * clearCoatRoughness);
 			f_clearCoat = f_clearCoat * lightIntensity * clamp(dot(clearCoatNormal, l), 0.0, 1.0);
 			color = color * (1.0 - clearCoatFactor * clearCoatFresnel) + f_clearCoat * clearCoatFactor;
-		}			
+		}
 		lo += color;
 	}
 
@@ -238,7 +327,8 @@ void main()
 //	intensity = vec3(1.0) - exp(-intensity * exposure); // EV
 //	intensity = intensity / (1.0 + intensity);			// reinhard
 
-	intensity = pow(intensity, vec3(1.0 / 2.2));
+	if(useGammaEncoding)
+		intensity = pow(intensity, vec3(1.0 / 2.2));
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
 		fragColor = vec4(intensity, 1.0);

@@ -30,6 +30,7 @@ namespace IO
 		supportedExtensions.insert("KHR_texture_transform");
 		supportedExtensions.insert("KHR_materials_sheen");
 		supportedExtensions.insert("KHR_materials_clearcoat");
+		supportedExtensions.insert("KHR_materials_transmission");
 	}
 
 	Entity::Ptr GLTFImporter::importModel(const std::string& filename)
@@ -694,6 +695,7 @@ namespace IO
 			{
 				const auto& pbrNode = materialNode["pbrMetallicRoughness"];
 				material->addProperty("material.baseColorFactor", glm::vec4(1.0f));
+				material->addProperty("material.useBaseColorTex", false);
 				if (pbrNode.HasMember("baseColorFactor"))
 				{
 					const auto& baseColorNode = pbrNode["baseColorFactor"];
@@ -935,6 +937,8 @@ namespace IO
 			material->addProperty("material.useClearCoatTex", false);			
 			material->addProperty("material.useClearCoatRoughTex", false);
 			material->addProperty("material.useClearCoatNormalTex", false);
+			material->addProperty("material.transmissionFactor", 0.0f);
+			material->addProperty("material.useTransmissionTex", false);
 			if (materialNode.HasMember("extensions"))
 			{
 				const auto& extensionNode = materialNode["extensions"];
@@ -1226,6 +1230,58 @@ namespace IO
 					else
 					{
 						material->addProperty("material.useClearCoatNormalTex", false);
+					}
+				}
+
+				if (extensionNode.HasMember("KHR_materials_transmission"))
+				{
+					material->setTransmissive(true);
+
+					const auto& transmissionNode = extensionNode["KHR_materials_transmission"];
+					if (transmissionNode.HasMember("transmissionFactor"))
+					{
+						float transmissionFactor = transmissionNode["transmissionFactor"].GetFloat();
+						material->addProperty("material.transmissionFactor", transmissionFactor);
+						material->addProperty("material.useTransmissionTex", false);
+					}
+					else
+					{
+						material->addProperty("material.transmissionFactor", 0.0f);
+					}
+
+					if (transmissionNode.HasMember("transmissionTexture"))
+					{
+						auto& transmissionTexNode = transmissionNode["transmissionTexture"];
+						unsigned int texIndex = transmissionTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.transmissionTex", tex);
+							material->addProperty("material.useTransmissionTex", true);
+							material->addProperty("material.hasTransmissionUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (transmissionTexNode.HasMember("texCoord"))
+								texCoordIdx = transmissionTexNode["texCoord"].GetInt();
+							material->addProperty("material.transmissionUVIndex", texCoordIdx);
+
+							if (transmissionTexNode.HasMember("extensions"))
+							{
+								auto& extNode = transmissionTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.transmissionUVTransform", texTransform);
+									material->addProperty("material.hasTransmissionUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
 					}
 				}
 			}				

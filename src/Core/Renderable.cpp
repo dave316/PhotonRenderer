@@ -73,6 +73,14 @@ bool Renderable::useBlending()
 	return false;
 }
 
+bool Renderable::isTransmissive()
+{
+	for (auto& p : primitives)
+		if (p.material->isTransmissive())
+			return true;
+	return false;
+}
+
 // TODO: get whole array of morph weights
 std::vector<float> Renderable::getWeights()
 {

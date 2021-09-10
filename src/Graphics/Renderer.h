@@ -28,7 +28,9 @@ class Renderer
 
 	GL::UniformBuffer<Camera::UniformData> cameraUBO;
 	GL::UniformBuffer<Light::UniformData> lightUBO;
-	
+
+	Framebuffer::Ptr screenFBO;
+	Texture2D::Ptr screenTex;
 	Mesh::Ptr screenQuad;
 	Mesh::Ptr unitCube;
 	TextureCubeMap::Ptr cubeMap;
@@ -60,7 +62,7 @@ public:
 	void updateAnimationState(float dt);
 	void updateCamera(Camera& camera);
 	void updateShadows();
-	void renderScene(Shader::Ptr shader);
+	void renderScene(Shader::Ptr shader, bool transmission);
 	void render();
 	void renderText();
 };

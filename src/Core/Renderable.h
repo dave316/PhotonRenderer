@@ -37,6 +37,7 @@ public:
 	bool isSkinnedMesh();
 	bool useMorphTargets();
 	bool useBlending();
+	bool isTransmissive();
 	std::string getName();
 	std::vector<float> getWeights();
 	std::vector<Vertex> getVertices();
