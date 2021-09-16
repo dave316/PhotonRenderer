@@ -196,7 +196,7 @@ void main()
 			pointToLight -= transmissionRay;
 			l = normalize(pointToLight);
 
-			vec3 f_transmission = lightIntensity * getPunctualRadianceTransmission(n, v, l, alphaRoughness, F0, vec3(1.0), baseColor.rgb, material.ior);
+			vec3 f_transmission = getPunctualRadianceTransmission(n, v, l, alphaRoughness, F0, vec3(1.0), baseColor.rgb, material.ior);
 			f_transmission *= transmissionFactor;
 			f_diff = mix(f_diff, f_transmission, transmissionFactor);
 		}	
