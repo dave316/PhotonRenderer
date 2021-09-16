@@ -7,14 +7,12 @@ layout(location = 0) out vec4 fragColor;
 #include "BRDF.glsl"
 #include "Utils.glsl"
 
+// TODO: add importance sampling for sheen distribution
 uniform samplerCube environmentMap;
 uniform float roughness;
 void main()
 {
 	vec3 n = normalize(uvw);
-	vec3 r = n;
-	vec3 v = r;
-
 	const uint numSamples = 1024u;
 	float alpha = roughness * roughness;
 	float totalWeight = 0.0;
@@ -24,15 +22,15 @@ void main()
 	{
 		vec2 x = Hammersley(i, numSamples);
 		vec3 h = importanceSampleGGX(x, n, roughness);
-		vec3 l = normalize(2.0 * dot(v, h) * h - v);
-
+		//vec3 h = importanceSampleCharlie(x, n, roughness);
+		vec3 l = reflect(-n, h);
 		float NdotL = max(dot(n, l), 0.0);
 		if(NdotL > 0.0)
 		{
 			float NdotH = max(dot(n, h), 0.0);
-			float VdotH = max(dot(v, h), 0.0);
-			float D = D_GGX_TR(NdotH, alpha);
-			float pdf = D * NdotH / (4.0 * VdotH);
+			float D = D_GGX(NdotH, roughness);
+			//float D = D_Charlie(roughness, NdotH);
+			float pdf = D * NdotH / (4.0 * NdotH);
 			float resolution = 1024.0;
 			float saTexel = 4.0 * PI / (6.0 * resolution * resolution);
 			float saSample = 1.0 / (float(numSamples) * pdf);

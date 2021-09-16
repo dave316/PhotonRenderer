@@ -8,6 +8,14 @@ float D_GGX_TR(float NdotH, float alpha)
 	return a2 / (PI * d * d);
 }
 
+// TODO: why is this distribution different??
+float D_GGX(float NdotH, float roughness)
+{
+	float a = NdotH * roughness;
+	float k = roughness / (1.0 - NdotH * NdotH + a * a);
+	return k * k * (1.0 / PI);
+}
+
 float G_Schlick_GGX(float NdotD, float k)
 {
 	return NdotD / (NdotD * (1.0 - k) + k);
@@ -95,7 +103,7 @@ vec3 SpecularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float Ndo
 	return sheenColor * sheenDistribution * sheenVisibility;
 }
 
-vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha)
+vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha, float specularWeight)
 {
 	vec3 h = normalize(l + v);
 	float NdotL = max(dot(n, l), 0.0);
@@ -109,7 +117,17 @@ vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha)
 	vec3 F = F_Schlick(HdotV, F0);
 
 	//vec3 f_spec = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
-	return D * V * F;
+	return specularWeight * F * V * D;
+}
+
+vec3 Lambert(vec3 F0, vec3 l, vec3 v, vec3 color, float specularWeight)
+{
+	vec3 h = normalize(l + v);
+	float HdotV = max(dot(h, v), 0.0);
+
+	vec3 F = F_Schlick(HdotV, F0);
+	
+	return (1.0 - specularWeight * F) * color / PI;
 }
 
 vec3 importanceSampleGGX(vec2 x, vec3 n, float roughness)
@@ -118,6 +136,25 @@ vec3 importanceSampleGGX(vec2 x, vec3 n, float roughness)
 	float phi = 2.0 * PI * x.x;
 	float cosTheta = sqrt((1.0 - x.y) / (1.0 + (a * a - 1.0) * x.y));
 	float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+	vec3 h;
+	h.x = cos(phi) * sinTheta;
+	h.y = sin(phi) * sinTheta;
+	h.z = cosTheta;
+
+	vec3 up = abs(n.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+	vec3 tangent = normalize(cross(up, n));
+	vec3 bitangent = cross(n, tangent);
+	vec3 wSample = tangent * h.x + bitangent * h.y + n * h.z;
+	return normalize(wSample);
+}
+
+vec3 importanceSampleCharlie(vec2 x, vec3 n, float roughness)
+{
+	float a = roughness * roughness;
+	float phi = 2.0 * PI * x.x;
+	float sinTheta = pow(x.y, a / (2.0 * a + 1));
+	float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
 
 	vec3 h;
 	h.x = cos(phi) * sinTheta;

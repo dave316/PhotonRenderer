@@ -29,6 +29,12 @@ struct PBRMetalRoughMaterial
 	float clearcoatFactor;
 	float clearcoatRoughnessFactor;
 	float transmissionFactor;
+	float thicknessFactor;
+	float attenuationDistance;
+	vec3 attenuationColor;
+	float ior;
+	float specularFactor;
+	vec3 specularColorFactor;
 
 	bool useBaseColorTex;
 	bool useNormalTex;
@@ -41,6 +47,9 @@ struct PBRMetalRoughMaterial
 	bool useClearCoatRoughTex;
 	bool useClearCoatNormalTex;
 	bool useTransmissionTex;
+	bool useThicknessTex;
+	bool useSpecularTex;
+	bool useSpecularColorTex;
 
 	sampler2D baseColorTex;
 	sampler2D normalTex;
@@ -53,6 +62,9 @@ struct PBRMetalRoughMaterial
 	sampler2D clearCoatRoughTex;
 	sampler2D clearCoatNormalTex;
 	sampler2D transmissionTex;
+	sampler2D thicknessTex;
+	sampler2D specularTex;
+	sampler2D specularColorTex;
 
 	mat3 baseColorUVTransform;
 	mat3 normalUVTransform;
@@ -65,6 +77,9 @@ struct PBRMetalRoughMaterial
 	mat3 clearCoatRoughUVTransform;
 	mat3 clearCoatNormalUVTransform;
 	mat3 transmissionUVTransform;
+	mat3 thicknessUVTransform;
+	mat3 specularUVTransform;
+	mat3 specularColorUVTransform;
 
 	bool hasBaseColorUVTransform;
 	bool hasNormalUVTransform;
@@ -77,6 +92,9 @@ struct PBRMetalRoughMaterial
 	bool hasClearCoatRoughUVTransform;
 	bool hasClearCoatNormalUVTransform;
 	bool hasTransmissionUVTransform;
+	bool hasThicknessUVTransform;
+	bool hasSpecularUVTransform;
+	bool hasSpecularColorUVTransform;
 
 	int baseColorUVIndex;
 	int normalUVIndex;
@@ -89,6 +107,9 @@ struct PBRMetalRoughMaterial
 	int clearCoatRoughUVIndex;
 	int clearCoatNormalUVIndex;
 	int transmissionUVIndex;
+	int thicknessUVIndex;
+	int specularUVIndex;
+	int specularColorUVIndex;
 
 	vec4 getBaseColor(vec2 uv0, vec2 uv1)
 	{
@@ -205,6 +226,45 @@ struct PBRMetalRoughMaterial
 			transmission = transmission * texture(transmissionTex, uvTransform.xy).r;
 		}
 		return transmission;
+	}
+
+	float getThickness(vec2 uv0, vec2 uv1)
+	{
+		float thickness = thicknessFactor;
+		if (useThicknessTex)
+		{
+			vec3 uvTransform = vec3(thicknessUVIndex == 0 ? uv0 : uv1, 1.0);
+			if (hasThicknessUVTransform)
+				uvTransform = thicknessUVTransform * uvTransform;
+			thickness = thickness * texture(thicknessTex, uvTransform.xy).g;
+		}
+		return thickness;
+	}
+
+	float getSpecular(vec2 uv0, vec2 uv1)
+	{
+		float specular = specularFactor;
+		if (useSpecularTex)
+		{
+			vec3 uvTransform = vec3(specularUVIndex == 0 ? uv0 : uv1, 1.0);
+			if (hasSpecularUVTransform)
+				uvTransform = specularUVTransform * uvTransform;
+			specular = specular * texture(specularTex, uvTransform.xy).a;
+		}
+		return specular;
+	}
+
+	vec3 getSpecularColor(vec2 uv0, vec2 uv1)
+	{
+		vec3 specularColor = specularColorFactor;
+		if (useSpecularColorTex)
+		{
+			vec3 uvTransform = vec3(specularColorUVIndex == 0 ? uv0 : uv1, 1.0);
+			if (hasSpecularColorUVTransform)
+				uvTransform = specularColorUVTransform * uvTransform;
+			specularColor = specularColor * texture(specularColorTex, uvTransform.xy).rgb;
+		}
+		return specularColor;
 	}
 };
 uniform PBRMetalRoughMaterial material;

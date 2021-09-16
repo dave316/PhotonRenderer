@@ -13,3 +13,23 @@ vec2 Hammersley(uint i, uint n)
 {
 	return vec2(float(i) / float(n), radicalInverse(i));
 }
+
+float saturate(float value)
+{
+	return clamp(value, 0.0, 1.0);
+}
+
+float clampDot(vec3 v, vec3 w)
+{
+	return saturate(dot(v, w));
+}
+
+float max3(vec3 v)
+{
+	return max(max(v.x, v.y), v.z);
+}
+
+float applyIorToRoughness(float roughness, float ior)
+{
+	return roughness * saturate(ior * 2.0 - 2.0);
+}

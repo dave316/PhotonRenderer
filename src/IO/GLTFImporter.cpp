@@ -31,6 +31,10 @@ namespace IO
 		supportedExtensions.insert("KHR_materials_sheen");
 		supportedExtensions.insert("KHR_materials_clearcoat");
 		supportedExtensions.insert("KHR_materials_transmission");
+		supportedExtensions.insert("KHR_materials_volume");
+		supportedExtensions.insert("KHR_materials_ior");
+		supportedExtensions.insert("KHR_materials_specular");
+		supportedExtensions.insert("KHR_materials_pbrSpecularGlossiness");
 	}
 
 	Entity::Ptr GLTFImporter::importModel(const std::string& filename)
@@ -742,6 +746,7 @@ namespace IO
 						std::cout << "texture index " << texIndex << " not found" << std::endl;
 				}
 
+				material->addProperty("material.usePbrTex", false);
 				if (pbrNode.HasMember("roughnessFactor"))
 				{
 					float roughnessFactor = pbrNode["roughnessFactor"].GetFloat();
@@ -877,7 +882,6 @@ namespace IO
 				material->addProperty("material.useOcclusionTex", false);
 			}
 
-			material->addProperty("material.emissiveFactor", glm::vec3(0.0f));
 			if (materialNode.HasMember("emissiveFactor"))
 			{
 				const auto& baseColorNode = materialNode["emissiveFactor"];
@@ -887,7 +891,10 @@ namespace IO
 				color.g = array[1].GetFloat();
 				color.b = array[2].GetFloat();
 				material->addProperty("material.emissiveFactor", color);
-				material->addProperty("material.emissiveTexture", false);
+			}
+			else
+			{
+				material->addProperty("material.emissiveFactor", glm::vec3(0.0f));
 			}
 
 			if (materialNode.HasMember("emissiveTexture"))
@@ -939,6 +946,16 @@ namespace IO
 			material->addProperty("material.useClearCoatNormalTex", false);
 			material->addProperty("material.transmissionFactor", 0.0f);
 			material->addProperty("material.useTransmissionTex", false);
+			material->addProperty("material.thicknessFactor", 0.0f);
+			material->addProperty("material.useThicknessTex", false);
+			material->addProperty("material.attenuationDistance", 0.0f); // TODO: default should be infinity?
+			material->addProperty("material.attenuationColor", glm::vec3(1.0f));
+			material->addProperty("material.ior", 1.5f);
+			material->addProperty("material.specularFactor", 1.0f);
+			material->addProperty("material.useSpecularTex", false);
+			material->addProperty("material.specularColorFactor", glm::vec3(1.0f));
+			material->addProperty("material.useSpecularColorTex", false);
+
 			if (materialNode.HasMember("extensions"))
 			{
 				const auto& extensionNode = materialNode["extensions"];
@@ -1275,6 +1292,198 @@ namespace IO
 
 									material->addProperty("material.transmissionUVTransform", texTransform);
 									material->addProperty("material.hasTransmissionUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+				}
+
+				if (extensionNode.HasMember("KHR_materials_volume"))
+				{
+					material->setTransmissive(true);
+
+					const auto& volumeNode = extensionNode["KHR_materials_volume"];
+					if (volumeNode.HasMember("thicknessFactor"))
+					{
+						float thicknessFactor = volumeNode["thicknessFactor"].GetFloat();
+						material->addProperty("material.thicknessFactor", thicknessFactor);
+						material->addProperty("material.useThicknessTex", false);
+					}
+					else
+					{
+						material->addProperty("material.thicknessFactor", 0.0f);
+					}
+
+					if (volumeNode.HasMember("thicknessTexture"))
+					{
+						auto& thicknessTexNode = volumeNode["thicknessTexture"];
+						unsigned int texIndex = thicknessTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.thicknessTex", tex);
+							material->addProperty("material.useThicknessTex", true);
+							material->addProperty("material.hasThicknessUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (thicknessTexNode.HasMember("texCoord"))
+								texCoordIdx = thicknessTexNode["texCoord"].GetInt();
+							material->addProperty("material.thicknessUVIndex", texCoordIdx);
+
+							if (thicknessTexNode.HasMember("extensions"))
+							{
+								auto& extNode = thicknessTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.thicknessUVTransform", texTransform);
+									material->addProperty("material.hasThicknessUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+
+					if (volumeNode.HasMember("attenuationDistance"))
+					{
+						float attenuationDistance = volumeNode["attenuationDistance"].GetFloat();
+						material->addProperty("material.attenuationDistance", attenuationDistance);
+					}
+					else
+					{
+						material->addProperty("material.attenuationDistance", 0.0f);
+					}
+										
+					if (volumeNode.HasMember("attenuationColor"))
+					{
+						const auto& attColorNode = volumeNode["attenuationColor"];
+						auto array = attColorNode.GetArray();
+						glm::vec3 color;
+						color.r = array[0].GetFloat();
+						color.g = array[1].GetFloat();
+						color.b = array[2].GetFloat();
+						material->addProperty("material.attenuationColor", color);
+					}
+					else
+					{
+						material->addProperty("material.attenuationColor", glm::vec3(1.0f));
+					}
+				}
+
+				if (extensionNode.HasMember("KHR_materials_ior"))
+				{
+					const auto& iorNode = extensionNode["KHR_materials_ior"];
+					if (iorNode.HasMember("ior"))
+					{
+						float ior = iorNode["ior"].GetFloat();
+						material->addProperty("material.ior", ior);
+					}
+					else
+					{
+						material->addProperty("material.ior", 1.5f);
+					}
+				}
+
+				if (extensionNode.HasMember("KHR_materials_specular"))
+				{
+					const auto& specularNode = extensionNode["KHR_materials_specular"];
+					if (specularNode.HasMember("specularFactor"))
+					{
+						float specularFactor = specularNode["specularFactor"].GetFloat();
+						material->addProperty("material.specularFactor", specularFactor);
+						material->addProperty("material.useSpecularTex", false);
+					}
+					else
+					{
+						material->addProperty("material.specularFactor", 1.0f);
+					}
+
+					if (specularNode.HasMember("specularTexture"))
+					{
+						auto& specularTexNode = specularNode["specularTexture"];
+						unsigned int texIndex = specularTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.specularTex", tex);
+							material->addProperty("material.useSpecularTex", true);
+							material->addProperty("material.hasSpecularUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (specularTexNode.HasMember("texCoord"))
+								texCoordIdx = specularTexNode["texCoord"].GetInt();
+							material->addProperty("material.specularUVIndex", texCoordIdx);
+
+							if (specularTexNode.HasMember("extensions"))
+							{
+								auto& extNode = specularTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.specularUVTransform", texTransform);
+									material->addProperty("material.hasSpecularUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+
+					if (specularNode.HasMember("specularColorFactor"))
+					{
+						const auto& specColorNode = specularNode["specularColorFactor"];
+						auto array = specColorNode.GetArray();
+						glm::vec3 color;
+						color.r = array[0].GetFloat();
+						color.g = array[1].GetFloat();
+						color.b = array[2].GetFloat();
+						material->addProperty("material.specularColorFactor", color);
+						material->addProperty("material.useSpecularColorTex", false);
+					}
+					else
+					{
+						material->addProperty("material.specularColorFactor", glm::vec3(1.0f));
+					}
+
+					if (specularNode.HasMember("specularColorTexture"))
+					{
+						auto& specularColorTexNode = specularNode["specularColorTexture"];
+						unsigned int texIndex = specularColorTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.specularColorTex", tex);
+							material->addProperty("material.useSpecularColorTex", true);
+							material->addProperty("material.hasSpecularColorUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (specularColorTexNode.HasMember("texCoord"))
+								texCoordIdx = specularColorTexNode["texCoord"].GetInt();
+							material->addProperty("material.specularColorUVIndex", texCoordIdx);
+
+							if (specularColorTexNode.HasMember("extensions"))
+							{
+								auto& extNode = specularColorTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.specularColorUVTransform", texTransform);
+									material->addProperty("material.hasSpecularColorUVTransform", true);
 								}
 							}
 						}

@@ -83,7 +83,7 @@ Animation::Animation(const std::string& name, float duration) :
 
 Animation::~Animation()
 {
-	std::cout << "deleted Animation " << name << std::endl;
+	//std::cout << "deleted Animation " << name << std::endl;
 }
 
 void Animation::addChannel(int index, Channel& channel)

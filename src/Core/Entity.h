@@ -27,7 +27,7 @@ public:
 
 	~Entity()
 	{
-		std::cout << "Entity " << name << " destroyed" << std::endl;
+		//std::cout << "Entity " << name << " destroyed" << std::endl;
 	}
 
 	template<typename T>

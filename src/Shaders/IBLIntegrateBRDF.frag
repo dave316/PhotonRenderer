@@ -13,7 +13,7 @@ void main()
 {
 	float NdotV = texCoord.x;
 	float roughness = texCoord.y;
-	float alpha = (roughness * roughness) / 2.0;
+	float alpha = roughness * roughness;
 
 	vec3 v;
 	v.x = sqrt(1.0 - NdotV * NdotV);
@@ -38,16 +38,19 @@ void main()
 		float VdotH = max(dot(v, h), 0.0);
 		if(NdotL > 0.0)
 		{
-			float G = G_Smith(NdotV, NdotL, alpha);
-			float G_Vis = (G * VdotH) / (NdotH * NdotV);
+//			float G = G_Smith(NdotV, NdotL, alpha);
+//			float G_Vis = (G * VdotH) / (NdotH * NdotV);
+			float V = V_GGX(NdotL, NdotV, alpha);
+			float V_vis = V * VdotH * NdotL / NdotH;
 			float Fc = pow(1.0 - VdotH, 5.0);
 
-			A += (1.0 - Fc) * G_Vis;
-			B += Fc * G_Vis;
+			A += (1.0 - Fc) * V_vis;
+			B += Fc * V_vis;
 		}
 	}
 
-	A /= float(numSamples);
-	B /= float(numSamples);
-	brdf = vec2(A, B);
+//	A /= float(numSamples);
+//	B /= float(numSamples);
+	//brdf = vec2(A, B);
+	brdf = vec2(4.0 * A, 4.0 * B) / float(numSamples);
 }

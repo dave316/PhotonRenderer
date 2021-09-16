@@ -21,6 +21,8 @@ namespace IO
 
 		if ((w & (w - 1)) != 0 || (h & (h - 1)) != 0)
 		{
+			// TODO: need to check filter and wrap mode first before resize!
+
 			std::cout << "warning, texture is not power of 2!" << std::endl;
 
 			int size = 256; // TODO: find best size for texture
@@ -73,7 +75,7 @@ namespace IO
 		stbi_set_flip_vertically_on_load(false);
 		std::unique_ptr<unsigned short> data(stbi_load_16(filename.c_str(), &w, &h, &c, 0));
 
-		std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
+		//std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
 
 		auto tex = Texture2D::create(w, h, GL::RG16F);
 		tex->bind();
@@ -89,7 +91,7 @@ namespace IO
 		stbi_set_flip_vertically_on_load(true);
 		std::unique_ptr<float> data(stbi_loadf(filename.c_str(), &w, &h, &c, 0));
 
-		std::cout << "loaded HDR texture: " << w << "x" << h << "x" << c << std::endl;
+		//std::cout << "loaded HDR texture: " << w << "x" << h << "x" << c << std::endl;
 
 		auto tex = Texture2D::create(w, h, GL::RGB32F);
 		tex->upload(data.get());

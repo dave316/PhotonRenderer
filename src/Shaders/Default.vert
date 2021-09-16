@@ -20,6 +20,7 @@ layout(location = 13) in vec3 vTargetTangent1;
 #endif
 
 out vec3 wPosition;
+out vec4 clipPosition;
 out vec3 wNormal;
 out mat3 wTBN;
 out vec4 vertexColor;

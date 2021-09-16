@@ -331,6 +331,19 @@ namespace IO
 		defaultMaterial->addProperty("material.useEmissiveTex", false);
 		defaultMaterial->addProperty("material.useOcclusionTex", false);
 
+		defaultMaterial->addProperty("useSpecGlossMat", false);
+		defaultMaterial->addProperty("material.sheenColorFactor", glm::vec3(0));
+		defaultMaterial->addProperty("material.sheenRoughnessFactor", 0.0f);
+		defaultMaterial->addProperty("material.useSheenColorTex", false);
+		defaultMaterial->addProperty("material.useSheenRoughTex", false);
+		defaultMaterial->addProperty("material.clearcoatFactor", 0.0f);
+		defaultMaterial->addProperty("material.clearcoatRoughnessFactor", 0.0f);
+		defaultMaterial->addProperty("material.useClearCoatTex", false);
+		defaultMaterial->addProperty("material.useClearCoatRoughTex", false);
+		defaultMaterial->addProperty("material.useClearCoatNormalTex", false);
+		defaultMaterial->addProperty("material.transmissionFactor", 0.0f);
+		defaultMaterial->addProperty("material.useTransmissionTex", false);
+
 		aiString aiName;
 		pMaterial->Get(AI_MATKEY_NAME, aiName);
 

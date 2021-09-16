@@ -54,6 +54,7 @@ bool Renderer::init()
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	//glClearColor(0.8f, 0.77f, 0.54f, 1.0f);
 	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glViewport(0, 0, width, height);
 	//glEnable(GL_DEBUG_OUTPUT);
@@ -69,12 +70,13 @@ bool Renderer::init()
 
 	std::string assetPath = "../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "TransmissionTest";
+	std::string name = "IridescentDishWithOlives";
 	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//name = "SheenChair";
+	//name = "MultiUVTest";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//rootEntitis["SheenChair"]->getComponent<Transform>()->setPosition(glm::vec3(0, 0, -5));
 
+	// TODO: generate these with shaders
 	lutSheenE = IO::loadTexture(assetPath + "/lut_sheen_E.png", false);	
 	charlieLUT = IO::loadTexture(assetPath + "/lut_charlie.png", false);
 
@@ -118,7 +120,7 @@ void Renderer::initEnvMaps()
 	std::string assetPath = "../../assets";
 	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
-	//auto pano = IO::loadTextureHDR(assetPath + "/neutral.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/directional.hdr");
 
 	glm::vec3 position = glm::vec3(0);
 	std::vector<glm::mat4> VP;
@@ -220,10 +222,12 @@ void Renderer::initEnvMaps()
 
 void Renderer::initFBOs()
 {
-	screenTex = Texture2D::create(width, height, GL::RGBA32F);
+	int w = width;
+	int h = height;
+	screenTex = Texture2D::create(w, h, GL::RGBA8);
 	screenTex->generateMipmaps();
 	screenTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-	screenFBO = Framebuffer::create(width, height);
+	screenFBO = Framebuffer::create(w, h);
 	screenFBO->addRenderTexture(GL::COLOR0, screenTex);
 	screenFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
 
@@ -260,17 +264,28 @@ void Renderer::initLights()
 	std::uniform_real_distribution<float> distY(2.0f, 2.0f);
 	std::uniform_real_distribution<float> distZ(-2.0f, 2.0f);
 
-	int numLights = 1;
+	int numLights = 0;
 	for (int i = 0; i < numLights; i++)
 	{
 		float x = distX(gen);
 		float y = distY(gen);
 		float z = distZ(gen);
 		//auto light = Light::create(glm::vec3(x, y, z), glm::vec3(0.25f, 0.61f, 1.0f));
-		auto light = Light::create(glm::vec3(0, 10, 5), glm::vec3(1.0f));
+		auto light = Light::create(glm::vec3(0, 5, 5), glm::vec3(1.0f));
 		std::string lightName = "light_" + std::to_string(i);
 		lights.insert(std::make_pair(lightName, light));
 	}
+
+	//{
+	//	auto light = Light::create(glm::vec3(-1, 0, -2), glm::vec3(1.0f));
+	//	std::string lightName = "light_" + std::to_string(0);
+	//	lights.insert(std::make_pair(lightName, light));
+	//}
+	//{
+	//	auto light = Light::create(glm::vec3(1, 0, -2), glm::vec3(1.0f));
+	//	std::string lightName = "light_" + std::to_string(1);
+	//	lights.insert(std::make_pair(lightName, light));
+	//}
 
 	int i = 0;
 	std::vector<Light::UniformData> lightData(lights.size()); 
@@ -280,7 +295,7 @@ void Renderer::initLights()
 		i++;
 	}
 
-	std::cout << "created " << lights.size() << " lights" << std::endl;
+	//std::cout << "created " << lights.size() << " lights" << std::endl;
 
 	lightUBO.upload(lightData, GL_DYNAMIC_DRAW);
 	lightUBO.bindBase(1);
@@ -381,7 +396,7 @@ void Renderer::updateShadows()
 		depthShader->use();
 		depthShader->setUniform("lightIndex", i);
 		depthShader->setUniform("VP[0]", views[i]);
-		renderScene(depthShader, false);
+		renderScene(depthShader, true);
 		shadowFBOs[i]->end();
 		glCullFace(GL_BACK);
 	}
@@ -547,24 +562,24 @@ void Renderer::loadModel(std::string name, std::string path)
 	auto rootTransform = rootEntity->getComponent<Transform>();
 	rootEntity->update(glm::mat4(1.0f));
 
-	AABB aabb;
-	auto meshEntities = rootEntity->getChildrenWithComponent<Renderable>();
-	for (auto m : meshEntities)
-	{
-		auto r = m->getComponent<Renderable>();
-		auto t = m->getComponent<Transform>();
-		glm::mat4 M = t->getTransform();
-		auto vertices = r->getVertices();
-		for (auto& v : vertices)
-		{
-			glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0));
-			aabb.expand(pos);
-		}
-	}
+	//AABB aabb;
+	//auto meshEntities = rootEntity->getChildrenWithComponent<Renderable>();
+	//for (auto m : meshEntities)
+	//{
+	//	auto r = m->getComponent<Renderable>();
+	//	auto t = m->getComponent<Transform>();
+	//	glm::mat4 M = t->getTransform();
+	//	auto vertices = r->getVertices();
+	//	for (auto& v : vertices)
+	//	{
+	//		glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0));
+	//		aabb.expand(pos);
+	//	}
+	//}
 
-	glm::vec3 s = aabb.getSize();
-	float scale = 1.0f / glm::max(glm::max(s.x, s.y), s.z);
-	rootTransform->setScale(glm::vec3(scale));
+	//glm::vec3 s = aabb.getSize();
+	//float scale = 1.0f / glm::max(glm::max(s.x, s.y), s.z);
+	//rootTransform->setScale(glm::vec3(scale));
 }
 
 void Renderer::updateAnimations(float dt)
@@ -603,64 +618,61 @@ void Renderer::nextModel()
 
 void Renderer::renderScene(Shader::Ptr shader, bool transmission)
 {
-	if (rootEntitis.size() > 0)
+	for (auto [name, e] : rootEntitis)
 	{
-		for (auto [name, e] : rootEntitis)
+		auto models = e->getChildrenWithComponent<Renderable>();
+		auto animator = e->getComponent<Animator>();
+		std::vector<Entity::Ptr> renderEntities;
+		for (auto m : models)
+			if(!m->getComponent<Renderable>()->useBlending() && 
+			   !m->getComponent<Renderable>()->isTransmissive())
+				renderEntities.push_back(m);
+		if (transmission)
+			for (auto m : models)
+				if (m->getComponent<Renderable>()->isTransmissive())
+					renderEntities.push_back(m);
+		for (auto m : models)
+			if (m->getComponent<Renderable>()->useBlending())
+				renderEntities.push_back(m);
+
+		for (auto m : renderEntities)
 		{
-			auto models = e->getChildrenWithComponent<Renderable>();
-			auto animator = e->getComponent<Animator>();
-			std::vector<Entity::Ptr> renderEntities;
-			for (auto m : models)
-				if(!m->getComponent<Renderable>()->useBlending() && 
-				   !m->getComponent<Renderable>()->isTransmissive())
-					renderEntities.push_back(m);
-			if (transmission)
-				for (auto m : models)
-					if (m->getComponent<Renderable>()->isTransmissive())
-						renderEntities.push_back(m);
-			for (auto m : models)
-				if (m->getComponent<Renderable>()->useBlending())
-					renderEntities.push_back(m);
+			auto r = m->getComponent<Renderable>();
+			auto t = m->getComponent<Transform>();
 
-			for (auto m : renderEntities)
+			if (r->useMorphTargets())
 			{
-				auto r = m->getComponent<Renderable>();
-				auto t = m->getComponent<Transform>();
-
-				if (r->useMorphTargets())
-				{
-					std::vector<float> weights;
-					if (animator)
-						weights = animator->getWeights();
-					else
-						weights = r->getWeights();
-					shader->setUniform("numMorphTargets", (int)weights.size());
-					shader->setUniform("morphWeights[0]", weights);
-				}
+				std::vector<float> weights;
+				if (animator)
+					weights = animator->getWeights();
 				else
-				{
-					shader->setUniform("hasMorphTargets", 0);
-				}
-
-				if (r->isSkinnedMesh())
-				{
-					auto nodes = animator->getNodes();
-					Skin skin = r->getSkin();
-					skin.computeJoints(nodes);
-					auto boneTransforms = skin.getBoneTransform();
-					auto normalTransforms = skin.getNormalTransform();
-					shader->setUniform("hasAnimations", true);
-					shader->setUniform("bones[0]", boneTransforms);
-					shader->setUniform("normals[0]", normalTransforms);
-				}
-				else
-				{
-					shader->setUniform("hasAnimations", false);
-				}
-
-				t->setUniforms(shader);
-				r->render(shader);
+					weights = r->getWeights();
+				shader->setUniform("numMorphTargets", (int)weights.size());
+				shader->setUniform("morphWeights[0]", weights);
 			}
+			else
+			{
+				shader->setUniform("hasMorphTargets", 0);
+			}
+
+			if (r->isSkinnedMesh())
+			{
+				auto nodes = animator->getNodes();
+				Skin skin = r->getSkin();
+				skin.computeJoints(nodes);
+				auto boneTransforms = skin.getBoneTransform();
+				auto normalTransforms = skin.getNormalTransform();
+				shader->setUniform("hasAnimations", true);
+				shader->setUniform("bones[0]", boneTransforms);
+				shader->setUniform("normals[0]", normalTransforms);
+			}
+			else
+			{
+				shader->setUniform("hasAnimations", false);
+			}
+
+			t->setUniforms(shader);
+			r->render(shader);
 		}
 	}
 }
@@ -690,6 +702,7 @@ void Renderer::render()
 	renderScene(defaultShader, false);
 	screenFBO->end();
 	screenTex->generateMipmaps();
+	screenTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
 
 	// main render pass
 	glViewport(0, 0, width, height);

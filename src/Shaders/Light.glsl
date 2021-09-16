@@ -1,4 +1,4 @@
-#define MAX_DYNAMIC_LIGHTS 10
+#define MAX_DYNAMIC_LIGHTS 5
 
 struct Light
 {
@@ -12,3 +12,28 @@ layout(std140, binding = 1) uniform LightUBO
 };
 
 uniform samplerCubeShadow shadowMaps[MAX_DYNAMIC_LIGHTS];
+
+float getShadow(vec3 fragPos, unsigned int index)
+{
+	Light light = lights[index];
+	vec3 f = fragPos - light.position;
+	float len = length(f);
+	float shadow = 0.0;
+	float radius = 0.001;
+	//float radius = 0.0005;
+	float depth = (len / 25.0) - 0.0005;
+
+	for (int x = -1; x <= 1; x++)
+	{
+		for (int y = -1; y <= 1; y++)
+		{
+			for (int z = -1; z <= 1; z++)
+			{
+				vec3 offset = vec3(x, y, z);
+				vec3 uvw = f + offset * radius;
+				shadow += texture(shadowMaps[index], vec4(uvw, depth));
+			}
+		}
+	}
+	return shadow / 27.0;
+}
