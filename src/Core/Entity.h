@@ -72,9 +72,9 @@ public:
 			allComponents.push_back(rootComponent);
 		for (auto c : children)
 		{
-			auto component = c->getComponent<T>();
-			if (component)
-				allComponents.push_back(component);
+			//auto component = c->getComponent<T>();
+			//if (component)
+			//	allComponents.push_back(component);
 
 			auto childComponents = c->getComponentsInChildren<T>();
 			for (auto childComp : childComponents)

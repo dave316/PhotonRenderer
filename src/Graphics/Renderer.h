@@ -58,6 +58,7 @@ public:
 	void loadAssimpModels(std::string path);
 	void loadModel(std::string name, std::string path);
 	void nextModel();
+	void nextMaterial();
 	void updateAnimations(float dt);
 	void updateAnimationState(float dt);
 	void updateCamera(Camera& camera);

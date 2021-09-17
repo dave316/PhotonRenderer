@@ -13,7 +13,20 @@
 struct Primitive
 {
 	Mesh::Ptr mesh;
-	Material::Ptr material;
+	std::vector<Material::Ptr> materials;
+	unsigned int materialIndex = 0;
+
+	Material::Ptr getMaterial()
+	{
+		if (materialIndex < materials.size())
+			return materials[materialIndex];
+	}
+
+	void switchMaterial(unsigned int materialIndex)
+	{
+		if (materialIndex < materials.size())
+			this->materialIndex = materialIndex;
+	}
 };
 
 class Renderable : public Component
@@ -28,8 +41,9 @@ class Renderable : public Component
 public:
 	Renderable() {}
 	~Renderable();
-	void addMesh(std::string name, Mesh::Ptr mesh, Material::Ptr material);
+	void addPrimitive(Primitive& primitive);
 	void render(Shader::Ptr shader);
+	void switchMaterial(unsigned int materialIndex);
 	void print();
 	void flipWindingOrder();
 	void setSkin(Skin& skin);

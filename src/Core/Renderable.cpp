@@ -9,13 +9,23 @@
 //
 //}
 
-void Renderable::addMesh(std::string name, Mesh::Ptr mesh, Material::Ptr material)
+void addPrimitive(Primitive& primitive)
 {
-	this->name = name;
-	Primitive p;
-	p.mesh = mesh;
-	p.material = material;
-	primitives.push_back(p);
+
+}
+
+//void Renderable::addMesh(std::string name, Mesh::Ptr mesh, Material::Ptr material)
+//{
+//	this->name = name;
+//	Primitive p;
+//	p.mesh = mesh;
+//	p.materials.push_back(material);
+//	primitives.push_back(p);
+//}
+
+void Renderable::addPrimitive(Primitive& primitve)
+{
+	primitives.push_back(primitve);
 }
 
 Renderable::~Renderable()
@@ -25,25 +35,13 @@ Renderable::~Renderable()
 
 void Renderable::render(Shader::Ptr shader)
 {
-	//program.setUniform("M", M);
-	//program.setUniform("w0", weights.x);
-	//program.setUniform("w1", weights.y);
-	//for (auto mesh : meshes)
-	//{
-	//	auto matIndex = mesh->getMaterialIndex();
-	//	if (matIndex < materials.size())
-	//	{
-	//		materials[matIndex]->setUniforms(program);
-	//	}
-	//	mesh->draw();
-	//}
-
 	for (auto& p : primitives)
 	{
-		if (p.material->isDoubleSided())
+		auto mat = p.getMaterial();
+		if (mat->isDoubleSided())
 			glDisable(GL_CULL_FACE);
 
-		if (p.material->useBlending())
+		if (mat->useBlending())
 		{
 			glEnable(GL_BLEND);
 			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -51,13 +49,13 @@ void Renderable::render(Shader::Ptr shader)
 			glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 		}
 
-		p.material->setUniforms(shader);
+		mat->setUniforms(shader);
 		p.mesh->draw();
 
-		if (p.material->useBlending())
+		if (mat->useBlending())
 			glDisable(GL_BLEND);
 
-		if (p.material->isDoubleSided())
+		if (mat->isDoubleSided())
 		{
 			glEnable(GL_CULL_FACE);
 			glCullFace(GL_BACK);
@@ -65,10 +63,18 @@ void Renderable::render(Shader::Ptr shader)
 	}
 }
 
+void Renderable::switchMaterial(unsigned int materialIndex)
+{
+	// what if there are multiple primitives?? 
+	// only switch if variant is present, otherwise use default material
+	for (auto& p : primitives)
+		p.switchMaterial(materialIndex);
+}
+
 bool Renderable::useBlending()
 {
 	for (auto& p : primitives)
-		if (p.material->useBlending())
+		if (p.getMaterial()->useBlending())
 			return true;
 	return false;
 }
@@ -76,12 +82,11 @@ bool Renderable::useBlending()
 bool Renderable::isTransmissive()
 {
 	for (auto& p : primitives)
-		if (p.material->isTransmissive())
+		if (p.getMaterial()->isTransmissive())
 			return true;
 	return false;
 }
 
-// TODO: get whole array of morph weights
 std::vector<float> Renderable::getWeights()
 {
 	return morphWeights;

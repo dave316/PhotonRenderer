@@ -92,7 +92,7 @@ struct TriangleSurface
 		triangles.push_back(t);
 	}
 
-	void calcNormals()
+	void calcSmoothNormals()
 	{
 		for (auto& t : triangles)
 		{
@@ -115,6 +115,36 @@ struct TriangleSurface
 
 		for (auto& v : vertices)
 			v.normal = glm::normalize(v.normal);
+	}
+
+	void calcFlatNormals()
+	{
+		for (int i = 0; i < vertices.size(); i += 3)
+		{
+			Vertex& v0 = vertices[i];
+			Vertex& v1 = vertices[i + 1];
+			Vertex& v2 = vertices[i + 2];
+
+			glm::vec3 p0 = v0.position;
+			glm::vec3 p1 = v1.position;
+			glm::vec3 p2 = v2.position;
+
+			glm::vec3 e1 = p1 - p0;
+			glm::vec3 e2 = p2 - p0;
+			glm::vec3 normal = glm::normalize(cross(e1, e2));
+
+			v0.normal = normal;
+			v1.normal = normal;
+			v2.normal = normal;
+		}
+	}
+
+	void calcNormals()
+	{
+		if (triangles.empty())
+			calcFlatNormals();
+		else
+			calcSmoothNormals();
 	}
 
 	void calcTangentSpace()

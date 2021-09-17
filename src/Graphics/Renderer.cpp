@@ -70,8 +70,8 @@ bool Renderer::init()
 
 	std::string assetPath = "../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "IridescentDishWithOlives";
-	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	std::string name = "MaterialsVariantsShoe";
+	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//name = "MultiUVTest";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//rootEntitis["SheenChair"]->getComponent<Transform>()->setPosition(glm::vec3(0, 0, -5));
@@ -88,7 +88,7 @@ bool Renderer::init()
 	//	rootEntitis.insert(std::make_pair("Aplane", model));
 	//assImporter.clear();
 
-	//loadGLTFModels(gltfPath);
+	loadGLTFModels(gltfPath);
 	//loadAssimpModels(path);
 
 	for (auto [_, e] : rootEntitis)
@@ -177,7 +177,7 @@ void Renderer::initEnvMaps()
 	specularShader->use();
 
 	{
-		int size = 1024;
+		int size = 256;
 		specularMap = TextureCubeMap::create(size, size, GL::RGB32F);
 		specularMap->generateMipmaps();
 		specularMap->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
@@ -614,6 +614,20 @@ void Renderer::updateCamera(Camera& camera)
 void Renderer::nextModel()
 {
 	modelIndex = (++modelIndex) % (unsigned int)rootEntitis.size();
+}
+
+void Renderer::nextMaterial()
+{
+	static unsigned int materialIndex = 0;
+	materialIndex = (++materialIndex) % 3;
+
+	auto e = rootEntitis["MaterialsVariantsShoe"];
+	if (e)
+	{
+		auto renderables = e->getComponentsInChildren<Renderable>();
+		for (auto r : renderables)
+			r->switchMaterial(materialIndex);
+	}
 }
 
 void Renderer::renderScene(Shader::Ptr shader, bool transmission)

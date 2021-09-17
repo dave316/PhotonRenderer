@@ -135,8 +135,13 @@ namespace IO
 		if (pNode->mNumMeshes > 0)
 		{
 			auto r = Renderable::create();
-			for(auto m : nodeMeshes)
-				r->addMesh("", m, materials[m->getMaterialIndex()]);
+			for (auto m : nodeMeshes)
+			{
+				Primitive prim;
+				prim.mesh = m;
+				prim.materials.push_back(materials[m->getMaterialIndex()]);
+				r->addPrimitive(prim);
+			}
 			entity->addComponent(r);
 		}
 

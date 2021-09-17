@@ -56,6 +56,22 @@ void main()
 	float transparency = 1.0;
 	float specularWeight = 1.0;
 	vec4 baseColor = vec4(1.0);
+
+	if(material.unlit)
+	{
+		baseColor = vertexColor * material.getBaseColor(texCoord0, texCoord1);
+		vec3 unlitColor = baseColor.rgb;
+		float unlitAlpha = baseColor.a;
+		if(useGammaEncoding)
+			unlitColor = pow(unlitColor, vec3(1.0 / 2.2));
+
+		if(material.alphaMode == 0 || material.alphaMode == 1)
+			fragColor = vec4(unlitColor, unlitAlpha);
+		else 
+			fragColor = vec4(unlitColor * unlitAlpha, unlitAlpha);
+		return;
+	}
+
 	if(useSpecGlossMat)
 	{
 		vec4 diffuseColor = material2.getDiffuseColor(texCoord0);
@@ -222,7 +238,7 @@ void main()
 		intensity = pow(intensity, vec3(1.0 / 2.2));
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
-		fragColor = vec4(intensity, 1.0);
+		fragColor = vec4(intensity, transparency);
 	else 
 		fragColor = vec4(intensity * transparency, transparency);
 }

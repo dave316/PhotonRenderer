@@ -34,6 +34,8 @@ namespace IO
 		supportedExtensions.insert("KHR_materials_volume");
 		supportedExtensions.insert("KHR_materials_ior");
 		supportedExtensions.insert("KHR_materials_specular");
+		supportedExtensions.insert("KHR_materials_unlit");
+		supportedExtensions.insert("KHR_materials_variants");
 		supportedExtensions.insert("KHR_materials_pbrSpecularGlossiness");
 	}
 
@@ -356,7 +358,7 @@ namespace IO
 			for (auto& primitiveNode : primitvesNode->value.GetArray())
 			{
 				TriangleSurface surface;
-				unsigned int materialIndex = 0;
+				std::vector<unsigned int> materialIndices;
 
 				primitivNum++;
 
@@ -471,7 +473,25 @@ namespace IO
 
 				if (primitiveNode.HasMember("material"))
 				{
-					materialIndex = primitiveNode["material"].GetInt();
+					materialIndices.push_back(primitiveNode["material"].GetInt());
+				}
+
+				if (primitiveNode.HasMember("extensions"))
+				{
+					// TODO: add variant - material mapping
+					auto& extensionNode = primitiveNode["extensions"];
+					if (extensionNode.HasMember("KHR_materials_variants"))
+					{
+						materialIndices.clear();
+						auto& variantsNode = extensionNode["KHR_materials_variants"];
+						if(variantsNode.HasMember("mappings"))
+						{
+							for (auto& mappintNode : variantsNode["mappings"].GetArray())
+							{
+								materialIndices.push_back(mappintNode["material"].GetInt());
+							}
+						}
+					}
 				}
 
 				struct Target
@@ -575,13 +595,16 @@ namespace IO
 				defaultMaterial->addProperty("material.useNormalTex", false);
 				defaultMaterial->addProperty("material.useEmissiveTex", false);
 
-				Material::Ptr material = defaultMaterial;
-				if (materialIndex < materials.size())
-					material = materials[materialIndex];
-
 				Primitive primitive;
-				primitive.mesh = Mesh::create(name, surface, materialIndex);
-				primitive.material = material;
+				primitive.mesh = Mesh::create(name, surface, 0);
+				for (auto materialIndex : materialIndices)
+				{
+					if (materialIndex < materials.size())
+						primitive.materials.push_back(materials[materialIndex]);
+				}
+				if (primitive.materials.empty())
+					primitive.materials.push_back(defaultMaterial);
+
 				gltfMesh.primitives.push_back(primitive);
 			}
 			
@@ -955,6 +978,7 @@ namespace IO
 			material->addProperty("material.useSpecularTex", false);
 			material->addProperty("material.specularColorFactor", glm::vec3(1.0f));
 			material->addProperty("material.useSpecularColorTex", false);
+			material->addProperty("material.unlit", false);
 
 			if (materialNode.HasMember("extensions"))
 			{
@@ -1493,6 +1517,15 @@ namespace IO
 						}
 					}
 				}
+
+				if (extensionNode.HasMember("KHR_materials_unlit"))
+				{
+					material->addProperty("material.unlit", true);
+				}
+				else
+				{
+					material->addProperty("material.unlit", false);
+				}
 			}				
 
 			materials.push_back(material);
@@ -1630,8 +1663,9 @@ namespace IO
 			auto renderable = Renderable::create();
 
 			auto gltfMesh = meshes[node.meshIndex];
-			for(auto p : gltfMesh.primitives)
-				renderable->addMesh("", p.mesh, p.material);
+			for (auto p : gltfMesh.primitives)
+				renderable->addPrimitive(p);
+				//renderable->addMesh("", p.mesh, p.material);
 			if (!gltfMesh.morphWeights.empty())
 				renderable->setMorphWeights(gltfMesh.morphWeights);
 
