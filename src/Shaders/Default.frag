@@ -183,8 +183,14 @@ void main()
 	for(int i = 0; i < numLights; i++)
 	{
 		//vec3 lightPos = camera.position;
-		vec3 lightPos = lights[i].position;
-		vec3 l = normalize(lightPos - wPosition);
+		Light light = lights[i];
+		vec3 pointToLight = vec3(0);
+		if(light.type == 0)
+			pointToLight = -light.direction;
+		else
+			pointToLight = light.position - wPosition;
+
+		vec3 l = normalize(pointToLight);
 		vec3 h = normalize(l + v);
 
 		float NdotL = max(dot(n, l), 0.0); 
@@ -194,34 +200,63 @@ void main()
 		vec3 f_diff = Lambert(F0, l, v, c_diff, specularWeight);
 		vec3 f_spec = CookTorrance(F0, n, l, v, alphaRoughness, specularWeight);
 
-		float shadow = getShadow(wPosition, i);
-		float d = length(wPosition - lightPos);
-		float att = clamp(1.0 - (d / 50.0), 0.0, 1.0);
-		float attenuation = att * att;
-		vec3 lightIntensity = lights[i].color * shadow * attenuation;
+
+		float shadow = 1.0; // TODO: compute shadows for other light types
+		if(light.type > 0)
+			shadow = getShadow(wPosition, i);
+
+		float rangeAttenuation = 1.0f;
+		float spotAttenuation = 1.0f;
+
+		if (light.type != 0)
+		{
+			float dist = length(pointToLight);
+			if(light.range < 0.0)
+				rangeAttenuation = 1.0 / pow(dist, 2.0);
+			else
+				rangeAttenuation = max(min(1.0 - pow(dist / light.range, 4.0), 1.0), 0.0) / pow(dist, 2.0);
+		}
+
+		if(light.type == 2)
+		{
+			float cosInner = cos(light.innerConeAngle);
+			float cosOuter = cos(light.outerConeAngle);
+			float cosAngle = dot(light.direction, normalize(-pointToLight));
+			spotAttenuation = 0.0;
+			if(cosAngle > cosOuter)
+			{
+				if(cosAngle < cosInner)
+				{
+					spotAttenuation = smoothstep(cosOuter, cosInner, cosAngle);
+				}
+				spotAttenuation = 1.0;
+			}
+		}
+
+		float attenuation = rangeAttenuation * spotAttenuation;
+		vec3 lightIntensity = lights[i].color * lights[i].intensity * attenuation;
 
 		// TODO: make optional
 		vec3 f_sheen = SpecularSheen(sheenColor, sheenRoughness, NdotL, NdotV, NdotH);
 		float albedoScaling = min(1.0 - max3(sheenColor) * E(NdotV, sheenRoughness), 1.0 - max3(sheenColor) * E(NdotL, sheenRoughness));
 
-		f_diff = f_diff * NdotL * lightIntensity;
+		f_diff = f_diff * NdotL * lightIntensity * shadow;
 		if(transmissionFactor > 0.0)
 		{
 		    vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, material.ior, M);
-			vec3 pointToLight = lightPos - wPosition;
 			pointToLight -= transmissionRay;
 			l = normalize(pointToLight);
 
-			vec3 f_transmission = getPunctualRadianceTransmission(n, v, l, alphaRoughness, F0, vec3(1.0), baseColor.rgb, material.ior);
+			vec3 f_transmission = lightIntensity * getPunctualRadianceTransmission(n, v, l, alphaRoughness, F0, vec3(1.0), baseColor.rgb, material.ior);
 			f_transmission *= transmissionFactor;
 			f_diff = mix(f_diff, f_transmission, transmissionFactor);
 		}	
 
-		vec3 color = f_diff * albedoScaling + (f_spec * albedoScaling + f_sheen) * NdotL * lightIntensity;
+		vec3 color = f_diff * albedoScaling + (f_spec * albedoScaling + f_sheen) * NdotL * lightIntensity * shadow;
 		if(clearCoatFactor > 0.0)
 		{
 			f_clearCoat = CookTorrance(F0, clearCoatNormal, l, v, clearCoatRoughness * clearCoatRoughness, 1.0);
-			f_clearCoat = f_clearCoat * lightIntensity * clamp(dot(clearCoatNormal, l), 0.0, 1.0);
+			f_clearCoat = f_clearCoat * lightIntensity * shadow * clamp(dot(clearCoatNormal, l), 0.0, 1.0);
 			color = color * (1.0 - clearCoatFactor * clearCoatFresnel) + f_clearCoat * clearCoatFactor;
 		}
 //		lo += f_diff + f_spec * NdotL * lightIntensity;

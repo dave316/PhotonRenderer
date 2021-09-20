@@ -60,9 +60,7 @@ bool Renderer::init()
 	//glEnable(GL_DEBUG_OUTPUT);
 	//glDebugMessageCallback(debugCallback, 0);
 
-	initLights();
 	initShader();
-	initFBOs();
 	initEnvMaps();
 
 	glEnable(GL_CULL_FACE);
@@ -70,8 +68,8 @@ bool Renderer::init()
 
 	std::string assetPath = "../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "MaterialsVariantsShoe";
-	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	std::string name = "IridescentDishWithOlives";
+	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//name = "MultiUVTest";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//rootEntitis["SheenChair"]->getComponent<Transform>()->setPosition(glm::vec3(0, 0, -5));
@@ -82,13 +80,13 @@ bool Renderer::init()
 
 	//IO::AssimpImporter assImporter;
 	//auto model = assImporter.importModel(assetPath + "/plane.obj");
-	//model->getComponent<Transform>()->setPosition(glm::vec3(0,-0.5, 0));
-	//model->getComponent<Transform>()->setScale(glm::vec3(10.0f));
+	//model->getComponent<Transform>()->setPosition(glm::vec3(0,-2.5, 0));
+	//model->getComponent<Transform>()->setScale(glm::vec3(20.0f));
 	//if (model != nullptr)
 	//	rootEntitis.insert(std::make_pair("Aplane", model));
 	//assImporter.clear();
 
-	loadGLTFModels(gltfPath);
+	//loadGLTFModels(gltfPath);
 	//loadAssimpModels(path);
 
 	for (auto [_, e] : rootEntitis)
@@ -103,6 +101,8 @@ bool Renderer::init()
 
 	cameraUBO.bindBase(0);
 
+	initLights();
+	initFBOs();
 	initFonts();
 
 	return true;
@@ -259,31 +259,20 @@ void Renderer::initFBOs()
 
 void Renderer::initLights()
 {
-	std::default_random_engine gen;
-	std::uniform_real_distribution<float> distX(-2.0f, 2.0f);
-	std::uniform_real_distribution<float> distY(2.0f, 2.0f);
-	std::uniform_real_distribution<float> distZ(-2.0f, 2.0f);
+	//std::default_random_engine gen;
+	//std::uniform_real_distribution<float> distX(-2.0f, 2.0f);
+	//std::uniform_real_distribution<float> distY(2.0f, 2.0f);
+	//std::uniform_real_distribution<float> distZ(-2.0f, 2.0f);
 
-	int numLights = 0;
-	for (int i = 0; i < numLights; i++)
-	{
-		float x = distX(gen);
-		float y = distY(gen);
-		float z = distZ(gen);
-		//auto light = Light::create(glm::vec3(x, y, z), glm::vec3(0.25f, 0.61f, 1.0f));
-		auto light = Light::create(glm::vec3(0, 5, 5), glm::vec3(1.0f));
-		std::string lightName = "light_" + std::to_string(i);
-		lights.insert(std::make_pair(lightName, light));
-	}
-
+	//int numLights = 0;
+	//for (int i = 0; i < numLights; i++)
 	//{
-	//	auto light = Light::create(glm::vec3(-1, 0, -2), glm::vec3(1.0f));
-	//	std::string lightName = "light_" + std::to_string(0);
-	//	lights.insert(std::make_pair(lightName, light));
-	//}
-	//{
-	//	auto light = Light::create(glm::vec3(1, 0, -2), glm::vec3(1.0f));
-	//	std::string lightName = "light_" + std::to_string(1);
+	//	float x = distX(gen);
+	//	float y = distY(gen);
+	//	float z = distZ(gen);
+	//	//auto light = Light::create(glm::vec3(x, y, z), glm::vec3(0.25f, 0.61f, 1.0f));
+	//	auto light = Light::create(glm::vec3(0, 5, 5), glm::vec3(1.0f), 1.0f, 50.0f);
+	//	std::string lightName = "light_" + std::to_string(i);
 	//	lights.insert(std::make_pair(lightName, light));
 	//}
 
@@ -295,10 +284,10 @@ void Renderer::initLights()
 		i++;
 	}
 
-	//std::cout << "created " << lights.size() << " lights" << std::endl;
-
 	lightUBO.upload(lightData, GL_DYNAMIC_DRAW);
 	lightUBO.bindBase(1);
+
+	defaultShader->setUniform("numLights", (int)lights.size());
 }
 
 void Renderer::initShader()
@@ -557,7 +546,14 @@ void Renderer::loadModel(std::string name, std::string path)
 	IO::GLTFImporter importer;
 	auto rootEntity = importer.importModel(path);
 	rootEntitis.insert(std::make_pair(name, rootEntity));
+	auto modelLights = importer.getLights();
 	importer.clear();
+
+	for (int i = 0; i < modelLights.size(); i++)
+	{
+		std::string lightName = name + "_light_" + std::to_string(i);
+		lights.insert(std::make_pair(lightName, modelLights[i]));
+	}
 
 	auto rootTransform = rootEntity->getComponent<Transform>();
 	rootEntity->update(glm::mat4(1.0f));
@@ -619,9 +615,9 @@ void Renderer::nextModel()
 void Renderer::nextMaterial()
 {
 	static unsigned int materialIndex = 0;
-	materialIndex = (++materialIndex) % 3;
+	materialIndex = (++materialIndex) % 5;
 
-	auto e = rootEntitis["MaterialsVariantsShoe"];
+	auto e = rootEntitis["GlamVelvetSofa"];
 	if (e)
 	{
 		auto renderables = e->getComponentsInChildren<Renderable>();

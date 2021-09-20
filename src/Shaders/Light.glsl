@@ -3,7 +3,13 @@
 struct Light
 {
 	vec3 position;
+	vec3 direction;
 	vec3 color;
+	float intensity;
+	float range;
+	float innerConeAngle;
+	float outerConeAngle;
+	int type;
 };
 
 layout(std140, binding = 1) uniform LightUBO

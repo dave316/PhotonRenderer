@@ -27,7 +27,6 @@ namespace IO
 
 	GLTFImporter::GLTFImporter()
 	{
-		supportedExtensions.insert("KHR_texture_transform");
 		supportedExtensions.insert("KHR_materials_sheen");
 		supportedExtensions.insert("KHR_materials_clearcoat");
 		supportedExtensions.insert("KHR_materials_transmission");
@@ -37,6 +36,8 @@ namespace IO
 		supportedExtensions.insert("KHR_materials_unlit");
 		supportedExtensions.insert("KHR_materials_variants");
 		supportedExtensions.insert("KHR_materials_pbrSpecularGlossiness");
+		supportedExtensions.insert("KHR_lights_punctual");
+		supportedExtensions.insert("KHR_texture_transform");
 	}
 
 	Entity::Ptr GLTFImporter::importModel(const std::string& filename)
@@ -58,6 +59,7 @@ namespace IO
 		doc.Parse(content.c_str());
 
 		checkExtensions(doc);
+		loadExtensionData(doc);
 		loadBuffers(doc, path);
 		loadTextures(doc, path);
 		loadMaterials(doc, path);
@@ -81,6 +83,67 @@ namespace IO
 				std::string extension(extNode.GetString());
 				if (supportedExtensions.find(extension) == supportedExtensions.end())
 					std::cout << "extension " << extension << " not supported" << std::endl;
+			}
+		}
+	}
+
+	void GLTFImporter::loadExtensionData(const json::Document& doc)
+	{
+		if (doc.HasMember("extensions"))
+		{
+			const auto& extensionsNode = doc["extensions"];
+			if (extensionsNode.HasMember("KHR_lights_punctual"))
+			{
+				auto& lightsPunctualNode = extensionsNode["KHR_lights_punctual"];
+				if (lightsPunctualNode.HasMember("lights"))
+				{
+					for (auto& lightNode : lightsPunctualNode["lights"].GetArray())
+					{
+						glm::vec3 pos(0);
+						glm::vec3 color(1.0);
+						float intensity = 1.0f;
+						float range = -1.0f; // -1 means infinity
+						float inner = 0.0f;
+						float outer = glm::pi<float>() / 4.0f;
+						int type = 0;
+
+						if (lightNode.HasMember("color"))
+						{
+							auto array = lightNode["color"].GetArray();
+							color.r = array[0].GetFloat();
+							color.g = array[1].GetFloat();
+							color.b = array[2].GetFloat();
+						}
+
+						if (lightNode.HasMember("intensity"))
+							intensity = lightNode["intensity"].GetFloat();
+
+						if (lightNode.HasMember("range"))
+							range = lightNode["range"].GetFloat();
+
+						if (lightNode.HasMember("type"))
+						{
+							std::string typeStr = lightNode["type"].GetString();
+							if (typeStr.compare("directional") == 0)
+								type = 0;
+							else if (typeStr.compare("point") == 0)
+								type = 1;
+							else if (typeStr.compare("spot") == 0)
+								type = 2;
+						}
+
+						auto light = Light::create(type, color, intensity, range);
+
+						if (lightNode.HasMember("spot"))
+						{
+							inner = lightNode["spot"]["innerConeAngle"].GetFloat();
+							outer = lightNode["spot"]["outerConeAngle"].GetFloat();
+							light->setConeAngles(inner, outer);
+						}
+
+						lights.push_back(light);
+					}
+				}
 			}
 		}
 	}
@@ -1646,7 +1709,7 @@ namespace IO
 		return m;
 	}
 
-	Entity::Ptr GLTFImporter::traverse(int nodeIndex)
+	Entity::Ptr GLTFImporter::traverse(int nodeIndex, glm::mat4 parentTransform)
 	{
 		auto node = nodes[nodeIndex];
 		if (node.name.empty())
@@ -1658,6 +1721,11 @@ namespace IO
 		t->setRotation(node.rotation);
 		t->setScale(node.scale);
 
+		glm::mat4 T = glm::translate(glm::mat4(1.0f), node.translation);
+		glm::mat4 R = glm::mat4_cast(node.rotation);
+		glm::mat4 S = glm::scale(glm::mat4(1.0f), node.scale);
+		glm::mat4 transform = parentTransform * (T * R * S);
+		
 		if (node.meshIndex >= 0)
 		{
 			auto renderable = Renderable::create();
@@ -1692,9 +1760,26 @@ namespace IO
 			}
 		}
 
+		if (node.lightIndex >= 0)
+		{
+			if (node.lightIndex < lights.size())
+			{
+				glm::vec3 skew;
+				glm::vec4 persp;
+				glm::vec3 pos;
+				glm::vec3 scale;
+				glm::quat rot;
+				glm::decompose(transform, scale, rot, pos, skew, persp);
+				rot = glm::normalize(rot);
+				glm::vec3 dir = glm::mat3_cast(rot) * glm::vec3(0, 0, -1);
+				lights[node.lightIndex]->setPostion(pos);
+				lights[node.lightIndex]->setDirection(dir);
+			}
+		}
+
 		for (auto& index : node.children)
 		{
-			auto childEntity = traverse(index);
+			auto childEntity = traverse(index, transform);
 			entity->addChild(childEntity);
 		}
 
@@ -1737,6 +1822,14 @@ namespace IO
 						gltfNode.children.push_back(nodeIndex.GetInt());
 					}
 				}
+
+				if (node.HasMember("extensions"))
+				{
+					auto& extensionNode = node["extensions"];
+					if (extensionNode.HasMember("KHR_lights_punctual"))
+						gltfNode.lightIndex = extensionNode["KHR_lights_punctual"]["light"].GetInt();
+				}
+
 				nodes.push_back(gltfNode);
 			}
 		}
@@ -1753,7 +1846,7 @@ namespace IO
 		{
 			for (auto& nodeIndex : doc["scenes"][0]["nodes"].GetArray())
 			{
-				auto childEntity = traverse(nodeIndex.GetInt());
+				auto childEntity = traverse(nodeIndex.GetInt(), glm::mat4(1.0f));
 				root->addChild(childEntity);
 			}
 		}
@@ -1775,6 +1868,11 @@ namespace IO
 		return entities;
 	}
 
+	std::vector<Light::Ptr> GLTFImporter::getLights()
+	{
+		return lights;
+	}
+
 	void GLTFImporter::clear()
 	{
 		buffers.clear();
@@ -1783,6 +1881,7 @@ namespace IO
 		nodes.clear();
 		meshes.clear();
 		materials.clear();
+		lights.clear();
 		animators.clear();
 		animations.clear();
 		textures.clear();

@@ -9,6 +9,7 @@
 
 #include <Graphics/Skin.h>
 #include <Graphics/Animation.h>
+#include <Graphics/Light.h>
 
 #include <rapidjson/document.h>
 
@@ -57,6 +58,7 @@ namespace IO
 			int meshIndex = -1;
 			int animIndex = -1;
 			int skinIndex = -1;
+			int lightIndex = -1;
 			std::string name;
 			std::vector<int> children;
 			glm::vec3 translation = glm::vec3(0.0f);
@@ -96,6 +98,7 @@ namespace IO
 		std::vector<GLTFMesh> meshes;
 
 		std::vector<Material::Ptr> materials;
+		std::vector<Light::Ptr> lights;
 		std::vector<Animator::Ptr> animators;
 		std::vector<Animation::Ptr> animations;
 		std::vector<Entity::Ptr> entities;
@@ -105,6 +108,7 @@ namespace IO
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
 
 		void checkExtensions(const json::Document& doc);
+		void loadExtensionData(const json::Document& doc);
 		void loadBuffers(const json::Document& doc, const std::string& path);
 		void loadAnimations(const json::Document& doc);
 		void loadSkins(const json::Document& doc);
@@ -112,7 +116,7 @@ namespace IO
 		void loadMaterials(const json::Document& doc, const std::string& path);
 		void loadTextures(const json::Document& doc, const std::string& path);
 		Entity::Ptr loadScene(const json::Document& doc);
-		Entity::Ptr traverse(int nodeIndex);
+		Entity::Ptr traverse(int nodeIndex, glm::mat4 parentTransform);
 		Texture2D::Ptr loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB);
 
 		template<typename T>
@@ -143,7 +147,7 @@ namespace IO
 
 		Entity::Ptr importModel(const std::string& filename);
 		std::vector<Entity::Ptr> getEntities();
-
+		std::vector<Light::Ptr> getLights();
 		void clear();
 	};
 }
