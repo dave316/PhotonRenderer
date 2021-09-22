@@ -641,8 +641,14 @@ namespace IO
 					surface.addTriangle(t);
 				}
 
+				bool computeFlatNormals = false;
 				if (calcNormals)
-					surface.calcNormals();
+				{
+					if (surface.triangles.empty())
+						surface.calcFlatNormals();
+					else
+						computeFlatNormals = true;
+				}
 
 				if(calcTangentSpace)
 					surface.calcTangentSpace();
@@ -663,7 +669,12 @@ namespace IO
 				for (auto materialIndex : materialIndices)
 				{
 					if (materialIndex < materials.size())
-						primitive.materials.push_back(materials[materialIndex]);
+					{
+						auto mat = materials[materialIndex];
+						mat->addProperty("material.computeFlatNormals", computeFlatNormals);
+						primitive.materials.push_back(mat);
+					}
+						
 				}
 				if (primitive.materials.empty())
 					primitive.materials.push_back(defaultMaterial);

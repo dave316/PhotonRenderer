@@ -36,6 +36,7 @@ struct PBRMetalRoughMaterial
 	float specularFactor;
 	vec3 specularColorFactor;
 	bool unlit;
+	bool computeFlatNormals;
 
 	bool useBaseColorTex;
 	bool useNormalTex;

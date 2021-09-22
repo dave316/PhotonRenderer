@@ -15,8 +15,8 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 
 	glfwWindowHint(GLFW_DEPTH_BITS, GL_TRUE);
 	//glfwWindowHint(GLFW_DOUBLEBUFFER, GL_FALSE);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_SAMPLES, 4);
@@ -72,6 +72,7 @@ void GLWindow::attachInput(InputHandler& input)
 	glfwSetKeyCallback(window, InputHandler::keyboardCB);
 	glfwSetMouseButtonCallback(window, InputHandler::mouseButtonCB);
 	glfwSetCursorPosCallback(window, InputHandler::mouseMoveCB);
+	glfwSetScrollCallback(window, InputHandler::mouseWheelCB);
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetWindowUserPointer(window, input.getDataPointer());
 }

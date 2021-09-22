@@ -41,7 +41,6 @@ class Renderer
 	Texture2D::Ptr lutSheenE; // TODO: generate based on https://dassaultsystemes-technology.github.io/EnterprisePBRShadingModel/spec-2021x.md.html#components/sheen
 	
 	std::map<std::string, Entity::Ptr> rootEntitis;
-	unsigned int modelIndex = 0;
 	unsigned int width;
 	unsigned int height;
 
@@ -57,7 +56,6 @@ public:
 	void loadGLTFModels(std::string path);
 	void loadAssimpModels(std::string path);
 	void loadModel(std::string name, std::string path);
-	void nextModel();
 	void nextMaterial();
 	void updateAnimations(float dt);
 	void updateAnimationState(float dt);

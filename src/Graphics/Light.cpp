@@ -25,7 +25,7 @@ void Light::writeUniformData(UniformData& uniformData)
 
 void Light::draw()
 {
-
+	// TODO: create mesh based on light type for debugging
 }
 
 void Light::setPostion(glm::vec3 position)
@@ -42,4 +42,9 @@ void Light::setConeAngles(float inner, float outer)
 {
 	this->innerConeAngle = inner;
 	this->outerConeAngle = outer;
+}
+
+glm::vec3 Light::getPosition()
+{
+	return position;
 }

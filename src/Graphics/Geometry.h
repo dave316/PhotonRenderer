@@ -139,14 +139,6 @@ struct TriangleSurface
 		}
 	}
 
-	void calcNormals()
-	{
-		if (triangles.empty())
-			calcFlatNormals();
-		else
-			calcSmoothNormals();
-	}
-
 	void calcTangentSpace()
 	{
 		// TODO: calc tanget space on correct uv set

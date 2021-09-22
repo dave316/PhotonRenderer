@@ -63,6 +63,7 @@ public:
 	void setDirection(Direction dir);
 	void releaseDirection(Direction dir);
 	void updateRotation(float dx, float dy);
+	void updateSpeed(float dx, float dy);
 	void move(float deltaTime);
 	void rotate(float deltaTime);
 	void writeUniformData(UniformData& data);

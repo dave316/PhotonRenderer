@@ -99,6 +99,11 @@ void Camera::updateRotation(float dx, float dy)
 	pitch += dy * rotationSpeed;
 }
 
+void Camera::updateSpeed(float dx, float dy)
+{
+	movementSpeed = std::max(1.0f, movementSpeed + dy);
+}
+
 void Camera::rotate(float deltaTime)
 {
 	if (pitch > 89.0f)

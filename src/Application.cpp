@@ -30,8 +30,6 @@ bool Application::init()
 
 void Application::setupInput()
 {
-	static float angle = 0.0f;
-
 	input.addKeyCallback(GLFW_KEY_ESCAPE, GLFW_PRESS, std::bind(&GLWindow::close, &window));
 	input.addKeyCallback(GLFW_KEY_W, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::FORWARD));
 	input.addKeyCallback(GLFW_KEY_S, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::BACK));
@@ -41,9 +39,9 @@ void Application::setupInput()
 	input.addKeyCallback(GLFW_KEY_S, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::BACK));
 	input.addKeyCallback(GLFW_KEY_A, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::LEFT));
 	input.addKeyCallback(GLFW_KEY_D, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::RIGHT));
-	input.setMouseCallback(std::bind(&Camera::updateRotation, &camera, _1, _2));
+	input.setMouseMoveCallback(std::bind(&Camera::updateRotation, &camera, _1, _2));
+	input.setMouseWheelCallback(std::bind(&Camera::updateSpeed, &camera, _1, _2));
 
-	//input.addKeyCallback(GLFW_KEY_R, GLFW_PRESS, std::bind(&Renderer::nextModel, &renderer));
 	input.addKeyCallback(GLFW_KEY_M, GLFW_PRESS, std::bind(&Renderer::nextMaterial, &renderer));
 	input.addKeyCallback(GLFW_KEY_SPACE, GLFW_PRESS, [&] {animate = !animate; });
 

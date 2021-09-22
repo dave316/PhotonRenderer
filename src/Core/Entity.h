@@ -72,10 +72,6 @@ public:
 			allComponents.push_back(rootComponent);
 		for (auto c : children)
 		{
-			//auto component = c->getComponent<T>();
-			//if (component)
-			//	allComponents.push_back(component);
-
 			auto childComponents = c->getComponentsInChildren<T>();
 			for (auto childComp : childComponents)
 				allComponents.push_back(childComp);
@@ -91,10 +87,6 @@ public:
 			entities.push_back(shared_from_this());
 		for (auto c : children)
 		{
-			//auto component = c->getComponent<T>();
-			//if (component)
-			//	entities.push_back(c);
-
 			auto chiledEntities = c->getChildrenWithComponent<T>();
 			for (auto child : chiledEntities)
 				entities.push_back(child);
@@ -115,48 +107,6 @@ public:
 		for (auto c : children)
 			c->update(T);
 	}
-
-	//template<typename T>
-	//std::vector<std::shared_ptr<T>> getComponentsInChildren()
-	//{
-	//	std::vector<std::shared_ptr<T>> allComponents;
-	//	Transform::Ptr transform = getComponent<Transform>();
-	//	for (int i = 0; i < transform->getNumChildren(); i++)
-	//	{
-	//		auto childTransform = transform->getChild(i);
-	//		auto e = childTransform->getEntity();
-	//		
-	//		auto component = e->getComponent<T>();
-	//		if(component)
-	//			allComponents.push_back(e->getComponent<T>());
-
-	//		std::vector<std::shared_ptr<T>> childComponents = e->getComponentsInChildren<T>();
-	//		for (auto childComp : childComponents)
-	//			allComponents.push_back(childComp);
-	//	}
-	//	return allComponents;
-	//}
-
-	//template<typename T>
-	//std::vector<Entity*> getChildrenWithComponent()
-	//{
-	//	std::vector<Entity*> entities;
-	//	Transform::Ptr transform = getComponent<Transform>();
-	//	for (int i = 0; i < transform->getNumChildren(); i++)
-	//	{
-	//		auto childTransform = transform->getChild(i);
-	//		auto e = childTransform->getEntity();
-
-	//		auto component = e->getComponent<T>();
-	//		if (component)
-	//			entities.push_back(e);
-
-	//		auto chiledEntities = e->getChildrenWithComponent<T>();
-	//		for (auto child : chiledEntities)
-	//			entities.push_back(child);
-	//	}
-	//	return entities;
-	//}
 
 	std::string getName() const
 	{

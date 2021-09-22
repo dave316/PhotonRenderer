@@ -70,7 +70,7 @@ bool Renderer::init()
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
 	std::string name = "IridescentDishWithOlives";
 	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//name = "MultiUVTest";
+	//name = "IridescentDishWithOlives";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//rootEntitis["SheenChair"]->getComponent<Transform>()->setPosition(glm::vec3(0, 0, -5));
 
@@ -80,7 +80,7 @@ bool Renderer::init()
 
 	//IO::AssimpImporter assImporter;
 	//auto model = assImporter.importModel(assetPath + "/plane.obj");
-	//model->getComponent<Transform>()->setPosition(glm::vec3(0,-2.5, 0));
+	////model->getComponent<Transform>()->setPosition(glm::vec3(0,-2.5, 0));
 	//model->getComponent<Transform>()->setScale(glm::vec3(20.0f));
 	//if (model != nullptr)
 	//	rootEntitis.insert(std::make_pair("Aplane", model));
@@ -235,7 +235,7 @@ void Renderer::initFBOs()
 	{
 		auto light = it.second;
 
-		glm::vec3 pos = light->position;
+		glm::vec3 pos = light->getPosition();
 		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 25.0f);
 		std::vector<glm::mat4> VP;
 		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
@@ -275,6 +275,12 @@ void Renderer::initLights()
 	//	std::string lightName = "light_" + std::to_string(i);
 	//	lights.insert(std::make_pair(lightName, light));
 	//}
+
+	//auto spotLight = Light::create(LightType::SPOT, glm::vec3(0.85f, 0.78f, 0.65f), 100, 100);
+	//spotLight->setPostion(glm::vec3(0, 0.1, 0));
+	//spotLight->setDirection(glm::vec3(-1, 0, 0));
+	//spotLight->setConeAngles(0.0, 0.5);
+	//lights.insert(std::make_pair("light", spotLight));
 
 	int i = 0;
 	std::vector<Light::UniformData> lightData(lights.size()); 
@@ -605,11 +611,6 @@ void Renderer::updateCamera(Camera& camera)
 	Camera::UniformData cameraData;
 	camera.writeUniformData(cameraData);
 	cameraUBO.upload(&cameraData, 1);
-}
-
-void Renderer::nextModel()
-{
-	modelIndex = (++modelIndex) % (unsigned int)rootEntitis.size();
 }
 
 void Renderer::nextMaterial()

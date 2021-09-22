@@ -15,7 +15,7 @@ enum LightType
 
 class Light
 {
-public:
+private:
 	glm::vec3 position = glm::vec3(0.0f);
 	glm::vec3 direction = glm::vec3(0,0,-1);
 	glm::vec3 color = glm::vec3(1.0f);
@@ -49,6 +49,7 @@ public:
 	void setPostion(glm::vec3 position);
 	void setDirection(glm::vec3 direction);
 	void setConeAngles(float inner, float outer);
+	glm::vec3 getPosition();
 	typedef std::shared_ptr<Light> Ptr;
 	static Ptr create(int type, glm::vec3 color, float intensity, float range)
 	{

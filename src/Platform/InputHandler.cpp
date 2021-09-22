@@ -90,6 +90,14 @@ void InputHandler::mouseMoveCB(GLFWwindow* window, double xpos, double ypos)
 	lastY = y;
 }
 
+void InputHandler::mouseWheelCB(GLFWwindow* window, double xoffset, double yoffset)
+{
+	InputData* data = (InputData*)glfwGetWindowUserPointer(window);
+	auto& mouseWheel = data->mouseWheel;
+	if (mouseWheel)
+		mouseWheel(xoffset, yoffset);
+}
+
 void InputHandler::pollEvents()
 {
 	glfwPollEvents();
@@ -107,9 +115,14 @@ void InputHandler::removeKeyCallback(int key, int action)
 	inputData.keyMapping.erase(keyEvent);
 }
 
-void InputHandler::setMouseCallback(std::function<void(float, float)> callback)
+void InputHandler::setMouseMoveCallback(std::function<void(float, float)> callback)
 {
 	inputData.mouseMove = callback;
+}
+
+void InputHandler::setMouseWheelCallback(std::function<void(float, float)> callback)
+{
+	inputData.mouseWheel = callback;
 }
 
 void InputHandler::setDropCallback(std::function<void(int, const char**)> callback)

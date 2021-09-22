@@ -25,17 +25,16 @@ vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, 
 {
     float transmissionRougness = applyIorToRoughness(alphaRoughness, ior);
 
-    vec3 n = normalize(normal);           // Outward direction of surface point
-    vec3 v = normalize(view);             // Direction from surface point to view
+    vec3 n = normalize(normal);
+    vec3 v = normalize(view);
     vec3 l = normalize(pointToLight);
-    vec3 l_mirror = normalize(l + 2.0*n*dot(-l, n));     // Mirror light reflection vector on surface
-    vec3 h = normalize(l_mirror + v);            // Halfway vector between transmission light vector and v
+    vec3 l_mirror = normalize(l + 2.0*n*dot(-l, n));
+    vec3 h = normalize(l_mirror + v);
 
     float D = D_GGX_TR(clamp(dot(n, h), 0.0, 1.0), transmissionRougness);
     vec3 F = F_Schlick(clamp(dot(v, h), 0.0, 1.0), f0);
     float Vis = V_GGX(clamp(dot(n, l_mirror), 0.0, 1.0), clamp(dot(n, v), 0.0, 1.0), transmissionRougness);
 
-    // Transmission BTDF
     return (1.0 - F) * baseColor * D * Vis;
 }
 
@@ -119,6 +118,8 @@ void main()
 	float ao = material.getOcclusionFactor(texCoord0, texCoord1);
 
 	vec3 n = normalize(wNormal);
+	if (material.computeFlatNormals)
+		n = normalize(cross(dFdx(wPosition), dFdy(wPosition)));
 	if(material.useNormalTex)
 	{
 		vec3 uvTransform = vec3(material.normalUVIndex == 0 ? texCoord0 : texCoord1, 1.0);
@@ -182,7 +183,6 @@ void main()
 	vec3 f_clearCoat = vec3(0);
 	for(int i = 0; i < numLights; i++)
 	{
-		//vec3 lightPos = camera.position;
 		Light light = lights[i];
 		vec3 pointToLight = vec3(0);
 		if(light.type == 0)
@@ -219,17 +219,17 @@ void main()
 
 		if(light.type == 2)
 		{
+			// these can be precomputed
 			float cosInner = cos(light.innerConeAngle);
 			float cosOuter = cos(light.outerConeAngle);
-			float cosAngle = dot(light.direction, normalize(-pointToLight));
+
+			float cosAngle = dot(normalize(light.direction), normalize(-pointToLight));
 			spotAttenuation = 0.0;
 			if(cosAngle > cosOuter)
 			{
-				if(cosAngle < cosInner)
-				{
-					spotAttenuation = smoothstep(cosOuter, cosInner, cosAngle);
-				}
 				spotAttenuation = 1.0;
+				if(cosAngle < cosInner)
+					spotAttenuation = smoothstep(cosOuter, cosInner, cosAngle);
 			}
 		}
 
@@ -259,7 +259,6 @@ void main()
 			f_clearCoat = f_clearCoat * lightIntensity * shadow * clamp(dot(clearCoatNormal, l), 0.0, 1.0);
 			color = color * (1.0 - clearCoatFactor * clearCoatFresnel) + f_clearCoat * clearCoatFactor;
 		}
-//		lo += f_diff + f_spec * NdotL * lightIntensity;
 		lo += color;
 	}
 
