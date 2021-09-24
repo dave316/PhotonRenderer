@@ -1,11 +1,11 @@
 #version 450 core
 
-in vec3 wPosition;
-in vec3 wNormal;
-in mat3 wTBN;
-in vec4 vertexColor;
-in vec2 texCoord0;
-in vec2 texCoord1;
+layout(location = 0) in vec3 wPosition;
+layout(location = 1) in vec4 vertexColor;
+layout(location = 2) in vec3 wNormal;
+layout(location = 3) in vec2 texCoord0;
+layout(location = 4) in vec2 texCoord1;
+layout(location = 5) in mat3 wTBN;
 
 layout(location = 0) out vec4 fragColor;
 

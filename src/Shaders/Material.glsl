@@ -1,17 +1,17 @@
-struct TextureInfo
-{
-	sampler2D texSampler;
-	mat3 texUVTransform;
-	int texUVIndex;
-	bool hasUVTransform;
-	vec4 getTexel(vec2 uv0, vec2 uv1)
-	{
-		vec3 uvTransform = vec3(texUVIndex == 0 ? uv0 : uv1, 1.0);
-		if (hasUVTransform)
-			uvTransform = texUVTransform * uvTransform;
-		return texture2D(texSampler, uvTransform.xy);
-	}
-};
+//struct TextureInfo
+//{
+//	sampler2D texSampler;
+//	mat3 texUVTransform;
+//	int texUVIndex;
+//	bool hasUVTransform;
+//	vec4 getTexel(vec2 uv0, vec2 uv1)
+//	{
+//		vec3 uvTransform = vec3(texUVIndex == 0 ? uv0 : uv1, 1.0);
+//		if (hasUVTransform)
+//			uvTransform = texUVTransform * uvTransform;
+//		return texture2D(texSampler, uvTransform.xy);
+//	}
+//};
 
 struct PBRMetalRoughMaterial
 {

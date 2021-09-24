@@ -9,11 +9,6 @@
 //
 //}
 
-void addPrimitive(Primitive& primitive)
-{
-
-}
-
 //void Renderable::addMesh(std::string name, Mesh::Ptr mesh, Material::Ptr material)
 //{
 //	this->name = name;

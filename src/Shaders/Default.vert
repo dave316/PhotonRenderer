@@ -1,4 +1,4 @@
-#version 460 core
+#version 450 core
 
 #define MORPH_TARGETS
 
@@ -19,13 +19,12 @@ layout(location = 12) in vec3 vTargetNormal1;
 layout(location = 13) in vec3 vTargetTangent1;
 #endif
 
-out vec3 wPosition;
-out vec4 clipPosition;
-out vec3 wNormal;
-out mat3 wTBN;
-out vec4 vertexColor;
-out vec2 texCoord0;
-out vec2 texCoord1;
+layout(location = 0) out vec3 wPosition;
+layout(location = 1) out vec4 vertexColor;
+layout(location = 2) out vec3 wNormal;
+layout(location = 3) out vec2 texCoord0;
+layout(location = 4) out vec2 texCoord1;
+layout(location = 5) out mat3 wTBN;
 
 #include "Camera.glsl"
 

@@ -663,7 +663,7 @@ void Renderer::renderScene(Shader::Ptr shader, bool transmission)
 			}
 			else
 			{
-				shader->setUniform("hasMorphTargets", 0);
+				shader->setUniform("numMorphTargets", 0);
 			}
 
 			if (r->isSkinnedMesh())
