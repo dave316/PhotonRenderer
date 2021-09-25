@@ -55,6 +55,7 @@ private:
 	std::vector<Atlas::Ptr> atlases;
 	unsigned int minSize;
 	unsigned int maxSize;
+	bool loaded = false;
 
 	Font(const Font&);
 	Font& operator= (const Font&);
@@ -65,6 +66,7 @@ public:
 	Font(FT_Library& ft, std::vector<std::string>& fileNames, unsigned int minSize, unsigned int maxSize);
 	Mesh::Ptr createText(const std::string& text, unsigned int size, bool bold = false, bool italic = false);
 	void useAtlas(GLuint unit, bool bold = false, bool italic = false);
+	bool isLoaded();
 
 	typedef std::shared_ptr<Font> Ptr;
 };

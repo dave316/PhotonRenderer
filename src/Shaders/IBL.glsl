@@ -1,21 +1,22 @@
 uniform samplerCube irradianceMap;
-uniform samplerCube specularMap;
-uniform sampler2D brdfLUT;
+uniform samplerCube specularMapGGX;
+uniform samplerCube specularMapCharlie;
+uniform sampler2D ggxLUT;
 uniform sampler2D charlieLUT;
 uniform sampler2D transmissionTex;
 uniform mat4 M;
 
 vec3 getIBLRadianceCharlie(vec3 n, vec3 v, float sheenRoughness, vec3 sheenColor)
 {
-	float NdotV = max(dot(n, v), 0.0);
-	float lod = sheenRoughness * float(6);
+	float NdotV = clamp(dot(n, v), 0.0, 1.0);
+	float lod = sheenRoughness * float(4);
 	vec3 reflection = normalize(reflect(-v, n));
 
 	vec2 brdfSamplePoint = clamp(vec2(NdotV, sheenRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
 	float brdf = texture(charlieLUT, brdfSamplePoint).b;
-	vec4 sheenSample = textureLod(specularMap, reflection, lod); // TODO: get from charlie specular envmap
+	vec4 sheenSample = textureLod(specularMapCharlie, reflection, lod);
 
-	vec3 sheenLight = sheenSample.rgb;
+	vec3 sheenLight = (sheenSample.rgb);
 	return sheenLight * sheenColor * brdf;
 }
 
@@ -29,8 +30,8 @@ vec3 getIBLRadiance(vec3 n, vec3 v, float roughness, vec3 F0)
 	vec3 kD = (vec3(1.0) - F_ambient);
 
 	const float MAX_REFLECTION_LOD = 7.0;
-	vec3 specularColor = textureLod(specularMap, r, roughness * MAX_REFLECTION_LOD).rgb;
-	vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+	vec3 specularColor = textureLod(specularMapGGX, r, roughness * MAX_REFLECTION_LOD).rgb;
+	vec2 brdf = texture(ggxLUT, vec2(NdotV, roughness)).rg;
 	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
 
 	return specular;
@@ -72,7 +73,7 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float roughness, vec3 color, vec3 F0
 	vec3 attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationDistance, attenuationColor);
 
 	float NdotV = clamp(dot(n, v), 0.0, 1.0);
-	vec2 brdf = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+	vec2 brdf = texture(ggxLUT, vec2(NdotV, roughness)).rg;
 	vec3 specularColor = F0 * brdf.x + F90 * brdf.y;
 
 	return (1.0 - specularColor) * attenuatedColor * color; // T = 1 - R

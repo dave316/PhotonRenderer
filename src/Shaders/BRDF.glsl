@@ -98,18 +98,18 @@ float D_Charlie(float sheenRoughness, float NdotH)
 
 vec3 SpecularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float NdotV, float NdotH)
 {
-	float sheenVisibility = V_Sheen(NdotL, NdotV, sheenRoughness);
 	float sheenDistribution = D_Charlie(sheenRoughness, NdotH);
+	float sheenVisibility = V_Sheen(NdotL, NdotV, sheenRoughness);
 	return sheenColor * sheenDistribution * sheenVisibility;
 }
 
 vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha, float specularWeight)
 {
 	vec3 h = normalize(l + v);
-	float NdotL = max(dot(n, l), 0.0);
-	float NdotV = max(dot(n, v), 0.0);
-	float NdotH = max(dot(n, h), 0.0);
-	float HdotV = max(dot(h, v), 0.0);
+	float NdotL = clamp(dot(n, l), 0.0, 1.0);
+	float NdotV = clamp(dot(n, v), 0.0, 1.0);
+	float NdotH = clamp(dot(n, h), 0.0, 1.0);
+	float HdotV = clamp(dot(h, v), 0.0, 1.0);
 
 	float D = D_GGX_TR(NdotH, alpha);
 	//float G = G_Smith(NdotV, NdotL, alpha);
@@ -123,7 +123,7 @@ vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha, float specularWe
 vec3 Lambert(vec3 F0, vec3 l, vec3 v, vec3 color, float specularWeight)
 {
 	vec3 h = normalize(l + v);
-	float HdotV = max(dot(h, v), 0.0);
+	float HdotV = clamp(dot(h, v), 0.0, 1.0);
 
 	vec3 F = F_Schlick(HdotV, F0);
 	
@@ -153,7 +153,7 @@ vec3 importanceSampleCharlie(vec2 x, vec3 n, float roughness)
 {
 	float a = roughness * roughness;
 	float phi = 2.0 * PI * x.x;
-	float sinTheta = pow(x.y, a / (2.0 * a + 1));
+	float sinTheta = pow(x.y, a / (2.0 * a + 1.0));
 	float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
 
 	vec3 h;

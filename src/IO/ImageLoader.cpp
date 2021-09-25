@@ -40,27 +40,48 @@ namespace IO
 		GL::TextureFormat format = GL::RGB8;
 		if (sRGB)
 		{
-			if (c == 3)
-				format = GL::SRGB8;
-			else if (c == 4)
-				format = GL::SRGBA8;
-			else
+			switch (c)
 			{
-				std::cout << "error: no format for " << c << " channels" << std::endl;
-				return nullptr;
-			}				
+				case 1: format = GL::R8; break; // one channel srgb texture doesnt make sense??? maybe convert it to three channels
+				case 2: format = GL::RG8; // assume its grayscale + alpha (TODO: there can be two channel textures not for RGB or RGBA, eg. LUT tables etc.)
+				{
+					unsigned int imgSize = w * h;
+					unsigned int stride = 4;
+					unsigned char* buffer = new unsigned char[imgSize * stride];
+					unsigned char* imgBuffer = data.get();
+					for (int i = 0; i < imgSize; i++)
+					{
+						buffer[i * stride + 0] = imgBuffer[i * 2];
+						buffer[i * stride + 1] = imgBuffer[i * 2];
+						buffer[i * stride + 2] = imgBuffer[i * 2];
+						buffer[i * stride + 3] = imgBuffer[i * 2 + 1];
+					}
+
+					data.reset(buffer);
+					format = GL::SRGBA8;
+					break;
+				}
+				case 3: format = GL::SRGB8; break;
+				case 4: format = GL::SRGBA8; break;
+				default:
+					std::cout << "error: no format for " << c << " channels" << std::endl;
+					return nullptr;
+					break;
+			}
 		}
 		else
-		{			
-			if (c == 3)
-				format = GL::RGB8;
-			else if (c == 4)
-				format = GL::RGBA8;
-			else
+		{
+			switch (c)
 			{
+			case 1: format = GL::R8; break;
+			case 2: format = GL::RG8; break;
+			case 3: format = GL::RGB8; break;
+			case 4: format = GL::RGBA8; break;
+			default:
 				std::cout << "error: no format for " << c << " channels" << std::endl;
 				return nullptr;
-			}				
+				break;
+			}
 		}
 	
 		auto tex = Texture2D::create(w, h, format);
@@ -73,11 +94,18 @@ namespace IO
 	{
 		int w, h, c;
 		stbi_set_flip_vertically_on_load(false);
+		//std::unique_ptr<unsigned char> data(stbi_load(filename.c_str(), &w, &h, &c, 0));
 		std::unique_ptr<unsigned short> data(stbi_load_16(filename.c_str(), &w, &h, &c, 0));
 
 		//std::cout << "loading texture " << w << "x" << h << "x" << c << std::endl;
-
-		auto tex = Texture2D::create(w, h, GL::RG16F);
+		//unsigned char* rawData = data.get();
+		//float* buffer = new float[w * h * c];
+		//for (int i = 0; i < w * h * c; i++)
+		//	buffer[i] = (float)rawData[i] / std::numeric_limits<unsigned char>::max();
+		////data.reset(buffer);
+		auto tex = Texture2D::create(w, h, GL::RGB16F);
+		//tex->upload(buffer);
+		//delete[] buffer;
 		tex->bind();
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, w, h, 0, GL_RGB, GL_UNSIGNED_SHORT, data.get());
 
@@ -92,10 +120,13 @@ namespace IO
 		std::unique_ptr<float> data(stbi_loadf(filename.c_str(), &w, &h, &c, 0));
 
 		//std::cout << "loaded HDR texture: " << w << "x" << h << "x" << c << std::endl;
+		if (data)
+		{
+			auto tex = Texture2D::create(w, h, GL::RGB32F);
+			tex->upload(data.get());
+			return tex;
+		}
 
-		auto tex = Texture2D::create(w, h, GL::RGB32F);
-		tex->upload(data.get());
-
-		return tex;
+		return nullptr;		
 	}
 }

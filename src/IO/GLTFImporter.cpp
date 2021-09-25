@@ -919,6 +919,11 @@ namespace IO
 						texCoordIdx = normalTexNode["texCoord"].GetInt();
 					material->addProperty("material.normalUVIndex", texCoordIdx);
 
+					float normalScale = 1.0f;
+					if (normalTexNode.HasMember("scale"))
+						normalScale = normalTexNode["scale"].GetFloat();
+					material->addProperty("material.normalScale", normalScale);
+
 					if (normalTexNode.HasMember("extensions"))
 					{
 						auto& extNode = normalTexNode["extensions"];
@@ -1125,8 +1130,8 @@ namespace IO
 					material->addProperty("material.sheenColorFactor", glm::vec3(0.0f));
 					if (sheenNode.HasMember("sheenColorFactor"))
 					{
-						const auto& baseColorNode = sheenNode["sheenColorFactor"];
-						auto array = baseColorNode.GetArray();
+						const auto& sheenColorNode = sheenNode["sheenColorFactor"];
+						auto array = sheenColorNode.GetArray();
 						glm::vec3 color;
 						color.r = array[0].GetFloat();
 						color.g = array[1].GetFloat();

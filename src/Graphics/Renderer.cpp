@@ -68,15 +68,14 @@ bool Renderer::init()
 
 	std::string assetPath = "../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "IridescentDishWithOlives";
+	std::string name = "GlamVelvetSofa";
 	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//name = "IridescentDishWithOlives";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//rootEntitis["SheenChair"]->getComponent<Transform>()->setPosition(glm::vec3(0, 0, -5));
 
 	// TODO: generate these with shaders
-	lutSheenE = IO::loadTexture(assetPath + "/lut_sheen_E.png", false);	
-	charlieLUT = IO::loadTexture(assetPath + "/lut_charlie.png", false);
+	lutSheenE = IO::loadTexture16(assetPath + "/lut_sheen_E.png", false);	
 
 	//IO::AssimpImporter assImporter;
 	//auto model = assImporter.importModel(assetPath + "/plane.obj");
@@ -110,6 +109,7 @@ bool Renderer::init()
 
 void Renderer::initEnvMaps()
 {
+	// TODO: put env maps in its own class & remove baking from renderer
 	auto pano2cmShader = shaders["PanoToCubeMap"];
 	auto irradianceShader = shaders["IBLDiffuseIrradiance"];
 	auto specularShader = shaders["IBLSpecular"];
@@ -121,6 +121,13 @@ void Renderer::initEnvMaps()
 	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/directional.hdr");
+
+	if (pano == nullptr)
+	{
+		std::cout << "no panorama loaded, IBL deactivated" << std::endl;
+		useIBL = false;
+		return;
+	}
 
 	glm::vec3 position = glm::vec3(0);
 	std::vector<glm::mat4> VP;
@@ -174,13 +181,14 @@ void Renderer::initEnvMaps()
 
 	specularShader->setUniform("VP[0]", VP);
 	specularShader->setUniform("environmentMap", 0);
+	specularShader->setUniform("filterIndex", 0);
 	specularShader->use();
 
 	{
 		int size = 256;
-		specularMap = TextureCubeMap::create(size, size, GL::RGB32F);
-		specularMap->generateMipmaps();
-		specularMap->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+		specularMapGGX = TextureCubeMap::create(size, size, GL::RGB32F);
+		specularMapGGX->generateMipmaps();
+		specularMapGGX->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
 
 		auto specFBO = Framebuffer::create(size, size);
 		unsigned int maxMipLevel = 8;
@@ -192,7 +200,36 @@ void Renderer::initEnvMaps()
 			specularShader->setUniform("roughness", roughness);
 
 			specFBO->resize(mipWidth, mipHeight);
-			specFBO->addRenderTexture(GL::COLOR0, specularMap, mip);
+			specFBO->addRenderTexture(GL::COLOR0, specularMapGGX, mip);
+			specFBO->begin();
+			cubeMap->use(0);
+			unitCube->draw();
+			specFBO->end();
+		}
+	}
+
+	specularShader->setUniform("VP[0]", VP);
+	specularShader->setUniform("environmentMap", 0);
+	specularShader->setUniform("filterIndex", 1);
+	specularShader->use();
+
+	{
+		int size = 256;
+		specularMapCharlie = TextureCubeMap::create(size, size, GL::RGB32F);
+		specularMapCharlie->generateMipmaps();
+		specularMapCharlie->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+
+		auto specFBO = Framebuffer::create(size, size);
+		unsigned int maxMipLevel = 5;
+		for (unsigned int mip = 0; mip < maxMipLevel; mip++)
+		{
+			unsigned int mipWidth = size * std::pow(0.5, mip);
+			unsigned int mipHeight = size * std::pow(0.5, mip);
+			float roughness = (float)mip / (float)(maxMipLevel - 1);
+			specularShader->setUniform("roughness", roughness);
+
+			specFBO->resize(mipWidth, mipHeight);
+			specFBO->addRenderTexture(GL::COLOR0, specularMapCharlie, mip);
 			specFBO->begin();
 			cubeMap->use(0);
 			unitCube->draw();
@@ -206,12 +243,27 @@ void Renderer::initEnvMaps()
 
 	{
 		int size = 512;
-		brdfLUT = Texture2D::create(size, size, GL::RG16F);
-		brdfLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
+		ggxLUT = Texture2D::create(size, size, GL::RGB16F);
+		ggxLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
 
 		integrateBRDFShader->use();
+		integrateBRDFShader->setUniform("filterIndex", 0);
 		auto brdfFBO = Framebuffer::create(size, size);
-		brdfFBO->addRenderTexture(GL::COLOR0, brdfLUT);
+		brdfFBO->addRenderTexture(GL::COLOR0, ggxLUT);
+		brdfFBO->begin();
+		screenQuad->draw();
+		brdfFBO->end();
+	}
+
+	{
+		int size = 512;
+		charlieLUT = Texture2D::create(size, size, GL::RGB16F);
+		charlieLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
+
+		integrateBRDFShader->use();
+		integrateBRDFShader->setUniform("filterIndex", 1);
+		auto brdfFBO = Framebuffer::create(size, size);
+		brdfFBO->addRenderTexture(GL::COLOR0, charlieLUT);
 		brdfFBO->begin();
 		screenQuad->draw();
 		brdfFBO->end();
@@ -276,6 +328,10 @@ void Renderer::initLights()
 	//	lights.insert(std::make_pair(lightName, light));
 	//}
 
+	//auto light = Light::create(LightType::POINT, glm::vec3(0.85f, 0.78f, 0.65f), 10, 10);
+	//light->setPostion(glm::vec3(0, 2, 1));
+	//lights.insert(std::make_pair("light", light));
+
 	//auto spotLight = Light::create(LightType::SPOT, glm::vec3(0.85f, 0.78f, 0.65f), 100, 100);
 	//spotLight->setPostion(glm::vec3(0, 0.1, 0));
 	//spotLight->setDirection(glm::vec3(-1, 0, 0));
@@ -315,15 +371,20 @@ void Renderer::initShader()
 	defaultShader->setUniform("material.clearCoatTex", 7);
 	defaultShader->setUniform("material.clearCoatRoughTex", 8);
 	defaultShader->setUniform("material.clearCoatNormalTex", 9);
-	defaultShader->setUniform("irradianceMap", 10);
-	defaultShader->setUniform("specularMap", 11);
-	defaultShader->setUniform("brdfLUT", 12);
-	defaultShader->setUniform("charlieLUT", 13);
-	defaultShader->setUniform("sheenLUTE", 14);
-	defaultShader->setUniform("transmissionTex", 20);
+	defaultShader->setUniform("material.transmissionTex", 10);
+	defaultShader->setUniform("material.thicknessTex", 11);
+	defaultShader->setUniform("material.specularTex", 12);
+	defaultShader->setUniform("material.specularColorTex", 13);
+	defaultShader->setUniform("transmissionTex", 14);
+	defaultShader->setUniform("irradianceMap", 15);
+	defaultShader->setUniform("specularMapGGX", 16);
+	defaultShader->setUniform("specularMapCharlie", 17);
+	defaultShader->setUniform("sheenLUTE", 18);
+	defaultShader->setUniform("ggxLUT", 19);
+	defaultShader->setUniform("charlieLUT", 20);
 
 	std::vector<int> units;
-	for (int i = 15; i < 20; i++)
+	for (int i = 10; i < 15; i++)
 		units.push_back(i);
 	defaultShader->setUniform("shadowMaps[0]", units);
 	defaultShader->setUniform("numLights", (int)lights.size());
@@ -343,6 +404,8 @@ void Renderer::initShader()
 
 void Renderer::initFonts()
 {
+	// TODO: better error handling...
+
 	FT_Library ft;
 	FT_Init_FreeType(&ft);
 
@@ -351,32 +414,28 @@ void Renderer::initFonts()
 	fileNames.push_back("../../assets/fonts/arialbd.ttf");
 	fileNames.push_back("../../assets/fonts/ariali.ttf");
 	fileNames.push_back("../../assets/fonts/arialbi.ttf");
-	fonts.push_back(Font::Ptr(new Font(ft, fileNames, 11, 60)));
+	auto font = Font::Ptr(new Font(ft, fileNames, 11, 60));
+	if (font->isLoaded())
+	{
+		std::string resStr = "Resolution: " + std::to_string(width) + "x" + std::to_string(height);
+		std::string nameStr = "Animation index: 0";
+		std::string lightStr = "Lights: " + std::to_string(lights.size());
 
-	fileNames.clear();
-	fileNames.push_back("../../assets/fonts/times.ttf");
-	fileNames.push_back("../../assets/fonts/timesbd.ttf");
-	fileNames.push_back("../../assets/fonts/timesi.ttf");
-	fileNames.push_back("../../assets/fonts/timesbi.ttf");
-	fonts.push_back(Font::Ptr(new Font(ft, fileNames, 11, 60)));
+		glm::vec3 textColor(0.2f, 0.5f, 0.9f);
+		int fontSize = 20;
+
+		Text2D::Ptr text1(new Text2D(font, resStr, textColor, glm::vec2(20.0f, 80.0f), fontSize));
+		Text2D::Ptr text2(new Text2D(font, nameStr, textColor, glm::vec2(20.0f, 60.0f), fontSize));
+		Text2D::Ptr text3(new Text2D(font, lightStr, textColor, glm::vec2(20.0f, 40.0f), fontSize));
+		Text2D::Ptr text4(new Text2D(font, "Font: Arial, Size " + std::to_string(fontSize), textColor, glm::vec2(20.0f), fontSize));
+		texts.push_back(text1);
+		texts.push_back(text2);
+		texts.push_back(text3);
+		texts.push_back(text4);
+	}
+	fonts.push_back(font);
 
 	FT_Done_FreeType(ft);
-
-	std::string resStr = "Resolution: " + std::to_string(width) + "x" + std::to_string(height);
-	std::string nameStr = "Animation index: 0";
-	std::string lightStr = "Lights: " + std::to_string(lights.size());
-
-	glm::vec3 textColor(0.2f, 0.5f, 0.9f);
-	int fontSize = 48;
-
-	Text2D::Ptr text1(new Text2D(fonts[0], resStr, textColor, glm::vec2(25.0f, 175.0f), fontSize));
-	Text2D::Ptr text2(new Text2D(fonts[0], nameStr, textColor, glm::vec2(25.0f, 125.0f), fontSize));
-	Text2D::Ptr text3(new Text2D(fonts[0], lightStr, textColor, glm::vec2(25.0f, 75.0f), fontSize));
-	Text2D::Ptr text4(new Text2D(fonts[0], "Font: Arial, Size 48", textColor, glm::vec2(25.0f), fontSize));
-	texts.push_back(text1);
-	texts.push_back(text2);
-	texts.push_back(text3);
-	texts.push_back(text4);
 }
 
 void Renderer::updateShadows()
@@ -551,18 +610,20 @@ void Renderer::loadModel(std::string name, std::string path)
 {
 	IO::GLTFImporter importer;
 	auto rootEntity = importer.importModel(path);
-	rootEntitis.insert(std::make_pair(name, rootEntity));
-	auto modelLights = importer.getLights();
-	importer.clear();
+	if (rootEntity)
+	{
+		auto rootTransform = rootEntity->getComponent<Transform>();
+		rootEntity->update(glm::mat4(1.0f));
+		rootEntitis.insert(std::make_pair(name, rootEntity));
+	}
 
+	auto modelLights = importer.getLights();
 	for (int i = 0; i < modelLights.size(); i++)
 	{
 		std::string lightName = name + "_light_" + std::to_string(i);
 		lights.insert(std::make_pair(lightName, modelLights[i]));
 	}
-
-	auto rootTransform = rootEntity->getComponent<Transform>();
-	rootEntity->update(glm::mat4(1.0f));
+	importer.clear();
 
 	//AABB aabb;
 	//auto meshEntities = rootEntity->getChildrenWithComponent<Renderable>();
@@ -690,23 +751,30 @@ void Renderer::renderScene(Shader::Ptr shader, bool transmission)
 
 void Renderer::render()
 {
-	irradianceMap->use(10);
-	specularMap->use(11);
-	brdfLUT->use(12);
-	charlieLUT->use(13);
-	lutSheenE->use(14);
-
+	if (useIBL)
+	{
+		irradianceMap->use(15);
+		specularMapGGX->use(16);
+		specularMapCharlie->use(17);
+		lutSheenE->use(18);
+		ggxLUT->use(19);
+		charlieLUT->use(20);
+	}
+	
 	for (int i = 0; i < shadowFBOs.size(); i++)
-		shadowFBOs[i]->useTexture(GL::DEPTH, 15 + i);
+		shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
 	// offscreen pass for transmission
 	screenFBO->begin();
-	glCullFace(GL_FRONT);
-	skyboxShader->use();
-	skyboxShader->setUniform("useGammaEncoding", false);
-	cubeMap->use(0);
-	unitCube->draw();
-	glCullFace(GL_BACK);
+	if (useIBL)
+	{
+		glCullFace(GL_FRONT);
+		skyboxShader->use();
+		skyboxShader->setUniform("useGammaEncoding", false);
+		cubeMap->use(0);
+		unitCube->draw();
+		glCullFace(GL_BACK);
+	}	
 
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", false);
@@ -718,18 +786,20 @@ void Renderer::render()
 	// main render pass
 	glViewport(0, 0, width, height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	screenTex->use(20);
+	screenTex->use(14);
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", true);
 	renderScene(defaultShader, true);
 
-	glCullFace(GL_FRONT);
-	skyboxShader->use();
-	skyboxShader->setUniform("useGammaEncoding", true);
-	cubeMap->use(0);
-	unitCube->draw();
-	glCullFace(GL_BACK);
+	if (useIBL)
+	{
+		glCullFace(GL_FRONT);
+		skyboxShader->use();
+		skyboxShader->setUniform("useGammaEncoding", true);
+		cubeMap->use(0);
+		unitCube->draw();
+		glCullFace(GL_BACK);
+	}
 }
 
 void Renderer::renderText()

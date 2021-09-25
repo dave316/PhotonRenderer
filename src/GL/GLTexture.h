@@ -10,6 +10,7 @@ namespace GL
 	enum TextureFormat
 	{
 		R8,
+		RG8,
 		RGB8,
 		RGBA8,
 		SRGB8,
@@ -58,6 +59,7 @@ namespace GL
 		switch (format)
 		{
 		case R8: internalFormat = GL_RED; break;
+		case RG8: internalFormat = GL_RG8; break;
 		case RGB8:	internalFormat = GL_RGB8; break;
 		case RGBA8:	internalFormat = GL_RGBA8; break;
 		case SRGB8:	internalFormat = GL_SRGB8; break;
@@ -83,6 +85,7 @@ namespace GL
 		case R8:
 			dataFormat = GL_RED;
 			break;
+		case RG8:
 		case RG16F:
 			dataFormat = GL_RG;
 			break;
@@ -116,6 +119,7 @@ namespace GL
 		switch (format)
 		{
 		case R8:
+		case RG8:
 		case RGB8:
 		case RGBA8:
 		case SRGB8:

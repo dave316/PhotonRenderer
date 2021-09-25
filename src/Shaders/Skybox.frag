@@ -10,9 +10,9 @@ uniform bool useGammaEncoding = false;
 
 void main()
 {
-	//float mipLevel = 1.0;
-	//vec3 intensity = textureLod(envMap, uvw, mipLevel).rgb;
-	vec3 intensity = texture(envMap, uvw).rgb;
+	float mipLevel = 0;
+	vec3 intensity = textureLod(envMap, uvw, mipLevel).rgb;
+	//vec3 intensity = texture(envMap, uvw).rgb;
 	
 //	float exposure = 1.0;
 //	intensity = vec3(1.0) - exp(-intensity * exposure);

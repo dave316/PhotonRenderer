@@ -35,10 +35,12 @@ class Renderer
 	Mesh::Ptr unitCube;
 	TextureCubeMap::Ptr cubeMap;
 	TextureCubeMap::Ptr irradianceMap;
-	TextureCubeMap::Ptr specularMap;
-	Texture2D::Ptr brdfLUT;
+	TextureCubeMap::Ptr specularMapGGX;
+	TextureCubeMap::Ptr specularMapCharlie;
+	Texture2D::Ptr ggxLUT;
 	Texture2D::Ptr charlieLUT;
 	Texture2D::Ptr lutSheenE; // TODO: generate based on https://dassaultsystemes-technology.github.io/EnterprisePBRShadingModel/spec-2021x.md.html#components/sheen
+	bool useIBL = true;
 	
 	std::map<std::string, Entity::Ptr> rootEntitis;
 	unsigned int width;

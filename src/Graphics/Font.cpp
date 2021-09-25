@@ -147,12 +147,16 @@ void Font::loadFont(FT_Library& ft, std::vector<std::string>& fileNames)
 		{
 			std::cout << "error loading font!" << std::endl;
 		}
+		else
+		{
+			Atlas::Ptr atlas(new Atlas(face, minSize, maxSize));
+			atlases.push_back(atlas);
 
-		Atlas::Ptr atlas(new Atlas(face, minSize, maxSize));
-		atlases.push_back(atlas);
-
-		FT_Done_Face(face);
+			FT_Done_Face(face);
+		}		
 	}
+	if (!atlases.empty())
+		loaded = true;
 }
 
 Mesh::Ptr Font::createText(const std::string& text, unsigned int size, bool bold, bool italic)
@@ -210,4 +214,9 @@ void Font::useAtlas(GLuint unit, bool bold, bool italic)
 		return;
 
 	atlases[index]->use(unit);
+}
+
+bool Font::isLoaded()
+{
+	return loaded;
 }
