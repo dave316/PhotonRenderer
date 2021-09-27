@@ -66,13 +66,13 @@ bool Renderer::init()
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
-	std::string assetPath = "../../assets";
+	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
 	std::string name = "GlamVelvetSofa";
 	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//name = "IridescentDishWithOlives";
-	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//rootEntitis["SheenChair"]->getComponent<Transform>()->setPosition(glm::vec3(0, 0, -5));
+	name = "IridescentDishWithOlives";
+	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	rootEntitis[name]->getComponent<Transform>()->setPosition(glm::vec3(0, 0.5, 2));
 
 	// TODO: generate these with shaders
 	lutSheenE = IO::loadTexture16(assetPath + "/lut_sheen_E.png", false);	
@@ -117,7 +117,7 @@ void Renderer::initEnvMaps()
 
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
-	std::string assetPath = "../../assets";
+	std::string assetPath = "../../../../assets";
 	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/directional.hdr");
@@ -354,7 +354,7 @@ void Renderer::initLights()
 
 void Renderer::initShader()
 {
-	std::string shaderPath = "../../src/Shaders";
+	std::string shaderPath = "../../../../src/Shaders";
 	auto shaderList = IO::loadShadersFromPath(shaderPath);
 	for (auto s : shaderList)
 		shaders.insert(std::pair(s->getName(), s));
@@ -410,10 +410,10 @@ void Renderer::initFonts()
 	FT_Init_FreeType(&ft);
 
 	std::vector<std::string> fileNames;
-	fileNames.push_back("../../assets/fonts/arial.ttf");
-	fileNames.push_back("../../assets/fonts/arialbd.ttf");
-	fileNames.push_back("../../assets/fonts/ariali.ttf");
-	fileNames.push_back("../../assets/fonts/arialbi.ttf");
+	fileNames.push_back("../../../../assets/fonts/arial.ttf");
+	fileNames.push_back("../../../../assets/fonts/arialbd.ttf");
+	fileNames.push_back("../../../../assets/fonts/ariali.ttf");
+	fileNames.push_back("../../../../assets/fonts/arialbi.ttf");
 	auto font = Font::Ptr(new Font(ft, fileNames, 11, 60));
 	if (font->isLoaded())
 	{

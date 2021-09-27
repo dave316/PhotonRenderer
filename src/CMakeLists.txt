@@ -33,15 +33,15 @@ foreach(SRC IN ITEMS ${SRC_LIST})
 endforeach()
 source_group("Shaders" FILES ${SHADER_LIST})
 
-#add_library(libphoton STATIC ${SRC_LIST} ${SHADER_LIST})
-#if (WIN32)
-#    set_target_properties(libphoton PROPERTIES OUTPUT_NAME "libphoton")
-#endif()
-#target_link_libraries(libphoton PRIVATE glfw freetype GLEW::GLEW assimp::assimp ${OPENGL_gl_LIBRARY})
-
-add_executable(PhotonRenderer ${SRC_LIST} ${SHADER_LIST})
-target_link_libraries(PhotonRenderer PRIVATE glfw freetype GLEW::GLEW assimp::assimp imgui::imgui ${OPENGL_gl_LIBRARY})
-
-if(WIN32)
-	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT PhotonRenderer)
+add_library(libphoton STATIC ${SRC_LIST} ${SHADER_LIST})
+if (WIN32)
+    set_target_properties(libphoton PROPERTIES OUTPUT_NAME "libphoton")
 endif()
+target_link_libraries(libphoton PRIVATE glfw freetype GLEW::GLEW assimp::assimp imgui::imgui ${OPENGL_gl_LIBRARY})
+
+#add_executable(PhotonRenderer ${SRC_LIST} ${SHADER_LIST})
+#target_link_libraries(PhotonRenderer PRIVATE glfw freetype GLEW::GLEW assimp::assimp imgui::imgui ${OPENGL_gl_LIBRARY})
+
+#if(WIN32)
+	#set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT PhotonRenderer)
+#endif()

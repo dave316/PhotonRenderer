@@ -161,7 +161,7 @@ void main()
 	vec3 ambient = vec3(0);
 	if(useIBL)
 	{
-			// ambient light
+		// ambient light
 		// TODO: add multiple scattering
 		vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
 		vec3 kD = (vec3(1.0) - specularWeight * F_ambient);
@@ -207,7 +207,6 @@ void main()
 
 		vec3 f_diff = Lambert(F0, l, v, c_diff, specularWeight);
 		vec3 f_spec = CookTorrance(F0, n, l, v, alphaRoughness, specularWeight);
-
 
 		float shadow = 1.0; // TODO: compute shadows for other light types
 		if(light.type > 0)
