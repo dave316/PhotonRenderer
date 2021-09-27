@@ -2,7 +2,7 @@
 
 int main()
 {
-	Application app("PhotonRenderer", 1280, 720);
+	Application app("GLTF Viewer", 1280, 720);
 	if (app.init())
 	{
 		app.loop();

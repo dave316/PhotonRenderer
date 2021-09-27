@@ -69,10 +69,10 @@ bool Renderer::init()
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
 	std::string name = "GlamVelvetSofa";
-	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	name = "IridescentDishWithOlives";
-	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	rootEntitis[name]->getComponent<Transform>()->setPosition(glm::vec3(0, 0.5, 2));
+	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	//name = "IridescentDishWithOlives";
+	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	//rootEntitis[name]->getComponent<Transform>()->setPosition(glm::vec3(0, 0.5, 2));
 
 	// TODO: generate these with shaders
 	lutSheenE = IO::loadTexture16(assetPath + "/lut_sheen_E.png", false);	
@@ -282,31 +282,6 @@ void Renderer::initFBOs()
 	screenFBO = Framebuffer::create(w, h);
 	screenFBO->addRenderTexture(GL::COLOR0, screenTex);
 	screenFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
-
-	for (auto it : lights)
-	{
-		auto light = it.second;
-
-		glm::vec3 pos = light->getPosition();
-		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 25.0f);
-		std::vector<glm::mat4> VP;
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
-		views.push_back(VP);
-
-		const unsigned int size = 4096;
-		auto shadowMap = TextureCubeMap::create(size, size, GL::DEPTH24);
-		shadowMap->setCompareMode();
-
-		auto shadowFBO = Framebuffer::create(size, size);
-		shadowFBO->addRenderTexture(GL::DEPTH, shadowMap);
-		shadowFBO->checkStatus();
-		shadowFBOs.push_back(shadowFBO);
-	}
 }
 
 void Renderer::initLights()
@@ -350,6 +325,32 @@ void Renderer::initLights()
 	lightUBO.bindBase(1);
 
 	defaultShader->setUniform("numLights", (int)lights.size());
+
+	// TODO: this has to be correctly updated, when lights are added...
+	for (auto it : lights)
+	{
+		auto light = it.second;
+
+		glm::vec3 pos = light->getPosition();
+		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 25.0f);
+		std::vector<glm::mat4> VP;
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+		views.push_back(VP);
+
+		const unsigned int size = 4096;
+		auto shadowMap = TextureCubeMap::create(size, size, GL::DEPTH24);
+		shadowMap->setCompareMode();
+
+		auto shadowFBO = Framebuffer::create(size, size);
+		shadowFBO->addRenderTexture(GL::DEPTH, shadowMap);
+		shadowFBO->checkStatus();
+		shadowFBOs.push_back(shadowFBO);
+	}
 }
 
 void Renderer::initShader()
@@ -625,6 +626,8 @@ void Renderer::loadModel(std::string name, std::string path)
 	}
 	importer.clear();
 
+	initLights();
+
 	//AABB aabb;
 	//auto meshEntities = rootEntity->getChildrenWithComponent<Renderable>();
 	//for (auto m : meshEntities)
@@ -685,6 +688,26 @@ void Renderer::nextMaterial()
 		auto renderables = e->getComponentsInChildren<Renderable>();
 		for (auto r : renderables)
 			r->switchMaterial(materialIndex);
+	}
+}
+
+void Renderer::playAnimations()
+{
+	for (auto [_, e] : rootEntitis)
+	{
+		auto animator = e->getComponent<Animator>();
+		if (animator)
+			animator->play();
+	}
+}
+
+void Renderer::stopAnimations()
+{
+	for (auto [_, e] : rootEntitis)
+	{
+		auto animator = e->getComponent<Animator>();
+		if (animator)
+			animator->stop();
 	}
 }
 

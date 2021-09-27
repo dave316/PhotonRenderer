@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include <string>
 namespace IO
 {
 	std::vector<unsigned char> readBinaryFile(const std::string& filename, unsigned int byteLength)
@@ -40,8 +41,9 @@ namespace IO
 		supportedExtensions.insert("KHR_texture_transform");
 	}
 
-	Entity::Ptr GLTFImporter::importModel(const std::string& filename)
+	Entity::Ptr GLTFImporter::importModel(std::string filename)
 	{
+		std::replace(filename.begin(), filename.end(), '\\', '/');
 		std::string path = filename.substr(0, filename.find_last_of('/'));
 
 		std::ifstream file(filename);

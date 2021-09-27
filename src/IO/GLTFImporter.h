@@ -145,7 +145,7 @@ namespace IO
 	public:
 		GLTFImporter();
 
-		Entity::Ptr importModel(const std::string& filename);
+		Entity::Ptr importModel(std::string filename);
 		std::vector<Entity::Ptr> getEntities();
 		std::vector<Light::Ptr> getLights();
 		void clear();

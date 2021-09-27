@@ -23,6 +23,7 @@ public:
 	bool init();
 	void setupInput();
 	void handleDrop(int count, const char** paths);
+	void gui();
 	void loop();
 	void shutdown();
 };

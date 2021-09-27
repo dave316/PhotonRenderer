@@ -36,7 +36,7 @@ void Animator::play()
 	}
 	else
 	{
-		animations[currentAnimation]->reset(); 
+		animations[currentAnimation]->reset();
 	}
 	
 	playing = true;

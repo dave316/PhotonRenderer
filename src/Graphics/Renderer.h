@@ -63,6 +63,8 @@ public:
 	void updateAnimationState(float dt);
 	void updateCamera(Camera& camera);
 	void updateShadows();
+	void playAnimations();
+	void stopAnimations();
 	void renderScene(Shader::Ptr shader, bool transmission);
 	void render();
 	void renderText();

@@ -1,5 +1,9 @@
 #include "Application.h"
 
+#include <GUI/imgui_impl_glfw.h>
+#include <GUI/imgui_impl_opengl3.h>
+#include <GUI/ImGuiFileDialog.h>
+
 #include <algorithm>
 
 using namespace std::placeholders;
@@ -16,6 +20,15 @@ bool Application::init()
 	if (!window.isInitialized())
 		return false;
 	window.attachInput(input);
+
+	const char* glsl_version = "#version 460";
+
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	if (!renderer.init())
 		return false;
@@ -63,6 +76,58 @@ void Application::handleDrop(int count, const char** paths)
 	renderer.loadModel("model", path);
 }
 
+void Application::gui()
+{
+	if (ImGui::BeginMainMenuBar())
+	{
+		if (ImGui::BeginMenu("File"))
+		{
+			ImGui::MenuItem("New");
+			if (ImGui::MenuItem("Open"))
+			{
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Select GLTF file", ".gltf", ".");
+			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Animation"))
+		{
+			if (ImGui::MenuItem("Play"))
+				renderer.playAnimations();
+
+			if (ImGui::MenuItem("Stop"))
+				renderer.stopAnimations();
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Help"))
+		{
+			ImGui::MenuItem("About");
+
+			ImGui::EndMenu();
+		}
+
+		ImGui::EndMainMenuBar();
+	}
+
+	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+	{
+		if (ImGuiFileDialog::Instance()->IsOk())
+		{
+			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+			std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+			std::string fileName = ImGuiFileDialog::Instance()->GetCurrentFileName();
+			renderer.loadModel(fileName, filePathName); // TODO: get asset name from file
+		}
+		ImGuiFileDialog::Instance()->Close();
+	}
+
+	bool show_demo_window = false;
+	if (show_demo_window)
+		ImGui::ShowDemoWindow(&show_demo_window);
+}
+
 void Application::loop()
 {
 	double dt = 0.0;
@@ -71,11 +136,18 @@ void Application::loop()
 	double updateTime = 0.0f;
 	int frames = 0;
 
+
 	while (!window.shouldClose())
 	{
 		double startTime = glfwGetTime();
 
 		glfwPollEvents();
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		gui();
 
 		if (animTime > tickTime)
 		{
@@ -95,6 +167,9 @@ void Application::loop()
 		renderer.render();
 		renderer.renderText();
 
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		
 		window.swapBuffers();
 
 		dt = glfwGetTime() - startTime;
@@ -103,7 +178,7 @@ void Application::loop()
 
 		if (updateTime >= 1.0)
 		{
-			std::string title = "PhotonRenderer, FPS: " + std::to_string(frames);
+			std::string title = "GLTF Viewer, FPS: " + std::to_string(frames);
 			window.setWindowTitle(title);
 			updateTime = 0.0;
 			frames = 0;
@@ -117,4 +192,7 @@ void Application::loop()
 
 void Application::shutdown()
 {
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 }
