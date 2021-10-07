@@ -20,6 +20,15 @@ namespace json = rapidjson;
 
 namespace IO
 {
+	// TODO: use Camera class/component here
+	struct GLTFCamera
+	{
+		std::string name;
+		glm::mat4 P;
+		glm::mat4 V;
+		glm::vec3 pos;
+	};
+
 	class GLTFImporter
 	{
 	private:
@@ -55,8 +64,8 @@ namespace IO
 
 		struct GLTFNode
 		{
+			int camIndex = -1;
 			int meshIndex = -1;
-			int animIndex = -1;
 			int skinIndex = -1;
 			int lightIndex = -1;
 			std::string name;
@@ -67,7 +76,7 @@ namespace IO
 			//glm::mat4 transform = glm::mat4(1.0f);
 		};
 
-		struct Sampler
+		struct TextureSampler
 		{
 			int minFilter = GL::TextureFilter::LINEAR;
 			int magFilter = GL::TextureFilter::LINEAR;
@@ -78,7 +87,7 @@ namespace IO
 		struct TextureInfo
 		{
 			std::string filename;
-			Sampler sampler;
+			TextureSampler sampler;
 		};
 		std::vector<TextureInfo> textures;
 
@@ -97,12 +106,14 @@ namespace IO
 		};
 		std::vector<GLTFMesh> meshes;
 
+		std::vector<GLTFCamera> cameras;
 		std::vector<Material::Ptr> materials;
 		std::vector<Light::Ptr> lights;
 		std::vector<Animator::Ptr> animators;
 		std::vector<Animation::Ptr> animations;
 		std::vector<Entity::Ptr> entities;
 		std::set<std::string> supportedExtensions;
+		std::vector<std::string> varaints;
 
 		GLTFImporter(const GLTFImporter&) = delete;
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
@@ -115,6 +126,7 @@ namespace IO
 		void loadMeshes(const json::Document& doc);
 		void loadMaterials(const json::Document& doc, const std::string& path);
 		void loadTextures(const json::Document& doc, const std::string& path);
+		void loadCameras(const json::Document& doc);
 		Entity::Ptr loadScene(const json::Document& doc);
 		Entity::Ptr traverse(int nodeIndex, glm::mat4 parentTransform);
 		Texture2D::Ptr loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB);
@@ -143,11 +155,14 @@ namespace IO
 		}
 
 	public:
+
 		GLTFImporter();
 
 		Entity::Ptr importModel(std::string filename);
 		std::vector<Entity::Ptr> getEntities();
 		std::vector<Light::Ptr> getLights();
+		std::vector<GLTFCamera> getCameras();
+		std::vector<std::string> getVariants();
 		void clear();
 	};
 }

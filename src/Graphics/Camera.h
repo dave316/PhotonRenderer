@@ -20,6 +20,7 @@ private:
 	float pitch;
 	float rotationSpeed;
 	float movementSpeed;
+	float velocity;
 	bool directions[4];
 public:
 	enum Direction
@@ -51,7 +52,7 @@ public:
 		float fov = 60.0f,
 		float aspect = 4.0f / 3.0f,
 		float zNear = 0.01f,
-		float zFar = 1000.0f);
+		float zFar = 100.0f);
 
 	void setAspect(float aspect);
 	void setFov(float fov);
@@ -60,6 +61,7 @@ public:
 	glm::mat4 getProjectionMatrix() const;
 	glm::mat4 getViewProjectionMatrix() const;
 
+	void setPosition(glm::vec3 pos);
 	void setDirection(Direction dir);
 	void releaseDirection(Direction dir);
 	void updateRotation(float dx, float dy);

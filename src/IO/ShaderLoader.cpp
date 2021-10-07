@@ -59,9 +59,9 @@ namespace IO
 
 		expandedCode += '\0';
 
-		std::ofstream outFile(fileName + ".complete");
-		outFile << expandedCode;
-		outFile.close();
+		//std::ofstream outFile(fileName + ".complete");
+		//outFile << expandedCode;
+		//outFile.close();
 
 		return expandedCode;
 	}

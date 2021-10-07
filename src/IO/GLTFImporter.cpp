@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+
 namespace IO
 {
 	std::vector<unsigned char> readBinaryFile(const std::string& filename, unsigned int byteLength)
@@ -66,6 +67,7 @@ namespace IO
 		loadTextures(doc, path);
 		loadMaterials(doc, path);
 		loadMeshes(doc);
+		loadCameras(doc);
 		loadSkins(doc);
 		loadAnimations(doc);
 
@@ -145,6 +147,24 @@ namespace IO
 
 						lights.push_back(light);
 					}
+				}
+			}
+
+			if (extensionsNode.HasMember("KHR_materials_variants"))
+			{
+				int index = 0;
+				auto& variantsNode = extensionsNode["KHR_materials_variants"];
+				for (auto& variantNode : variantsNode["variants"].GetArray())
+				{
+					if (variantNode.HasMember("name"))
+					{
+						varaints.push_back(variantNode["name"].GetString());
+					}
+					else
+					{
+						varaints.push_back("variant_" + std::to_string(index));
+					}
+					index++;
 				}
 			}
 		}
@@ -317,7 +337,7 @@ namespace IO
 						channel.scales.push_back(std::make_pair(times[i], scaleValues));
 					}
 				}
-#ifdef MORPH_TARGETS
+#if defined MORPH_TARGETS_2 || defined MORPH_TARGETS_8
 				else if (targetPath.compare("weights") == 0)
 				{
 					std::vector<float> times;
@@ -326,7 +346,7 @@ namespace IO
 					loadData(output, weights);
 
 					int numTargets = weights.size() / times.size();
-					const int maxtargets = 2;
+					const int maxtargets = 8;
 
 					if (numTargets > maxtargets)
 						std::cout << "Warning, max. 2 morph targets are supported!" << std::endl;
@@ -343,7 +363,7 @@ namespace IO
 						channel.weights.push_back(std::make_pair(times[i], w));
 					}
 				}
-#endif // MORPH_TARGETS
+#endif // MORPH_TARGETS_8
 			}			
 
 			auto animation = Animation::create("animation", maxTime);
@@ -408,7 +428,7 @@ namespace IO
 				name = nameNode->value.GetString();
 
 			std::vector<float> weights;
-#ifdef MORPH_TARGETS
+#if defined MORPH_TARGETS_2 || defined MORPH_TARGETS_8
 			if (meshNode.HasMember("weights"))
 			{
 				auto weightsNode = meshNode.FindMember("weights");
@@ -417,7 +437,7 @@ namespace IO
 					weights.push_back(weightNode.GetFloat());
 				}
 			}
-#endif // MORPH_TARGETS
+#endif
 
 			auto primitvesNode = meshNode.FindMember("primitives");
 			for (auto& primitiveNode : primitvesNode->value.GetArray())
@@ -614,7 +634,7 @@ namespace IO
 						v.boneWeights = boneWeights[i] / weightSum;
 					}
 
-#ifdef MORPH_TARGETS
+#ifdef MORPH_TARGETS_2
 					if (morphTargets.size() > 0)
 					{
 						v.targetPosition0 = morphTargets[0].positions[i];
@@ -632,6 +652,25 @@ namespace IO
 						if (i < morphTargets[1].tangents.size())
 							v.targetTangent1 = morphTargets[1].tangents[i];
 					}
+#endif
+
+#ifdef MORPH_TARGETS_8
+					if (morphTargets.size() > 0)
+						v.targetPosition0 = morphTargets[0].positions[i];
+					if (morphTargets.size() > 1)
+						v.targetPosition1 = morphTargets[1].positions[i];
+					if (morphTargets.size() > 2)
+						v.targetPosition2 = morphTargets[2].positions[i];
+					if (morphTargets.size() > 3)
+						v.targetPosition3 = morphTargets[3].positions[i];
+					if (morphTargets.size() > 4)
+						v.targetPosition4 = morphTargets[4].positions[i];
+					if (morphTargets.size() > 5)
+						v.targetPosition5 = morphTargets[5].positions[i];
+					if (morphTargets.size() > 6)
+						v.targetPosition6 = morphTargets[6].positions[i];
+					if (morphTargets.size() > 7)
+						v.targetPosition7 = morphTargets[7].positions[i];
 #endif
 
 					surface.addVertex(v);
@@ -694,12 +733,80 @@ namespace IO
 	Texture2D::Ptr GLTFImporter::loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB)
 	{
 		auto tex = IO::loadTexture(path + "/" + texInfo.filename, sRGB);
-		Sampler& sampler = texInfo.sampler;
+		TextureSampler& sampler = texInfo.sampler;
 		if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
 			tex->generateMipmaps();
 		tex->setFilter(GL::TextureFilter(sampler.minFilter), GL::TextureFilter(sampler.magFilter));
 		tex->setWrap(GL::TextureWrap(sampler.wrapS), GL::TextureWrap(sampler.wrapT));
 		return tex;
+	}
+
+	void GLTFImporter::loadCameras(const json::Document& doc)
+	{
+		if (!doc.HasMember("cameras"))
+			return;
+
+		auto camerasNode = doc.FindMember("cameras");
+		int cameraIndex = 0;
+		for (auto& cameraNode : camerasNode->value.GetArray())
+		{
+			GLTFCamera cam;
+			if (cameraNode.HasMember("name"))
+			{
+				cam.name = cameraNode["name"].GetString();
+			}
+			else
+			{
+				cam.name = "Camera_" + std::to_string(cameraIndex);
+			}
+
+			std::string type = cameraNode["type"].GetString();
+			if (type.compare("perspective") == 0)
+			{
+				float aspect = 16.0f / 9.0f;
+				float yfov = glm::pi<float>();
+				float znear = 0.1f;
+				float zfar = 1.0f;
+
+				auto& perspectiveNode = cameraNode["perspective"];
+				if (perspectiveNode.HasMember("aspectRatio"))
+					aspect = perspectiveNode["aspectRatio"].GetFloat();
+				if (perspectiveNode.HasMember("yfov"))
+					yfov = perspectiveNode["yfov"].GetFloat();
+				if (perspectiveNode.HasMember("znear"))
+					znear = perspectiveNode["znear"].GetFloat();
+				if (perspectiveNode.HasMember("zfar"))
+					zfar = perspectiveNode["zfar"].GetFloat();
+
+				cam.P = glm::perspective(yfov, aspect, znear, zfar);
+				cameras.push_back(cam);
+			}
+			else if (type.compare("orthographic") == 0)
+			{
+				float xmag = 1.0f;
+				float ymag = 1.0f;
+				float znear = 0.1f;
+				float zfar = 1.0f;
+				auto& perspectiveNode = cameraNode["orthographic"];
+				if (perspectiveNode.HasMember("xmag"))
+					xmag = perspectiveNode["xmag"].GetFloat();
+				if (perspectiveNode.HasMember("ymag"))
+					ymag = perspectiveNode["ymag"].GetFloat();
+				if (perspectiveNode.HasMember("znear"))
+					znear = perspectiveNode["znear"].GetFloat();
+				if (perspectiveNode.HasMember("zfar"))
+					zfar = perspectiveNode["zfar"].GetFloat();
+				
+				cam.P = glm::ortho(-xmag, xmag, -ymag, ymag, znear, zfar);
+				cameras.push_back(cam);
+			}
+			else
+			{
+				std::cout << "unknow camera type " << type << std::endl;
+			}
+
+			cameraIndex++;
+		}
 	}
 
 	glm::mat3 getTexTransform(const json::Value& texTransNode)
@@ -1637,12 +1744,12 @@ namespace IO
 			}
 		}
 
-		std::vector<Sampler> samplers;
+		std::vector<TextureSampler> samplers;
 		if (doc.HasMember("samplers")) 
 		{
 			for (auto& samplerNode : doc["samplers"].GetArray())
 			{
-				Sampler s;
+				TextureSampler s;
 				if (samplerNode.HasMember("minFilter"))
 					s.minFilter = samplerNode["minFilter"].GetInt();
 				if (samplerNode.HasMember("magFilter"))
@@ -1743,6 +1850,12 @@ namespace IO
 		glm::mat4 R = glm::mat4_cast(node.rotation);
 		glm::mat4 S = glm::scale(glm::mat4(1.0f), node.scale);
 		glm::mat4 transform = parentTransform * (T * R * S);
+
+		if (node.camIndex >= 0)
+		{
+			cameras[node.camIndex].V = glm::inverse(transform);
+			cameras[node.camIndex].pos = node.translation; // TODO: this is not correct, use hierarchy to figure out pos
+		}
 		
 		if (node.meshIndex >= 0)
 		{
@@ -1813,6 +1926,8 @@ namespace IO
 			for (auto& node : doc["nodes"].GetArray())
 			{
 				GLTFNode gltfNode;
+				if (node.HasMember("camera"))
+					gltfNode.camIndex = node["camera"].GetInt();
 				if (node.HasMember("mesh"))
 					gltfNode.meshIndex = node["mesh"].GetInt();
 				if (node.HasMember("skin"))
@@ -1891,6 +2006,16 @@ namespace IO
 		return lights;
 	}
 
+	std::vector<GLTFCamera> GLTFImporter::getCameras()
+	{
+		return cameras;
+	}
+
+	std::vector<std::string> GLTFImporter::getVariants()
+	{
+		return varaints;
+	}
+
 	void GLTFImporter::clear()
 	{
 		buffers.clear();
@@ -1905,5 +2030,6 @@ namespace IO
 		textures.clear();
 		entities.clear();
 		skins.clear();
+		cameras.clear(); 
 	}
 }

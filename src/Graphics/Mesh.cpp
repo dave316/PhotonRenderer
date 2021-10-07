@@ -42,13 +42,24 @@ void Mesh::updatGeometry(TriangleSurface& surface)
 	vao.addAttrib(5, 4, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
 	vao.addAttrib(6, 4, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, boneIDs));
 	vao.addAttrib(7, 4, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, boneWeights));
-#ifdef MORPH_TARGETS
+#ifdef MORPH_TARGETS_2
 	vao.addAttrib(8, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition0));
 	vao.addAttrib(9, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetNormal0));
 	vao.addAttrib(10, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetTangent0));
 	vao.addAttrib(11, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition1));
 	vao.addAttrib(12, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetNormal1));
 	vao.addAttrib(13, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetTangent1));
+#endif
+
+#ifdef MORPH_TARGETS_8
+	vao.addAttrib(8, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition0));
+	vao.addAttrib(9, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition1));
+	vao.addAttrib(10, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition2));
+	vao.addAttrib(11, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition3));
+	vao.addAttrib(12, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition4));
+	vao.addAttrib(13, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition5));
+	vao.addAttrib(14, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition6));
+	vao.addAttrib(15, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition7));
 #endif
 
 	vao.bind();

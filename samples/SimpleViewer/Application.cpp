@@ -43,6 +43,7 @@ void Application::setupInput()
 	input.setMouseWheelCallback(std::bind(&Camera::updateSpeed, &camera, _1, _2));
 
 	input.addKeyCallback(GLFW_KEY_M, GLFW_PRESS, std::bind(&Renderer::nextMaterial, &renderer));
+	//input.addKeyCallback(GLFW_KEY_C, GLFW_PRESS, std::bind(&Renderer::nextCamera, &renderer));
 	input.addKeyCallback(GLFW_KEY_SPACE, GLFW_PRESS, [&] {animate = !animate; });
 
 	input.setDropCallback(std::bind(&Application::handleDrop, this, _1, _2));
@@ -79,6 +80,7 @@ void Application::loop()
 
 		if (animTime > tickTime)
 		{
+			// TODO: add switch from main camera to secondary cameras
 			camera.move(animTime);
 			camera.rotate(animTime);
 			renderer.updateCamera(camera);

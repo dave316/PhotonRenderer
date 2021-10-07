@@ -26,6 +26,7 @@ bool Application::init()
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28);
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -85,7 +86,7 @@ void Application::gui()
 			ImGui::MenuItem("New");
 			if (ImGui::MenuItem("Open"))
 			{
-				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Select GLTF file", ".gltf", ".");
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Select GLTF file", ".gltf", "../../../../assets");
 			}
 			ImGui::EndMenu();
 		}
@@ -111,19 +112,93 @@ void Application::gui()
 		ImGui::EndMainMenuBar();
 	}
 
+	if (ImGui::Begin("Control"))
+	{
+		auto cameras = renderer.getCameraNames();
+		if (!cameras.empty())
+		{
+			ImGui::Text("Cameras");
+			ImGui::SameLine();
+			if (ImGui::BeginCombo("##cameras", cameras[cameraIndex].c_str()))
+			{
+				for (int i = 0; i < cameras.size(); i++)
+				{
+					const bool isSelected = (cameraIndex == i);
+					if (ImGui::Selectable(cameras[i].c_str(), isSelected))
+						cameraIndex = i;
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				if(cameraIndex > 0)
+					renderer.switchCamera(cameraIndex - 1);
+
+				ImGui::EndCombo();
+			}
+		}
+
+		auto variants = renderer.getVariantNames();
+		if (!variants.empty())
+		{
+			ImGui::Text("Materials");
+			ImGui::SameLine();
+			if (ImGui::BeginCombo("##materials", variants[variantIndex].c_str()))
+			{
+				for (int i = 0; i < variants.size(); i++)
+				{
+					const bool isSelected = (variantIndex == i);
+					if (ImGui::Selectable(variants[i].c_str(), isSelected))
+						variantIndex = i;
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				renderer.switchVariant(variantIndex);
+
+				ImGui::EndCombo();
+			}
+		}
+
+		ImGui::End();
+	}
+
+	if (ImGui::Begin("Information"))
+	{
+		if (ImGui::TreeNode("Scene"))
+		{
+			if (ImGui::TreeNode("Node1"))
+			{
+				ImGui::TreePop();
+
+			}
+			if (ImGui::TreeNode("Node2"))
+			{
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+		ImGui::End();
+	}
+
 	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
 	{
 		if (ImGuiFileDialog::Instance()->IsOk())
 		{
+			renderer.clear();
+			cameraIndex = 0;
+			variantIndex = 0;
+
 			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
-			std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 			std::string fileName = ImGuiFileDialog::Instance()->GetCurrentFileName();
-			renderer.loadModel(fileName, filePathName); // TODO: get asset name from file
+			std::string name = fileName.substr(0, fileName.find_last_of("."));
+			renderer.loadModel(name, filePathName);
 		}
 		ImGuiFileDialog::Instance()->Close();
 	}
 
-	bool show_demo_window = false;
+	bool show_demo_window = true;
 	if (show_demo_window)
 		ImGui::ShowDemoWindow(&show_demo_window);
 }
@@ -151,9 +226,12 @@ void Application::loop()
 
 		if (animTime > tickTime)
 		{
-			camera.move(animTime);
-			camera.rotate(animTime);
-			renderer.updateCamera(camera);
+			if (cameraIndex == 0)
+			{
+				camera.move(animTime);
+				camera.rotate(animTime);
+				renderer.updateCamera(camera);
+			}
 
 			if (animate)
 			{
@@ -169,7 +247,7 @@ void Application::loop()
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-		
+
 		window.swapBuffers();
 
 		dt = glfwGetTime() - startTime;

@@ -14,4 +14,5 @@ void main()
 	mat4 view = mat4(mat3(camera.V));
 	vec4 position = camera.P * view * vec4(vPosition, 1.0);
 	gl_Position = position.xyww;
+	//gl_Position = position;
 }

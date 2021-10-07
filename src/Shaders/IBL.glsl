@@ -9,7 +9,7 @@ uniform mat4 M;
 vec3 getIBLRadianceCharlie(vec3 n, vec3 v, float sheenRoughness, vec3 sheenColor)
 {
 	float NdotV = clamp(dot(n, v), 0.0, 1.0);
-	float lod = sheenRoughness * float(4);
+	float lod = sheenRoughness * float(4); // TODO: add max mip level
 	vec3 reflection = normalize(reflect(-v, n));
 
 	vec2 brdfSamplePoint = clamp(vec2(NdotV, sheenRoughness), vec2(0.0, 0.0), vec2(1.0, 1.0));

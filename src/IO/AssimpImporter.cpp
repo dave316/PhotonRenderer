@@ -323,6 +323,7 @@ namespace IO
 	Material::Ptr AssimpImporter::loadMaterial(const std::string& path, const aiScene* pScene, const aiMaterial* pMaterial)
 	{
 		auto defaultMaterial = Material::create();
+		defaultMaterial->addProperty("useSpecGlossMat", false);
 		defaultMaterial->addProperty("material.baseColorFactor", glm::vec4(1.0));
 		defaultMaterial->addProperty("material.roughnessFactor", 1.0f);
 		defaultMaterial->addProperty("material.metallicFactor", 0.0f);
@@ -335,8 +336,6 @@ namespace IO
 		defaultMaterial->addProperty("material.useNormalTex", false);
 		defaultMaterial->addProperty("material.useEmissiveTex", false);
 		defaultMaterial->addProperty("material.useOcclusionTex", false);
-
-		defaultMaterial->addProperty("useSpecGlossMat", false);
 		defaultMaterial->addProperty("material.sheenColorFactor", glm::vec3(0));
 		defaultMaterial->addProperty("material.sheenRoughnessFactor", 0.0f);
 		defaultMaterial->addProperty("material.useSheenColorTex", false);
@@ -348,15 +347,28 @@ namespace IO
 		defaultMaterial->addProperty("material.useClearCoatNormalTex", false);
 		defaultMaterial->addProperty("material.transmissionFactor", 0.0f);
 		defaultMaterial->addProperty("material.useTransmissionTex", false);
+		defaultMaterial->addProperty("material.thicknessFactor", 0.0f);
+		defaultMaterial->addProperty("material.useThicknessTex", false);
+		defaultMaterial->addProperty("material.attenuationDistance", 0.0f); // TODO: default should be infinity?
+		defaultMaterial->addProperty("material.attenuationColor", glm::vec3(1.0f));
+		defaultMaterial->addProperty("material.ior", 1.5f);
+		defaultMaterial->addProperty("material.specularFactor", 1.0f);
+		defaultMaterial->addProperty("material.useSpecularTex", false);
+		defaultMaterial->addProperty("material.specularColorFactor", glm::vec3(1.0f));
+		defaultMaterial->addProperty("material.useSpecularColorTex", false);
+		defaultMaterial->addProperty("material.unlit", false);
+		defaultMaterial->addProperty("material.computeFlatNormals", false);
+
+		//defaultMaterial->setTransmissive(true);
 
 		aiString aiName;
 		pMaterial->Get(AI_MATKEY_NAME, aiName);
 
-		//std::cout << "loading material " << aiName.C_Str() << std::endl;
-		//for (int i = 0; i < pMaterial->mNumProperties; i++)
-		//{
-		//	std::cout << pMaterial->mProperties[i]->mKey.C_Str() << " - " << pMaterial->mProperties[i]->mType << std::endl;
-		//}
+		std::cout << "loading material " << aiName.C_Str() << std::endl;
+		for (int i = 0; i < pMaterial->mNumProperties; i++)
+		{
+			std::cout << pMaterial->mProperties[i]->mKey.C_Str() << " - " << pMaterial->mProperties[i]->mType << std::endl;
+		}
 
 		aiColor4D color;
 		if (pMaterial->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)

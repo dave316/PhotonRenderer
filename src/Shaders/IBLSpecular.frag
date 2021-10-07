@@ -49,7 +49,7 @@ vec3 prefilterGGX(vec3 uvw)
 
 float D_Charlie_IBL(float sheenRoughness, float NdotH)
 {
-	sheenRoughness = max(sheenRoughness, 0.000001);
+	//sheenRoughness = max(sheenRoughness, 0.007);
 	float invR = 1.0 / sheenRoughness;
 	float cos2h = NdotH * NdotH;
 	float sin2h = 1.0 - cos2h;
@@ -93,7 +93,8 @@ vec3 prefilterCharlie(vec3 uvw)
 	{
 		vec2 xi = Hammersley(i, sampleCount);
 
-		float alpha = roughness * roughness;
+		float alpha = max(roughness, 0.07);
+		alpha = alpha * alpha;
 		float sinTheta = pow(xi.y, alpha / (2.0 * alpha + 1.0));
 		float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
 		float phi = 2.0 * PI * xi.x;

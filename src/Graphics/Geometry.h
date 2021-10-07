@@ -1,7 +1,7 @@
 #ifndef INCLUDED_GEOMETRY
 #define INCLUDED_GEOMETRY
 
-#define MORPH_TARGETS
+#define MORPH_TARGETS_2
 
 #pragma once
 
@@ -19,13 +19,24 @@ struct Vertex
 	glm::vec4 tangent;
 	glm::vec4 boneIDs;
 	glm::vec4 boneWeights;
-#ifdef MORPH_TARGETS
+#ifdef MORPH_TARGETS_2
 	glm::vec3 targetPosition0;
 	glm::vec3 targetNormal0;
 	glm::vec3 targetTangent0;
 	glm::vec3 targetPosition1;
 	glm::vec3 targetNormal1;
 	glm::vec3 targetTangent1;
+#endif
+
+#ifdef MORPH_TARGETS_8
+	glm::vec3 targetPosition0;
+	glm::vec3 targetPosition1;
+	glm::vec3 targetPosition2;
+	glm::vec3 targetPosition3;
+	glm::vec3 targetPosition4;
+	glm::vec3 targetPosition5;
+	glm::vec3 targetPosition6;
+	glm::vec3 targetPosition7;
 #endif
 
 	Vertex(glm::vec3 position = glm::vec3(0), 
@@ -47,13 +58,24 @@ struct Vertex
 		boneIDs(boneIDs),
 		boneWeights(boneWeights)
 	{
-#ifdef MORPH_TARGETS
+#ifdef MORPH_TARGETS_2
 		targetPosition0 = glm::vec3(0);
 		targetNormal0 = glm::vec3(0);
 		targetTangent0 = glm::vec3(0);
 		targetPosition1 = glm::vec3(0);
 		targetNormal1 = glm::vec3(0);
 		targetTangent1 = glm::vec3(0);
+#endif
+
+#ifdef MORPH_TARGETS_8
+		targetPosition0 = glm::vec3(0);
+		targetPosition1 = glm::vec3(0);
+		targetPosition2 = glm::vec3(0);
+		targetPosition3 = glm::vec3(0);
+		targetPosition4 = glm::vec3(0);
+		targetPosition5 = glm::vec3(0);
+		targetPosition6 = glm::vec3(0);
+		targetPosition7 = glm::vec3(0);
 #endif
 	}
 };

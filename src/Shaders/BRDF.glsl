@@ -79,7 +79,6 @@ float lambdaSheen(float cosTheta, float alphaG)
 
 float V_Sheen(float NdotL, float NdotV, float sheenRoughness)
 {
-	sheenRoughness = max(sheenRoughness, 0.000001);
 	float alphaG = sheenRoughness * sheenRoughness;
 	float sheenVisibility = 1.0 / ((1.0 + lambdaSheen(NdotV, alphaG) + lambdaSheen(NdotL, alphaG)) * (4.0 * NdotV * NdotL));
 	return clamp(sheenVisibility, 0.0, 1.0);
@@ -87,7 +86,6 @@ float V_Sheen(float NdotL, float NdotV, float sheenRoughness)
 
 float D_Charlie(float sheenRoughness, float NdotH)
 {
-	sheenRoughness = max(sheenRoughness, 0.000001);
 	float alphaG = sheenRoughness * sheenRoughness;
 	float invR = 1.0 / alphaG;
 	float cos2h = NdotH * NdotH;

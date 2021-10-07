@@ -15,7 +15,9 @@ class Application
 	InputHandler input;
 	Renderer renderer;
 	bool animate = true;
-
+	int cameraIndex = 0;
+	int variantIndex = 0;
+	
 	Application(const Application&) = delete;
 	Application& operator=(const Application&) = delete;
 public:

@@ -17,7 +17,7 @@ void Camera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov, f
 	this->up = up;
 	this->right = glm::normalize(glm::cross(direction, up));
 
-	this->fov = fov;
+	this->fov = glm::radians(fov);
 	this->aspect = aspect;
 	this->zNear = zNear;
 	this->zFar = zFar;
@@ -31,6 +31,7 @@ void Camera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov, f
 	pitch = 0.0f;
 	movementSpeed = 1.0f;
 	rotationSpeed = 0.1f;
+	velocity = 1.0f;
 }
 
 glm::mat4 Camera::getViewMatrix() const
@@ -40,12 +41,17 @@ glm::mat4 Camera::getViewMatrix() const
 
 glm::mat4 Camera::getProjectionMatrix() const
 {
-	return glm::perspective(glm::radians(fov), aspect, zNear, zFar);
+	return glm::perspective(fov, aspect, zNear, zFar);
 }
 
 glm::mat4 Camera::getViewProjectionMatrix() const
 {
 	return getProjectionMatrix() * getViewMatrix();
+}
+
+void Camera::setPosition(glm::vec3 pos)
+{
+	this->position = pos;
 }
 
 void Camera::setDirection(Direction dir)
@@ -90,7 +96,7 @@ void Camera::setAspect(float aspect)
 
 void Camera::setFov(float fov)
 {
-	this->fov = fov;
+	this->fov = glm::radians(fov);
 }
 
 void Camera::updateRotation(float dx, float dy)
@@ -101,7 +107,13 @@ void Camera::updateRotation(float dx, float dy)
 
 void Camera::updateSpeed(float dx, float dy)
 {
-	movementSpeed = std::max(1.0f, movementSpeed + dy);
+	if (movementSpeed <= 1.0f && dy < 0.0f)
+		velocity = 0.1f;
+	if (movementSpeed >= 1.0f && dy > 0.0f)
+		velocity = 1.0f;
+
+	movementSpeed += dy * velocity;
+	movementSpeed = std::max(0.1f, movementSpeed);
 }
 
 void Camera::rotate(float deltaTime)

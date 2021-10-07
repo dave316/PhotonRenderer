@@ -46,6 +46,13 @@ float E(float NdotV, float sheenRoughness)
 	return texture(sheenLUTE, vec2(NdotV, sheenRoughness)).r;
 }
 
+float E_compute(float cos_theta, float alpha) 
+{
+	float c = 1.0 - cos_theta;
+	float c3 = c * c * c;
+	return 0.65584461 * c3 + 1.0 / (4.16526551 + exp(-7.97291361 * sqrt(alpha) + 6.33516894));
+}
+
 void main()
 {
 	// main material parameters
@@ -158,12 +165,15 @@ void main()
 	float transmissionFactor = material.getTransmission(texCoord0, texCoord1);
 	float thickness = material.getThickness(texCoord0, texCoord1);
 
+	sheenRoughness = max(sheenRoughness, 0.07);
+
 	vec3 ambient = vec3(0);
+	vec3 F_ambient;
 	if(useIBL)
 	{
 		// ambient light
 		// TODO: add multiple scattering
-		vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
+		F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
 		vec3 kD = (vec3(1.0) - specularWeight * F_ambient);
 		vec3 irradiance = texture(irradianceMap, n).rgb;
 		vec3 diffuse = kD * irradiance * c_diff; 
@@ -184,6 +194,7 @@ void main()
 
 		ambient = diffuse * albedoScalingIBL + (specular * albedoScalingIBL + sheen) * ao;
 		ambient = ambient * (1.0 - clearCoatFactor * clearCoatFresnel) + clearCoat * clearCoatFactor;
+//		ambient = irradiance;
 	}
 
 	// direct light (diffuse+specular)
@@ -274,8 +285,9 @@ void main()
 
 	vec3 intensity = emission + ambient + lo;
 
-//	float exposure = 1.0; 
-//	intensity = vec3(1.0) - exp(-intensity * exposure); // EV
+	float EV = 0.0; 
+	//intensity = vec3(1.0) - exp(-intensity * exposure);
+	intensity = intensity * pow(2.0, EV);
 //	intensity = intensity / (1.0 + intensity);			// reinhard
 
 	if(useGammaEncoding)

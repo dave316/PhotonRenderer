@@ -4,7 +4,6 @@
 #include <Graphics/Primitives.h>
 #include <Graphics/Shader.h>
 
-#include <IO/GLTFImporter.h>
 #include <IO/AssimpImporter.h>
 #include <IO/ImageLoader.h>
 #include <IO/ShaderLoader.h>
@@ -53,7 +52,7 @@ bool Renderer::init()
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+	glClearColor(0.0f, 0.4f, 0.1f, 1.0f);
 	//glClearColor(0.8f, 0.77f, 0.54f, 1.0f);
 	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glViewport(0, 0, width, height);
@@ -68,7 +67,7 @@ bool Renderer::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "GlamVelvetSofa";
+	std::string name = "TransmissionSuzanne";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//name = "IridescentDishWithOlives";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
@@ -120,7 +119,7 @@ void Renderer::initEnvMaps()
 	std::string assetPath = "../../../../assets";
 	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
-	//auto pano = IO::loadTextureHDR(assetPath + "/directional.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/office.hdr");
 
 	if (pano == nullptr)
 	{
@@ -616,6 +615,7 @@ void Renderer::loadModel(std::string name, std::string path)
 		auto rootTransform = rootEntity->getComponent<Transform>();
 		rootEntity->update(glm::mat4(1.0f));
 		rootEntitis.insert(std::make_pair(name, rootEntity));
+		currentModel = name;
 	}
 
 	auto modelLights = importer.getLights();
@@ -624,9 +624,22 @@ void Renderer::loadModel(std::string name, std::string path)
 		std::string lightName = name + "_light_" + std::to_string(i);
 		lights.insert(std::make_pair(lightName, modelLights[i]));
 	}
+
+	// TODO: unique camera names for the whole scene 
+	cameras = importer.getCameras();
+	if (!cameras.empty())
+	{
+		int index = 0;
+		IO::GLTFCamera& cam = cameras[index];
+		updateCamera(cam.P, cam.V, cam.pos);
+	}
+
+	// TODO: get mapping between variant and material
+	variants = importer.getVariants();
 	importer.clear();
 
 	initLights();
+
 
 	//AABB aabb;
 	//auto meshEntities = rootEntity->getChildrenWithComponent<Renderable>();
@@ -677,18 +690,70 @@ void Renderer::updateCamera(Camera& camera)
 	cameraUBO.upload(&cameraData, 1);
 }
 
+void Renderer::updateCamera(glm::mat4 P, glm::mat4 V, glm::vec3 pos)
+{
+	Camera::UniformData cameraData;
+	cameraData.VP = P * V;
+	cameraData.V = V;
+	cameraData.P = P;
+	cameraData.position = glm::vec4(pos, 0.0f);
+	cameraUBO.upload(&cameraData, 1);
+}
+
+void Renderer::nextCamera()
+{
+	static unsigned int camIndex = 0;
+	camIndex = (++camIndex) % cameras.size();
+	IO::GLTFCamera& cam = cameras[camIndex];
+	updateCamera(cam.P, cam.V, cam.pos);
+}
+
 void Renderer::nextMaterial()
 {
 	static unsigned int materialIndex = 0;
 	materialIndex = (++materialIndex) % 5;
 
-	auto e = rootEntitis["GlamVelvetSofa"];
-	if (e)
+	if (rootEntitis.find("GlamVelvetSofa") != rootEntitis.end())
 	{
+		auto e = rootEntitis["GlamVelvetSofa"];
 		auto renderables = e->getComponentsInChildren<Renderable>();
 		for (auto r : renderables)
 			r->switchMaterial(materialIndex);
 	}
+}
+
+void Renderer::switchCamera(int idx)
+{
+	if (idx < cameras.size())
+	{
+		IO::GLTFCamera& cam = cameras[idx];
+		updateCamera(cam.P, cam.V, cam.pos);
+	}
+}
+
+void Renderer::switchVariant(int idx)
+{
+	if (!rootEntitis.empty() && idx < variants.size())
+	{
+		auto e = rootEntitis[currentModel];
+		auto renderables = e->getComponentsInChildren<Renderable>();
+		for (auto r : renderables)
+			r->switchMaterial(idx);
+	}
+}
+
+std::vector<std::string> Renderer::getCameraNames()
+{
+	std::vector<std::string> names;
+	names.push_back("MainCamera");
+	for (auto cam : cameras)
+		names.push_back(cam.name);
+	return names;
+}
+
+std::vector<std::string> Renderer::getVariantNames()
+{
+	return variants;
 }
 
 void Renderer::playAnimations()
@@ -711,6 +776,16 @@ void Renderer::stopAnimations()
 	}
 }
 
+void Renderer::switchAnimations(int index)
+{
+	for (auto [_, e] : rootEntitis)
+	{
+		auto animator = e->getComponent<Animator>();
+		if (animator)
+			animator->switchAnimation(index);
+	}
+}
+
 void Renderer::renderScene(Shader::Ptr shader, bool transmission)
 {
 	for (auto [name, e] : rootEntitis)
@@ -719,8 +794,7 @@ void Renderer::renderScene(Shader::Ptr shader, bool transmission)
 		auto animator = e->getComponent<Animator>();
 		std::vector<Entity::Ptr> renderEntities;
 		for (auto m : models)
-			if(!m->getComponent<Renderable>()->useBlending() && 
-			   !m->getComponent<Renderable>()->isTransmissive())
+			if(!m->getComponent<Renderable>()->useBlending() && !m->getComponent<Renderable>()->isTransmissive())
 				renderEntities.push_back(m);
 		if (transmission)
 			for (auto m : models)
@@ -743,7 +817,8 @@ void Renderer::renderScene(Shader::Ptr shader, bool transmission)
 				else
 					weights = r->getWeights();
 				shader->setUniform("numMorphTargets", (int)weights.size());
-				shader->setUniform("morphWeights[0]", weights);
+				if(!weights.empty())
+					shader->setUniform("morphWeights[0]", weights);
 			}
 			else
 			{
@@ -827,10 +902,28 @@ void Renderer::render()
 
 void Renderer::renderText()
 {
+	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	textShader->use();
 	for (auto& textMesh : texts)
 		textMesh->draw(textShader);
 	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+}
+
+void Renderer::clear()
+{
+	for (auto&& [name, entity] : rootEntitis)
+	{
+		auto animators = entity->getComponentsInChildren<Animator>();
+		for (auto& a : animators)
+			a->clear();
+	}
+	rootEntitis.clear();
+
+	lights.clear();
+	views.clear();
+	variants.clear();
+	cameras.clear();
 }
