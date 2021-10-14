@@ -1151,8 +1151,8 @@ namespace IO
 			material->addProperty("material.useSheenColorTex", false);
 			material->addProperty("material.useSheenRoughTex", false);
 			material->addProperty("material.clearcoatFactor", 0.0f);
+			material->addProperty("material.useClearCoatTex", false);
 			material->addProperty("material.clearcoatRoughnessFactor", 0.0f);
-			material->addProperty("material.useClearCoatTex", false);			
 			material->addProperty("material.useClearCoatRoughTex", false);
 			material->addProperty("material.useClearCoatNormalTex", false);
 			material->addProperty("material.transmissionFactor", 0.0f);
@@ -1166,8 +1166,18 @@ namespace IO
 			material->addProperty("material.useSpecularTex", false);
 			material->addProperty("material.specularColorFactor", glm::vec3(1.0f));
 			material->addProperty("material.useSpecularColorTex", false);
+			material->addProperty("material.iridescenceFactor", 0.0f);
+			material->addProperty("material.useIridescenceTex", false);
+			material->addProperty("material.iridescenceIOR", 1.8f);
+			material->addProperty("material.iridescenceThicknessMin", 400.0f);
+			material->addProperty("material.iridescenceThicknessMax", 1200.0f);
+			material->addProperty("material.useIridescenceThicknessTex", false);
+			material->addProperty("material.anisotropyFactor", 0.0f);
+			material->addProperty("material.useAnisotropyTexture", false);
+			material->addProperty("material.anisotropyDirection", glm::vec3(1, 0, 0));
+			material->addProperty("material.useAnisotropyDirectionTexture", false);
 			material->addProperty("material.unlit", false);
-
+				
 			if (materialNode.HasMember("extensions"))
 			{
 				const auto& extensionNode = materialNode["extensions"];
@@ -1703,6 +1713,235 @@ namespace IO
 						{
 							std::cout << "texture index " << texIndex << " not found" << std::endl;
 						}
+					}
+				}
+
+				if (extensionNode.HasMember("KHR_materials_iridescence"))
+				{
+					const auto& iridescenceNode = extensionNode["KHR_materials_iridescence"];
+					if (iridescenceNode.HasMember("iridescenceFactor"))
+					{
+						float iridescenceFactor = iridescenceNode["iridescenceFactor"].GetFloat();
+						material->addProperty("material.iridescenceFactor", iridescenceFactor);
+					}
+					else
+					{
+						material->addProperty("material.iridescenceFactor", 0.0f);
+					}
+
+					if (iridescenceNode.HasMember("iridescenceTexture"))
+					{
+						auto& iridescenceTexNode = iridescenceNode["specularTexture"];
+						unsigned int texIndex = iridescenceTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.iridescenceTex", tex);
+							material->addProperty("material.useIridescenceTex", true);
+							material->addProperty("material.hasIridescenceUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (iridescenceTexNode.HasMember("texCoord"))
+								texCoordIdx = iridescenceTexNode["texCoord"].GetInt();
+							material->addProperty("material.specularUVIndex", texCoordIdx);
+
+							if (iridescenceTexNode.HasMember("extensions"))
+							{
+								auto& extNode = iridescenceTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.iridescenceUVTransform", texTransform);
+									material->addProperty("material.hasIridescenceUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+					else
+					{
+						material->addProperty("material.useIridescenceTex", false);
+					}
+
+					if (iridescenceNode.HasMember("iridescenceIOR"))
+					{
+						float iridescenceIOR = iridescenceNode["iridescenceIOR"].GetFloat();
+						material->addProperty("material.iridescenceIOR", iridescenceIOR);
+					}
+					else
+					{
+						material->addProperty("material.iridescenceIOR", 1.8f);
+					}
+
+					if (iridescenceNode.HasMember("iridescenceThicknessMaximum"))
+					{
+						float iridescenceThicknessMax = iridescenceNode["iridescenceThicknessMaximum"].GetFloat();
+						material->addProperty("material.iridescenceThicknessMax", iridescenceThicknessMax);
+					}
+					else
+					{
+						material->addProperty("material.iridescenceThicknessMax", 1200.0f);
+					}
+
+					if (iridescenceNode.HasMember("iridescenceThicknessMinimum"))
+					{
+						float iridescenceThicknessMin = iridescenceNode["iridescenceThicknessMinimum"].GetFloat();
+						material->addProperty("material.iridescenceThicknessMin", iridescenceThicknessMin);
+					}
+					else
+					{
+						material->addProperty("material.iridescenceThicknessMin", 400.0f);
+					}
+
+					if (iridescenceNode.HasMember("iridescenceThicknessTexture"))
+					{
+						auto& iridescenceThicknessTexNode = iridescenceNode["iridescenceThicknessTexture"];
+						unsigned int texIndex = iridescenceThicknessTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.iridescenceThicknessTex", tex);
+							material->addProperty("material.useIridescenceThicknessTex", true);
+							material->addProperty("material.hasIridescenceThicknessUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (iridescenceThicknessTexNode.HasMember("texCoord"))
+								texCoordIdx = iridescenceThicknessTexNode["texCoord"].GetInt();
+							material->addProperty("material.iridescenceThicknessUVIndex", texCoordIdx);
+
+							if (iridescenceThicknessTexNode.HasMember("extensions"))
+							{
+								auto& extNode = iridescenceThicknessTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.iridescenceThicknessUVTransform", texTransform);
+									material->addProperty("material.hasIridescenceThicknessUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+					else
+					{
+						material->addProperty("material.useIridescenceThicknessTex", false);
+					}
+				}
+
+				if (extensionNode.HasMember("KHR_materials_anisotropy"))
+				{
+					const auto& anisotropyNode = extensionNode["KHR_materials_anisotropy"];
+					if (anisotropyNode.HasMember("anisotropy"))
+					{
+						float anisotropy = anisotropyNode["anisotropy"].GetFloat();
+						material->addProperty("material.anisotropyFactor", anisotropy);
+					}
+					else
+					{
+						material->addProperty("material.anisotropyFactor", 0.0f);
+					}
+
+					if (anisotropyNode.HasMember("anisotropyTexture"))
+					{
+						auto& anisotropyTexNode = anisotropyNode["anisotropyTexture"];
+						unsigned int texIndex = anisotropyTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.anisotropyTexture", tex);
+							material->addProperty("material.useAnisotropyTexture", true);
+							material->addProperty("material.hasAnisotropyUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (anisotropyTexNode.HasMember("texCoord"))
+								texCoordIdx = anisotropyTexNode["texCoord"].GetInt();
+							material->addProperty("material.anisotropyUVIndex", texCoordIdx);
+
+							if (anisotropyTexNode.HasMember("extensions"))
+							{
+								auto& extNode = anisotropyTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.anisotropyUVTransform", texTransform);
+									material->addProperty("material.hasAnisotropyUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+					else
+					{
+						material->addProperty("material.useAnisotropyTexture", false);
+					}
+
+					if (anisotropyNode.HasMember("anisotropyDirection"))
+					{
+						const auto& anisotropyDirNode = anisotropyNode["anisotropyDirection"];
+						auto array = anisotropyDirNode.GetArray();
+						glm::vec3 dir;
+						dir.r = array[0].GetFloat();
+						dir.g = array[1].GetFloat();
+						dir.b = array[2].GetFloat();
+						material->addProperty("material.anisotropyDirection", dir);
+					}
+					else
+					{
+						material->addProperty("material.anisotropyDirection", glm::vec3(1.0f, 0.0f, 0.0f));
+					}
+
+					if (anisotropyNode.HasMember("anisotropyDirectionTexture"))
+					{
+						auto& anisotropyDirTexNode = anisotropyNode["anisotropyDirectionTexture"];
+						unsigned int texIndex = anisotropyDirTexNode["index"].GetInt();
+						if (texIndex < textures.size())
+						{
+							auto tex = loadTexture(textures[texIndex], path, false);
+
+							material->addTexture("material.anisotropyDirectionTexture", tex);
+							material->addProperty("material.useAnisotropyDirectionTexture", true);
+							material->addProperty("material.hasAnisotropyDirectionUVTransform", false);
+
+							int texCoordIdx = 0;
+							if (anisotropyDirTexNode.HasMember("texCoord"))
+								texCoordIdx = anisotropyDirTexNode["texCoord"].GetInt();
+							material->addProperty("material.anisotropyDirectionUVIndex", texCoordIdx);
+
+							if (anisotropyDirTexNode.HasMember("extensions"))
+							{
+								auto& extNode = anisotropyDirTexNode["extensions"];
+								if (extNode.HasMember("KHR_texture_transform"))
+								{
+									glm::mat3 texTransform = getTexTransform(extNode["KHR_texture_transform"]);
+
+									material->addProperty("material.anisotropyDirectionUVTransform", texTransform);
+									material->addProperty("material.hasAnisotropyDirectionUVTransform", true);
+								}
+							}
+						}
+						else
+						{
+							std::cout << "texture index " << texIndex << " not found" << std::endl;
+						}
+					}
+					else
+					{
+						material->addProperty("material.useAnisotropyDirectionTexture", false);
 					}
 				}
 

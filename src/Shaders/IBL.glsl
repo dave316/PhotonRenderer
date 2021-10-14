@@ -37,6 +37,45 @@ vec3 getIBLRadiance(vec3 n, vec3 v, float roughness, vec3 F0)
 	return specular;
 }
 
+vec3 getIBLRadianceAnisotropy(vec3 n, vec3 v, vec3 t, vec3 b, float anisotropy, float roughness, vec3 F0)
+{
+	vec3 anisotropyDirection = anisotropy >= 0.0 ? b : t;
+	vec3 anisotropyTangent = cross(anisotropyDirection, v);
+	vec3 anisotropyNormal = cross(anisotropyTangent, anisotropyDirection);
+	float bendFactor = abs(anisotropy) * clamp(5.0 * roughness, 0.0, 1.0);
+	vec3 bendNormal = normalize(mix(n, anisotropyNormal, bendFactor));
+	vec3 r = normalize(reflect(-v, bendNormal));
+	float NdotV = max(dot(n, v), 0.0);
+
+	// ambient light
+	vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
+	vec3 kD = (vec3(1.0) - F_ambient);
+
+	const float MAX_REFLECTION_LOD = 7.0;
+	vec3 specularColor = textureLod(specularMapGGX, r, roughness * MAX_REFLECTION_LOD).rgb;
+	vec2 brdf = texture(ggxLUT, vec2(NdotV, roughness)).rg;
+	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
+
+	return specular;
+}
+
+vec3 getIBLRadianceGGXIridescence(vec3 n, vec3 v, float roughness, vec3 F0, vec3 iridescenceFresnel, float iridescenceFactor, float specularWeight)
+{
+	float NdotV = max(dot(n, v), 0.0);
+	float lod = roughness * float(6);
+	vec3 reflection = normalize(reflect(-v, n));
+
+	vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0, 0.0), vec2(1.0, 1.0));
+	vec2 f_ab = texture(ggxLUT, brdfSamplePoint).rg;
+	vec3 specularColor = textureLod(specularMapGGX, reflection, lod).rgb;
+
+	vec3 F = F_Schlick_Rough(NdotV, F0, roughness);
+	vec3 k_S = mix(F, iridescenceFresnel, iridescenceFactor);
+	vec3 FssEss = k_S * f_ab.x + f_ab.y;
+
+	return specularWeight * specularColor * FssEss;
+}
+
 vec3 getVolumeTransmissionRay(vec3 n, vec3 v, float thickness, float ior, mat4 M)
 {
 	vec3 refractVec = normalize(refract(-v, normalize(n), 1.0 / ior));

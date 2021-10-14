@@ -112,4 +112,6 @@ public:
 	}
 };
 
+Material::Ptr getDefaultMaterial();
+
 #endif // INCLUDED_MATERIAL

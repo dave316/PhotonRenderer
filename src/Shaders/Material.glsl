@@ -1,22 +1,21 @@
-//struct TextureInfo
-//{
-//	sampler2D texSampler;
-//	mat3 texUVTransform;
-//	int texUVIndex;
-//	bool hasUVTransform;
-//	vec4 getTexel(vec2 uv0, vec2 uv1)
-//	{
-//		vec3 uvTransform = vec3(texUVIndex == 0 ? uv0 : uv1, 1.0);
-//		if (hasUVTransform)
-//			uvTransform = texUVTransform * uvTransform;
-//		return texture2D(texSampler, uvTransform.xy);
-//	}
-//};
+struct TextureInfo
+{
+	sampler2D texSampler;
+	mat3 texUVTransform;
+	int texUVIndex;
+	bool hasUVTransform;
+	vec4 getTexel(vec2 uv0, vec2 uv1)
+	{
+		vec3 uvTransform = vec3(texUVIndex == 0 ? uv0 : uv1, 1.0);
+		if (hasUVTransform)
+			uvTransform = texUVTransform * uvTransform;
+		return texture2D(texSampler, uvTransform.xy);
+	}
+};
 
 struct PBRMetalRoughMaterial
 {
-	// TODO: need to tidy this up a bit...
-	// TODO: dont load a texture for every sampler... thats a bit much :D
+	// PBR MetalRough
 	vec4 baseColorFactor;
 	float roughnessFactor;
 	float metallicFactor;
@@ -24,21 +23,48 @@ struct PBRMetalRoughMaterial
 	vec3 emissiveFactor;
 	int alphaMode;
 	float alphaCutOff;
+
+	// sheen
 	vec3 sheenColorFactor;
 	float sheenRoughnessFactor;
+
+	// cleacoat
 	float clearcoatFactor;
 	float clearcoatRoughnessFactor;
+
+	// transmission
 	float transmissionFactor;
+
+	// volume
 	float thicknessFactor;
 	float attenuationDistance;
 	vec3 attenuationColor;
+
+	// ior
 	float ior;
+
+	// specular
 	float specularFactor;
 	vec3 specularColorFactor;
+
+	// iridescence
+	float iridescenceFactor;
+	float iridescenceIOR;
+	float iridescenceThicknessMin;
+	float iridescenceThicknessMax;
+
+	// anisotropy
+	float anisotropyFactor;
+	vec3 anisotropyDirection;
+
+	// misc
 	bool unlit;
 	bool computeFlatNormals;
 	float normalScale;
 
+	// textures
+	// TODO: need to tidy this up a bit...
+	// TODO: dont load a texture for every sampler... thats a bit much :D
 	bool useBaseColorTex;
 	bool useNormalTex;
 	bool usePbrTex;
@@ -53,6 +79,10 @@ struct PBRMetalRoughMaterial
 	bool useThicknessTex;
 	bool useSpecularTex;
 	bool useSpecularColorTex;
+	bool useIridescenceTex;
+	bool useIridescenceThicknessTex;
+	bool useAnisotropyTexture;
+	bool useAnisotropyDirectionTexture;
 
 	sampler2D baseColorTex;
 	sampler2D normalTex;
@@ -68,6 +98,10 @@ struct PBRMetalRoughMaterial
 	sampler2D thicknessTex;
 	sampler2D specularTex;
 	sampler2D specularColorTex;
+	sampler2D iridescenceTex;
+	sampler2D iridescenceThicknessTex;
+	sampler2D anisotropyTexture;
+	sampler2D anisotropyDirectionTexture;
 
 	mat3 baseColorUVTransform;
 	mat3 normalUVTransform;
@@ -83,6 +117,10 @@ struct PBRMetalRoughMaterial
 	mat3 thicknessUVTransform;
 	mat3 specularUVTransform;
 	mat3 specularColorUVTransform;
+	mat3 iridescenceUVTransform;
+	mat3 iridescenceThicknessUVTransform;
+	mat3 anisotropyUVTransform;
+	mat3 anisotropyDirectionUVTransform;
 
 	bool hasBaseColorUVTransform;
 	bool hasNormalUVTransform;
@@ -98,6 +136,10 @@ struct PBRMetalRoughMaterial
 	bool hasThicknessUVTransform;
 	bool hasSpecularUVTransform;
 	bool hasSpecularColorUVTransform;
+	bool hasIridescenceUVTransform;
+	bool hasIridescenceThicknessUVTransform;
+	bool hasAnisotropyUVTransform;
+	bool hasAnisotropyDirectionUVTransform;
 
 	int baseColorUVIndex;
 	int normalUVIndex;
@@ -113,6 +155,10 @@ struct PBRMetalRoughMaterial
 	int thicknessUVIndex;
 	int specularUVIndex;
 	int specularColorUVIndex;
+	int iridescenceUVIndex;
+	int iridescenceThicknessUVIndex;
+	int anisotropyUVIndex;
+	int anisotropyDirectionUVIndex;
 
 	vec4 getBaseColor(vec2 uv0, vec2 uv1)
 	{
@@ -268,6 +314,60 @@ struct PBRMetalRoughMaterial
 			specularColor = specularColor * texture(specularColorTex, uvTransform.xy).rgb;
 		}
 		return specularColor;
+	}
+
+	float getIridescence(vec2 uv0, vec2 uv1)
+	{
+		float iridescence = iridescenceFactor;
+		if (useIridescenceTex)
+		{
+			vec3 uvTransform = vec3(iridescenceUVIndex == 0 ? uv0 : uv1, 1.0);
+			if (hasSpecularUVTransform)
+				uvTransform = iridescenceUVTransform * uvTransform;
+			iridescence = iridescence * texture(iridescenceTex, uvTransform.xy).r;
+		}
+		return iridescence;
+	}
+
+	float getIridescenceThickness(vec2 uv0, vec2 uv1)
+	{
+		float thickness = iridescenceThicknessMax;
+		if (useIridescenceThicknessTex)
+		{
+			vec3 uvTransform = vec3(iridescenceThicknessUVIndex == 0 ? uv0 : uv1, 1.0);
+			if (hasIridescenceThicknessUVTransform)
+				uvTransform = iridescenceThicknessUVTransform * uvTransform;
+			
+			float thicknessWeight = texture(iridescenceThicknessTex, uvTransform.xy).g;
+			thickness = mix(iridescenceThicknessMin, iridescenceThicknessMax, thicknessWeight);
+		}
+		return thickness;
+	}
+
+	float getAnisotropy(vec2 uv0, vec2 uv1)
+	{
+		float anisotropy = anisotropyFactor;
+		if (useAnisotropyTexture)
+		{
+			vec3 uvTransform = vec3(anisotropyUVIndex == 0 ? uv0 : uv1, 1.0);
+			if (hasAnisotropyUVTransform)
+				uvTransform = anisotropyUVTransform * uvTransform;
+			anisotropy = anisotropy * (texture(anisotropyTexture, uvTransform.xy).r * 2.0 - 1.0);
+		}
+		return anisotropy;
+	}
+
+	vec3 getAnisotropyDirection(vec2 uv0, vec2 uv1)
+	{
+		vec3 direction = anisotropyDirection;
+		if (useAnisotropyDirectionTexture)
+		{
+			vec3 uvTransform = vec3(anisotropyDirectionUVIndex == 0 ? uv0 : uv1, 1.0);
+			if (hasAnisotropyDirectionUVTransform)
+				uvTransform = anisotropyDirectionUVTransform * uvTransform;
+			direction = texture(anisotropyDirectionTexture, uvTransform.xy).rgb * 2.0 - 1.0;
+		}
+		return direction;
 	}
 };
 uniform PBRMetalRoughMaterial material;

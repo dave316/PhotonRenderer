@@ -1,4 +1,5 @@
-#define PI 3.1415926535897932384626433832795
+//#define PI 3.1415926535897932384626433832795
+float PI = 3.14159265358979323846;
 
 float D_GGX_TR(float NdotH, float alpha)
 {
@@ -14,6 +15,14 @@ float D_GGX(float NdotH, float roughness)
 	float a = NdotH * roughness;
 	float k = roughness / (1.0 - NdotH * NdotH + a * a);
 	return k * k * (1.0 / PI);
+}
+
+float D_GGX_Anisotropic(float NdotH, float TdotH, float BdotH, float at, float ab)
+{
+	float a2 = at * ab;
+	vec3 f = vec3(ab * TdotH, at * BdotH, a2 * NdotH);
+	float w = a2 / dot(f, f);
+	return a2 * w * w / PI;
 }
 
 float G_Schlick_GGX(float NdotD, float k)
@@ -43,9 +52,22 @@ float V_GGX(float NdotL, float NdotV, float alphaRoughness)
 	return 0.0;
 }
 
+float V_GGX_Anisotropic(float NdotL, float NdotV, float BdotV, float TdotV, float TdotL, float BdotL, float at, float ab)
+{
+	float GGXV = NdotL * length(vec3(at * TdotV, ab * BdotV, NdotV));
+	float GGXL = NdotV * length(vec3(at * TdotL, ab * BdotL, NdotL));
+	float V = 0.5 / (GGXV + GGXL);
+	return clamp(V, 0.0, 1.0);
+}
+
 vec3 F_Schlick(float HdotV, vec3 F0)
 {
 	return max(F0 + (vec3(1.0) - F0) * pow(1.0 - HdotV, 5.0), F0);
+}
+
+vec3 F_Schlick(vec3 F0, vec3 F90, float HdotV)
+{
+	return max(F0 + (F90 - F0) * pow(1.0 - HdotV, 5.0), F0);
 }
 
 vec3 F_Schlick_Rough(float HdotV, vec3 F0, float roughness)
@@ -99,6 +121,46 @@ vec3 SpecularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float Ndo
 	float sheenDistribution = D_Charlie(sheenRoughness, NdotH);
 	float sheenVisibility = V_Sheen(NdotL, NdotV, sheenRoughness);
 	return sheenColor * sheenDistribution * sheenVisibility;
+}
+
+vec3 SpecularGGXAnisotropic(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, vec3 t, vec3 b, float alpha, float specularWeight, float anisotropy)
+{
+	vec3 h = normalize(l + v);
+	float NdotL = clamp(dot(n, l), 0.0, 1.0);
+	float NdotV = clamp(dot(n, v), 0.0, 1.0);
+	float NdotH = clamp(dot(n, h), 0.0, 1.0);
+	float HdotV = clamp(dot(h, v), 0.0, 1.0);
+
+	float TdotL = dot(t, l);
+	float TdotV = dot(t, v);
+	float TdotH = dot(t, h);
+	float BdotL = dot(b, l);
+	float BdotV = dot(b, v);
+	float BdotH = dot(b, h);
+
+	float at = max(alpha * (1.0 + anisotropy), 0.00001);
+	float ab = max(alpha * (1.0 - anisotropy), 0.00001);
+
+	vec3 F = F_Schlick(HdotV, F0);
+	float V = V_GGX_Anisotropic(NdotL, NdotV, BdotV, TdotV, TdotL, BdotL, at, ab);
+	float D = D_GGX_Anisotropic(NdotH, TdotH, BdotH, at, ab);
+
+	return specularWeight * F * V * D;
+}
+
+vec3 SpecularGGXIridescence(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, float alpha, float specularWeight, vec3 iridescenceFresnel, float iridescenceFactor)
+{
+	vec3 h = normalize(l + v);
+	float NdotL = clamp(dot(n, l), 0.0, 1.0);
+	float NdotV = clamp(dot(n, v), 0.0, 1.0);
+	float NdotH = clamp(dot(n, h), 0.0, 1.0);
+	float HdotV = clamp(dot(h, v), 0.0, 1.0);
+
+	vec3 F = mix(F_Schlick(F0, F90, HdotV), iridescenceFresnel, iridescenceFactor);
+	float V = V_GGX(NdotL, NdotV, alpha);
+	float D = D_GGX_TR(NdotH, alpha);
+
+	return specularWeight * F * V * D;
 }
 
 vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha, float specularWeight)

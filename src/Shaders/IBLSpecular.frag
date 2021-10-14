@@ -30,7 +30,7 @@ vec3 prefilterGGX(vec3 uvw)
 			float NdotH = max(dot(n, h), 0.0);
 			float D = D_GGX(NdotH, roughness);
 			float pdf = D * NdotH / (4.0 * NdotH);
-			float resolution = 1024.0;
+			float resolution = 256.0;
 			float saTexel = 4.0 * PI / (6.0 * resolution * resolution);
 			float saSample = 1.0 / (float(numSamples) * pdf);
 			float mipBias = 1.0;
@@ -78,7 +78,7 @@ mat3 generateTBN(vec3 normal)
 
 float computeLod(float pdf, int sampleCount)
 {
-	int texSize = 256; // TODO: update with unform
+	int texSize = 256; // TODO: update with uniform
     float lod = 0.5 * log2(6.0 * float(texSize) * float(texSize) / (float(sampleCount) * pdf));
     return lod;
 }

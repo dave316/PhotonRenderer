@@ -15,8 +15,9 @@ layout(location = 0) out vec4 fragColor;
 #include "BRDF.glsl"
 #include "Utils.glsl"
 #include "IBL.glsl"
+#include "iridescence.glsl"
 
-uniform bool useIBL = true;
+uniform bool useIBL = false;
 uniform bool useGammaEncoding = false;
 uniform bool useSpecGlossMat = false;
 uniform int numLights;
@@ -59,6 +60,7 @@ void main()
 	vec3 c_diff = vec3(1.0);
 	vec3 F0 = vec3(0.0);
 	float roughness = 0.0;
+	float metallic = 0.0;
 	float alphaRoughness = 0.0;
 	float transparency = 1.0;
 	float specularWeight = 1.0;
@@ -105,7 +107,7 @@ void main()
 				discard;
 
 		vec3 pbrValues = material.getPBRValues(texCoord0, texCoord1);
-		float metallic = pbrValues.b;
+		metallic = pbrValues.b;
 		roughness = clamp(pbrValues.g, 0.1, 1.0);
 
 		vec3 dielectricSpecular = vec3(pow((material.ior - 1.0) / (material.ior + 1.0), 2.0));
@@ -167,6 +169,23 @@ void main()
 
 	sheenRoughness = max(sheenRoughness, 0.07);
 
+	float iridescenceFactor = material.getIridescence(texCoord0, texCoord1);
+	
+	vec3 iridescenceFresnel = vec3(0.0);
+	if (iridescenceFactor > 0.0)
+	{
+		float topIOR = 1.0; // TODO: add clearcoat factor
+		float iridescenceIOR = material.iridescenceIOR;
+		float iridescenceThickness = material.getIridescenceThickness(texCoord0, texCoord1);
+		float viewAngle = sqrt(1.0 + (sq(NdotV) - 1.0) / sq(topIOR));
+		iridescenceFresnel = evalIridescence(topIOR, iridescenceIOR, viewAngle, iridescenceThickness, F0, metallic);
+	}
+
+	float anisotropy = material.getAnisotropy(texCoord0, texCoord1);
+	vec3 anisotropyDirection = material.getAnisotropyDirection(texCoord0, texCoord1);
+	vec3 t = normalize(wTBN * anisotropyDirection);
+	vec3 b = normalize(cross(n, t));
+
 	vec3 ambient = vec3(0);
 	vec3 F_ambient;
 	if(useIBL)
@@ -177,7 +196,13 @@ void main()
 		vec3 kD = (vec3(1.0) - specularWeight * F_ambient);
 		vec3 irradiance = texture(irradianceMap, n).rgb;
 		vec3 diffuse = kD * irradiance * c_diff; 
-		vec3 specular = specularWeight * getIBLRadiance(n, v, roughness, F0);
+		vec3 specular = vec3(0.0);
+		if(anisotropy != 0.0)
+			specular = specularWeight * getIBLRadianceAnisotropy(n, v, t, b, anisotropy, roughness, F0);
+		else if(iridescenceFactor > 0.0)
+			specular = getIBLRadianceGGXIridescence(n, v, roughness, F0, iridescenceFresnel, iridescenceFactor, specularWeight);
+		else
+			specular = specularWeight * getIBLRadiance(n, v, roughness, F0);
 
 		// apply ao before transmission
 		diffuse *= ao;
@@ -194,7 +219,6 @@ void main()
 
 		ambient = diffuse * albedoScalingIBL + (specular * albedoScalingIBL + sheen) * ao;
 		ambient = ambient * (1.0 - clearCoatFactor * clearCoatFresnel) + clearCoat * clearCoatFactor;
-//		ambient = irradiance;
 	}
 
 	// direct light (diffuse+specular)
@@ -217,7 +241,14 @@ void main()
 		float HdotV = clamp(dot(h, v), 0.0, 1.0);
 
 		vec3 f_diff = Lambert(F0, l, v, c_diff, specularWeight);
-		vec3 f_spec = CookTorrance(F0, n, l, v, alphaRoughness, specularWeight);
+		vec3 f_spec = vec3(0.0);
+
+		if(anisotropy != 0.0)
+			f_spec = SpecularGGXAnisotropic(F0, vec3(1.0), n, l, v, t, b, alphaRoughness, specularWeight, anisotropy);
+		else if(material.iridescenceFactor > 0.0)
+			f_spec = SpecularGGXIridescence(F0, vec3(1.0), n, l, v,  alphaRoughness, specularWeight, iridescenceFresnel, iridescenceFactor);
+		else
+			f_spec = CookTorrance(F0, n, l, v, alphaRoughness, specularWeight);
 
 		float shadow = 1.0; // TODO: compute shadows for other light types
 		if(light.type > 0)

@@ -67,7 +67,7 @@ bool Renderer::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "TransmissionSuzanne";
+	std::string name = "IridescenceSuzanne";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//name = "IridescentDishWithOlives";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
@@ -99,11 +99,121 @@ bool Renderer::init()
 
 	cameraUBO.bindBase(0);
 
+	initScene();
 	initLights();
 	initFBOs();
 	initFonts();
 
 	return true;
+}
+
+void Renderer::initScene()
+{
+	auto mesh = Primitives::createSphere(glm::vec3(0), 1.0f, 64, 64);
+	
+	std::string assetPath = "../../../../assets";
+	auto anisotropyTex = IO::loadTexture(assetPath + "/anisotropy.jpg", false);
+	auto anisotropyDirTex = IO::loadTexture(assetPath + "/anisotropy_direction.jpg", false);
+
+	{
+		auto mat = getDefaultMaterial();
+		mat->addProperty("material.metallicFactor", 1.0f);
+		mat->addProperty("material.roughnessFactor", 0.3f);
+		mat->addProperty("material.anisotropyFactor", 0.5f);
+		mat->addTexture("material.anisotropyTexture", anisotropyTex);
+		mat->addProperty("material.useAnisotropyTexture", true);
+
+		Primitive prim;
+		prim.mesh = mesh;
+		prim.materials.push_back(mat);
+
+		auto renderable = Renderable::create();
+		renderable->addPrimitive(prim);
+
+		std::string name = "Sphere_anisotropy_tex";
+		auto entity = Entity::create(name);
+		entity->addComponent(renderable);
+		entity->getComponent<Transform>()->setPosition(glm::vec3(-2, 3, 0));
+		rootEntitis[name] = entity;
+	}
+
+	{
+		glm::mat3 S(1.0f);
+		S[0][0] = 4.0f;
+		S[1][1] = 4.0f;
+
+		auto mat = getDefaultMaterial();
+		mat->addProperty("material.metallicFactor", 1.0f);
+		mat->addProperty("material.roughnessFactor", 0.5f);
+		mat->addProperty("material.anisotropyFactor", -0.5f);
+		mat->addTexture("material.anisotropyDirectionTexture", anisotropyDirTex);
+		mat->addProperty("material.useAnisotropyDirectionTexture", true);
+		mat->addProperty("material.hasAnisotropyDirectionUVTransform", true);
+		mat->addProperty("material.anisotropyDirectionUVTransform", S);
+
+		Primitive prim;
+		prim.mesh = mesh;
+		prim.materials.push_back(mat);
+
+		auto renderable = Renderable::create();
+		renderable->addPrimitive(prim);
+
+		std::string name = "Sphere_anisotropy_dir_tex";
+		auto entity = Entity::create(name);
+		entity->addComponent(renderable);
+		entity->getComponent<Transform>()->setPosition(glm::vec3(2, 3, 0));
+		rootEntitis[name] = entity;
+	}
+
+	for (int i = 0; i <= 10; i++)
+	{
+		float anisotropy = ((i / 5.0f) - 1.0f) * 0.9;
+
+		auto mat = getDefaultMaterial();
+		mat->addProperty("material.metallicFactor", 1.0f);
+		mat->addProperty("material.roughnessFactor", 0.3f);
+		mat->addProperty("material.anisotropyFactor", anisotropy);
+
+		Primitive prim;
+		prim.mesh = mesh;
+		prim.materials.push_back(mat);
+
+		auto renderable = Renderable::create();
+		renderable->addPrimitive(prim);
+
+		std::string name = "Sphere_anisotropy_" + std::to_string(i);
+		auto entity = Entity::create(name);
+		float x = (i - 5) * 2.25;
+		entity->getComponent<Transform>()->setPosition(glm::vec3(x, 0, 0));
+		entity->addComponent(renderable);
+		rootEntitis[name] = entity;
+	}
+
+	for (int i = 0; i <= 10; i++)
+	{
+		float angle = glm::radians(i * 36.0f);
+		glm::vec3 dir = glm::normalize(glm::vec3(glm::cos(angle), glm::sin(angle), 0.0f));
+
+		auto mat = getDefaultMaterial();
+		mat->addProperty("material.metallicFactor", 1.0f);
+		mat->addProperty("material.roughnessFactor", 0.3f);
+		mat->addProperty("material.anisotropyFactor", 0.5f);
+		mat->addProperty("material.anisotropyDirection", dir);
+
+		Primitive prim;
+		prim.mesh = mesh;
+		prim.materials.push_back(mat);
+
+		auto renderable = Renderable::create();
+		renderable->addPrimitive(prim);
+
+		std::string name = "Sphere_direction_" + std::to_string(i);
+		auto entity = Entity::create(name);
+		float x = (i - 5) * 2.25;
+		entity->getComponent<Transform>()->setPosition(glm::vec3(x, -3, 0));
+		entity->addComponent(renderable);
+		rootEntitis[name] = entity;
+	}
 }
 
 void Renderer::initEnvMaps()
@@ -124,9 +234,10 @@ void Renderer::initEnvMaps()
 	if (pano == nullptr)
 	{
 		std::cout << "no panorama loaded, IBL deactivated" << std::endl;
-		useIBL = false;
 		return;
 	}
+
+	useSkybox = true;
 
 	glm::vec3 position = glm::vec3(0);
 	std::vector<glm::mat4> VP;
@@ -302,9 +413,13 @@ void Renderer::initLights()
 	//	lights.insert(std::make_pair(lightName, light));
 	//}
 
-	//auto light = Light::create(LightType::POINT, glm::vec3(0.85f, 0.78f, 0.65f), 10, 10);
-	//light->setPostion(glm::vec3(0, 2, 1));
+	//auto light = Light::create(LightType::POINT, glm::vec3(0.85f, 0.78f, 0.65f), 50, 10);
+	//light->setPostion(glm::vec3(0, 0, 3));
 	//lights.insert(std::make_pair("light", light));
+
+	auto light = Light::create(LightType::DIRECTIONAL, glm::vec3(0.85f, 0.78f, 0.65f), 5, 10);
+	light->setDirection(glm::vec3(0, 0, -1));
+	lights.insert(std::make_pair("light", light)); 
 
 	//auto spotLight = Light::create(LightType::SPOT, glm::vec3(0.85f, 0.78f, 0.65f), 100, 100);
 	//spotLight->setPostion(glm::vec3(0, 0.1, 0));
@@ -382,6 +497,7 @@ void Renderer::initShader()
 	defaultShader->setUniform("sheenLUTE", 18);
 	defaultShader->setUniform("ggxLUT", 19);
 	defaultShader->setUniform("charlieLUT", 20);
+	defaultShader->setUniform("useIBL", useIBL);
 
 	std::vector<int> units;
 	for (int i = 10; i < 15; i++)
@@ -864,7 +980,7 @@ void Renderer::render()
 
 	// offscreen pass for transmission
 	screenFBO->begin();
-	if (useIBL)
+	if (useSkybox)
 	{
 		glCullFace(GL_FRONT);
 		skyboxShader->use();
@@ -889,7 +1005,7 @@ void Renderer::render()
 	defaultShader->setUniform("useGammaEncoding", true);
 	renderScene(defaultShader, true);
 
-	if (useIBL)
+	if (useSkybox)
 	{
 		glCullFace(GL_FRONT);
 		skyboxShader->use();
