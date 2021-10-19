@@ -123,7 +123,7 @@ vec3 SpecularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float Ndo
 	return sheenColor * sheenDistribution * sheenVisibility;
 }
 
-vec3 SpecularGGXAnisotropic(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, vec3 t, vec3 b, float alpha, float specularWeight, float anisotropy)
+vec3 SpecularGGXAnisotropic(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, vec3 t, vec3 b, float alpha, float specularWeight, float anisotropy, vec3 iridescenceFresnel, float iridescenceFactor)
 {
 	vec3 h = normalize(l + v);
 	float NdotL = clamp(dot(n, l), 0.0, 1.0);
@@ -141,7 +141,9 @@ vec3 SpecularGGXAnisotropic(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, vec3 t, v
 	float at = max(alpha * (1.0 + anisotropy), 0.00001);
 	float ab = max(alpha * (1.0 - anisotropy), 0.00001);
 
-	vec3 F = F_Schlick(HdotV, F0);
+	//vec3 F = F_Schlick(HdotV, F0);
+	vec3 F = mix(F_Schlick(F0, F90, HdotV), iridescenceFresnel, iridescenceFactor);
+	//vec3 F = F_Schlick(F0, F90, HdotV);
 	float V = V_GGX_Anisotropic(NdotL, NdotV, BdotV, TdotV, TdotL, BdotL, at, ab);
 	float D = D_GGX_Anisotropic(NdotH, TdotH, BdotH, at, ab);
 
@@ -163,7 +165,7 @@ vec3 SpecularGGXIridescence(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, float alp
 	return specularWeight * F * V * D;
 }
 
-vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha, float specularWeight)
+vec3 CookTorrance(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, float alpha, float specularWeight)
 {
 	vec3 h = normalize(l + v);
 	float NdotL = clamp(dot(n, l), 0.0, 1.0);
@@ -171,12 +173,10 @@ vec3 CookTorrance(vec3 F0, vec3 n, vec3 l, vec3 v, float alpha, float specularWe
 	float NdotH = clamp(dot(n, h), 0.0, 1.0);
 	float HdotV = clamp(dot(h, v), 0.0, 1.0);
 
-	float D = D_GGX_TR(NdotH, alpha);
-	//float G = G_Smith(NdotV, NdotL, alpha);
+	vec3 F = F_Schlick(F0, F90, HdotV);
 	float V = V_GGX(NdotL, NdotV, alpha);
-	vec3 F = F_Schlick(HdotV, F0);
-
-	//vec3 f_spec = (D * G * F) / (4.0 * NdotV * NdotL + 0.001);
+	float D = D_GGX_TR(NdotH, alpha);
+	
 	return specularWeight * F * V * D;
 }
 

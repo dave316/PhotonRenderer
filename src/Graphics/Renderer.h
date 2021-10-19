@@ -57,7 +57,7 @@ public:
 	Renderer(unsigned int width, unsigned int height);
 	~Renderer();
 	bool init();
-	void initScene();
+	void initSceneAnisotropy();
 	void initEnvMaps();
 	void initFBOs();
 	void initLights();

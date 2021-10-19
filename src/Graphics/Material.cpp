@@ -87,7 +87,6 @@ Material::Ptr getDefaultMaterial()
 	// Unlit
 	defaultMaterial->addProperty("material.unlit", false);
 
-
 	defaultMaterial->addProperty("material.computeFlatNormals", false);
 	defaultMaterial->addProperty("useSpecGlossMat", false);
 

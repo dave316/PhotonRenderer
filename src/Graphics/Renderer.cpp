@@ -67,7 +67,8 @@ bool Renderer::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "IridescenceSuzanne";
+	std::string name = "TransmissionRoughnessTest";
+	//std::string name = "MetalRoughSpheres";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//name = "IridescentDishWithOlives";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
@@ -99,7 +100,7 @@ bool Renderer::init()
 
 	cameraUBO.bindBase(0);
 
-	initScene();
+	initSceneAnisotropy();
 	initLights();
 	initFBOs();
 	initFonts();
@@ -107,9 +108,9 @@ bool Renderer::init()
 	return true;
 }
 
-void Renderer::initScene()
+void Renderer::initSceneAnisotropy()
 {
-	auto mesh = Primitives::createSphere(glm::vec3(0), 1.0f, 64, 64);
+	auto mesh = Primitives::createSphere(glm::vec3(0), 1.0f, 32, 32);
 	
 	std::string assetPath = "../../../../assets";
 	auto anisotropyTex = IO::loadTexture(assetPath + "/anisotropy.jpg", false);
@@ -143,13 +144,17 @@ void Renderer::initScene()
 		S[1][1] = 4.0f;
 
 		auto mat = getDefaultMaterial();
+		//mat->addProperty("material.baseColorFactor", glm::vec4(glm::vec3(0.1), 1.0));
 		mat->addProperty("material.metallicFactor", 1.0f);
-		mat->addProperty("material.roughnessFactor", 0.5f);
+		mat->addProperty("material.roughnessFactor", 0.3f);
 		mat->addProperty("material.anisotropyFactor", -0.5f);
 		mat->addTexture("material.anisotropyDirectionTexture", anisotropyDirTex);
 		mat->addProperty("material.useAnisotropyDirectionTexture", true);
 		mat->addProperty("material.hasAnisotropyDirectionUVTransform", true);
 		mat->addProperty("material.anisotropyDirectionUVTransform", S);
+		//mat->addProperty("material.iridescenceFactor", 1.0f);
+		//mat->addProperty("material.iridescenceIOR", 1.33f);
+		//mat->addProperty("material.iridescenceThicknessMax", 400.0f);
 
 		Primitive prim;
 		prim.mesh = mesh;
@@ -170,9 +175,13 @@ void Renderer::initScene()
 		float anisotropy = ((i / 5.0f) - 1.0f) * 0.9;
 
 		auto mat = getDefaultMaterial();
+		//mat->addProperty("material.baseColorFactor", glm::vec4(glm::vec3(0.1), 1.0));
 		mat->addProperty("material.metallicFactor", 1.0f);
 		mat->addProperty("material.roughnessFactor", 0.3f);
 		mat->addProperty("material.anisotropyFactor", anisotropy);
+		//mat->addProperty("material.iridescenceFactor", 1.0f);
+		//mat->addProperty("material.iridescenceIOR", 1.33f);
+		//mat->addProperty("material.iridescenceThicknessMax", 400.0f);
 
 		Primitive prim;
 		prim.mesh = mesh;
@@ -195,10 +204,14 @@ void Renderer::initScene()
 		glm::vec3 dir = glm::normalize(glm::vec3(glm::cos(angle), glm::sin(angle), 0.0f));
 
 		auto mat = getDefaultMaterial();
+		//mat->addProperty("material.baseColorFactor", glm::vec4(glm::vec3(0.1), 1.0));
 		mat->addProperty("material.metallicFactor", 1.0f);
 		mat->addProperty("material.roughnessFactor", 0.3f);
 		mat->addProperty("material.anisotropyFactor", 0.5f);
 		mat->addProperty("material.anisotropyDirection", dir);
+		//mat->addProperty("material.iridescenceFactor", 1.0f);
+		//mat->addProperty("material.iridescenceIOR", 1.33f);
+		//mat->addProperty("material.iridescenceThicknessMax", 400.0f);
 
 		Primitive prim;
 		prim.mesh = mesh;
@@ -214,6 +227,10 @@ void Renderer::initScene()
 		entity->addComponent(renderable);
 		rootEntitis[name] = entity;
 	}
+
+	auto light = Light::create(LightType::DIRECTIONAL, glm::vec3(1), 5, 10);
+	light->setDirection(glm::vec3(0, 0, -1));
+	lights.insert(std::make_pair("light", light)); 
 }
 
 void Renderer::initEnvMaps()
@@ -295,7 +312,7 @@ void Renderer::initEnvMaps()
 	specularShader->use();
 
 	{
-		int size = 256;
+		int size = 1024;
 		specularMapGGX = TextureCubeMap::create(size, size, GL::RGB32F);
 		specularMapGGX->generateMipmaps();
 		specularMapGGX->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
@@ -417,9 +434,9 @@ void Renderer::initLights()
 	//light->setPostion(glm::vec3(0, 0, 3));
 	//lights.insert(std::make_pair("light", light));
 
-	auto light = Light::create(LightType::DIRECTIONAL, glm::vec3(0.85f, 0.78f, 0.65f), 5, 10);
-	light->setDirection(glm::vec3(0, 0, -1));
-	lights.insert(std::make_pair("light", light)); 
+	//auto light = Light::create(LightType::DIRECTIONAL, glm::vec3(0.85f, 0.78f, 0.65f), 5, 10);
+	//light->setDirection(glm::vec3(0, 0, -1));
+	//lights.insert(std::make_pair("light", light)); 
 
 	//auto spotLight = Light::create(LightType::SPOT, glm::vec3(0.85f, 0.78f, 0.65f), 100, 100);
 	//spotLight->setPostion(glm::vec3(0, 0.1, 0));
@@ -499,11 +516,13 @@ void Renderer::initShader()
 	defaultShader->setUniform("charlieLUT", 20);
 	defaultShader->setUniform("useIBL", useIBL);
 
-	std::vector<int> units;
-	for (int i = 10; i < 15; i++)
-		units.push_back(i);
-	defaultShader->setUniform("shadowMaps[0]", units);
-	defaultShader->setUniform("numLights", (int)lights.size());
+	// TODO: fix shadow maps! Reduce texture unit usage, too many active...
+
+	//std::vector<int> units;
+	//for (int i = 10; i < 15; i++)
+	//	units.push_back(i);
+	//defaultShader->setUniform("shadowMaps[0]", units);
+	//defaultShader->setUniform("numLights", (int)lights.size());
 
 	skyboxShader = shaders["Skybox"];
 	skyboxShader->setUniform("envMap", 0);
@@ -975,8 +994,8 @@ void Renderer::render()
 		charlieLUT->use(20);
 	}
 	
-	for (int i = 0; i < shadowFBOs.size(); i++)
-		shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
+	//for (int i = 0; i < shadowFBOs.size(); i++)
+	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
 	// offscreen pass for transmission
 	screenFBO->begin();
