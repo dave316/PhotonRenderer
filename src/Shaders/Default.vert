@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 #define MORPH_TARGETS_2
 //#define MORPH_TARGETS_8

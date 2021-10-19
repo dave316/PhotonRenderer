@@ -43,7 +43,7 @@ class Renderer
 	Texture2D::Ptr ggxLUT;
 	Texture2D::Ptr charlieLUT;
 	Texture2D::Ptr lutSheenE; // TODO: generate based on https://dassaultsystemes-technology.github.io/EnterprisePBRShadingModel/spec-2021x.md.html#components/sheen
-	bool useIBL = false;
+	bool useIBL = true;
 	bool useSkybox = false;
 
 	std::vector<std::string> variants; // TODO: store variants in mesh or renderable

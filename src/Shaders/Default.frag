@@ -1,11 +1,12 @@
-#version 450 core
+#version 460 core
 
 // defines
 #define SHEEN
 #define CLEARCOAT
 #define TRANSMISSION
-#define ANISOTROPY
-#define IRIDESCENCE
+#define SPECULAR
+//#define IRIDESCENCE
+//#define ANISOTROPY
 
 layout(location = 0) in vec3 wPosition;
 layout(location = 1) in vec4 vertexColor;
@@ -76,7 +77,7 @@ void main()
 
 	if(material.unlit)
 	{
-		baseColor = vertexColor * material.getBaseColor(texCoord0, texCoord1);
+		baseColor = vertexColor * getBaseColor(texCoord0, texCoord1);
 		vec3 unlitColor = baseColor.rgb;
 		float unlitAlpha = baseColor.a;
 		if(useGammaEncoding)
@@ -91,13 +92,13 @@ void main()
 
 	if(useSpecGlossMat)
 	{
-		vec4 diffuseColor = material2.getDiffuseColor(texCoord0);
+		vec4 diffuseColor = getDiffuseColor(texCoord0);
 		float transparency = diffuseColor.a;
 		if(material2.alphaMode == 1)
 			if(transparency < material2.alphaCutOff)
 				discard;
 
-		vec4 specGlossColor = material2.getSpecularColor(texCoord0);
+		vec4 specGlossColor = getSpecularColor(texCoord0);
 		vec3 specularColor = specGlossColor.rgb;
 		float glossiness = specGlossColor.a;
 		roughness = 1.0 - glossiness;
@@ -108,13 +109,13 @@ void main()
 	}
 	else
 	{
-		baseColor = vertexColor * material.getBaseColor(texCoord0, texCoord1);
+		baseColor = vertexColor * getBaseColor(texCoord0, texCoord1);
 		transparency = baseColor.a;
 		if(material.alphaMode == 1)
 			if(transparency < material.alphaCutOff)
 				discard;
 
-		vec3 pbrValues = material.getPBRValues(texCoord0, texCoord1);
+		vec3 pbrValues = getPBRValues(texCoord0, texCoord1);
 		metallic = pbrValues.b;
 		roughness = pbrValues.g;
 
@@ -123,44 +124,32 @@ void main()
 		F0 = mix(dielectricSpecular, baseColor.rgb, metallic);
 		alphaRoughness = roughness * roughness;
 
-		float specularFactor = material.getSpecular(texCoord0, texCoord1);
-		vec3 specularColor = material.getSpecularColor(texCoord0, texCoord1);
+#ifdef SPECULAR
+		float specularFactor = getSpecular(texCoord0, texCoord1);
+		vec3 specularColor = getSpecularColor(texCoord0, texCoord1);
 
 		vec3 dielectricSpecularF0 = min(F0 * specularColor, vec3(1.0));
 		F0 = mix(dielectricSpecularF0, baseColor.rgb, metallic);
 		specularWeight = specularFactor;
 		c_diff = mix(baseColor.rgb * (1.0 - max3(dielectricSpecularF0)), vec3(0.0), metallic);
+#endif
 	}
 
-	vec3 emission = material.getEmission(texCoord0, texCoord1);
-	float ao = material.getOcclusionFactor(texCoord0, texCoord1);
+	vec3 emission = getEmission(texCoord0, texCoord1);
+	float ao = getOcclusionFactor(texCoord0, texCoord1);
 
 	vec3 n = normalize(wNormal);
 	if (material.computeFlatNormals)
 		n = normalize(cross(dFdx(wPosition), dFdy(wPosition)));
-	if(material.useNormalTex)
+	if(normalTex.use)
 	{
-		vec3 uvTransform = vec3(material.normalUVIndex == 0 ? texCoord0 : texCoord1, 1.0);
-		if (material.hasNormalUVTransform)
-			uvTransform = material.normalUVTransform * uvTransform;
-		vec3 tNormal = texture2D(material.normalTex,uvTransform.xy).rgb * 2.0 - vec3(1.0);
+		vec3 tNormal = getTexel(normalTex, texCoord0, texCoord1).rgb * 2.0 - 1.0;
 		tNormal *= vec3(material.normalScale, material.normalScale, 1.0);
 		n = wTBN * normalize(tNormal);
 	}
+
 	if(gl_FrontFacing == false)
 		n = -n;
-
-	vec3 clearCoatNormal = normalize(wNormal);
-	if(material.useClearCoatNormalTex)
-	{
-		vec3 uvTransform = vec3(material.clearCoatNormalUVIndex == 0 ? texCoord0 : texCoord1, 1.0);
-		if (material.hasClearCoatNormalUVTransform)
-			uvTransform = material.clearCoatNormalUVTransform * uvTransform;
-		vec3 tNormal = texture2D(material.clearCoatNormalTex, uvTransform.xy).rgb * 2.0 - 1.0;
-		clearCoatNormal = normalize(wTBN * tNormal);
-	}
-	if(gl_FrontFacing == false)
-		clearCoatNormal = -clearCoatNormal;
 
 	vec3 v = normalize(camera.position - wPosition);
 	vec3 r = normalize(reflect(-v, n));
@@ -168,38 +157,47 @@ void main()
 
 	// extension materials
 #ifdef SHEEN
-	vec3 sheenColor = material.getSheenColor(texCoord0, texCoord1);
-	float sheenRoughness = material.getSheenRoughness(texCoord0, texCoord1);
+	vec3 sheenColor = getSheenColor(texCoord0, texCoord1);
+	float sheenRoughness = getSheenRoughness(texCoord0, texCoord1);
 	sheenRoughness = max(sheenRoughness, 0.07);
 #endif
 
 #ifdef CLEARCOAT
-	float clearCoatFactor = material.getClearCoat(texCoord0, texCoord1);
-	float clearCoatRoughness = material.getClearCoatRoughness(texCoord0, texCoord1);
+	vec3 clearCoatNormal = normalize(wNormal);
+	if(clearCoatNormalTex.use)
+	{
+		vec3 tNormal = getTexel(clearCoatNormalTex, texCoord0, texCoord1).rgb * 2.0 - 1.0;
+		clearCoatNormal = normalize(wTBN * tNormal);
+	}
+	if(gl_FrontFacing == false)
+		clearCoatNormal = -clearCoatNormal;
+
+	float clearCoatFactor = getClearCoat(texCoord0, texCoord1);
+	float clearCoatRoughness = getClearCoatRoughness(texCoord0, texCoord1);
 	vec3 clearCoatFresnel = F_Schlick(clamp(dot(clearCoatNormal, v), 0.0, 1.0), F0);
 #endif
 
 #ifdef TRANSMISSION // TODO: seperate thin and thick transmission
-	float transmissionFactor = material.getTransmission(texCoord0, texCoord1);
-	float thickness = material.getThickness(texCoord0, texCoord1);
+	float transmissionFactor = getTransmission(texCoord0, texCoord1);
+	float thickness = getThickness(texCoord0, texCoord1);
 #endif
 
 #ifdef IRIDESCENCE
-	float iridescenceFactor = material.getIridescence(texCoord0, texCoord1);
+	float iridescenceFactor = getIridescence(texCoord0, texCoord1);
 	vec3 iridescenceFresnel = vec3(0.0);
 	if (iridescenceFactor > 0.0)
 	{
 		float topIOR = 1.0; // TODO: add clearcoat factor
 		float iridescenceIOR = material.iridescenceIOR;
-		float iridescenceThickness = material.getIridescenceThickness(texCoord0, texCoord1);
+		float iridescenceThickness = getIridescenceThickness(texCoord0, texCoord1);
 		float viewAngle = sqrt(1.0 + (sq(NdotV) - 1.0) / sq(topIOR));
 		iridescenceFresnel = evalIridescence(topIOR, iridescenceIOR, viewAngle, iridescenceThickness, F0, metallic);
 	}
 #endif
 
 #ifdef ANISOTROPY
-	float anisotropy = material.getAnisotropy(texCoord0, texCoord1);
-	vec3 anisotropyDirection = material.getAnisotropyDirection(texCoord0, texCoord1);
+	float anisotropy = getAnisotropy(texCoord0, texCoord1);
+	vec3 anisotropyDirection = getAnisotropyDirection(texCoord0, texCoord1);
 	vec3 t = normalize(wTBN * anisotropyDirection);
 	vec3 b = normalize(cross(n, t));
 #endif
@@ -282,7 +280,7 @@ void main()
 		float shadow = 1.0; // TODO: compute shadows for other light types
 //		if(light.type > 0)
 //			shadow = getShadow(wPosition, i);
-
+//
 		float rangeAttenuation = 1.0f;
 		float spotAttenuation = 1.0f;
 

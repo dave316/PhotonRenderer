@@ -11,7 +11,7 @@ uniform int lightIndex;
 
 void main()
 {
-	vec4 baseColor = material.getBaseColor(fTexCoord0, fTexCoord1);
+	vec4 baseColor = getBaseColor(fTexCoord0, fTexCoord1);
 	float transparency = baseColor.a;
 	if(material.alphaMode == 1)
 		if(transparency < material.alphaCutOff)

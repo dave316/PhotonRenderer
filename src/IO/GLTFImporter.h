@@ -130,6 +130,7 @@ namespace IO
 		Entity::Ptr loadScene(const json::Document& doc);
 		Entity::Ptr traverse(int nodeIndex, glm::mat4 parentTransform);
 		Texture2D::Ptr loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB);
+		void setTextureInfo(const json::Value& node, const std::string& texNodeName, Material::Ptr material, std::string texInfoStr, std::string path, bool sRGB);
 
 		template<typename T>
 		void loadData(int accIndex, std::vector<T>& data)

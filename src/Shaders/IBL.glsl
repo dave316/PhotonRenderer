@@ -3,7 +3,7 @@ uniform samplerCube specularMapGGX;
 uniform samplerCube specularMapCharlie;
 uniform sampler2D ggxLUT;
 uniform sampler2D charlieLUT;
-uniform sampler2D transmissionTex;
+uniform sampler2D screenTex;
 uniform mat4 M;
 
 vec3 getIBLRadianceCharlie(vec3 n, vec3 v, float sheenRoughness, vec3 sheenColor)
@@ -29,7 +29,7 @@ vec3 getIBLRadiance(vec3 n, vec3 v, float roughness, vec3 F0)
 	vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
 	vec3 kD = (vec3(1.0) - F_ambient);
 
-	const float MAX_REFLECTION_LOD = 7.0;
+	const float MAX_REFLECTION_LOD = 6.0;
 	vec3 specularColor = textureLod(specularMapGGX, r, roughness * MAX_REFLECTION_LOD).rgb;
 	vec2 brdf = texture(ggxLUT, vec2(NdotV, roughness)).rg;
 	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
@@ -106,9 +106,9 @@ vec3 getIBLVolumeRefraction(vec3 n, vec3 v, float roughness, vec3 color, vec3 F0
 	vec2 refractionCoords = ndcPos.xy / ndcPos.w;
 	refractionCoords = refractionCoords * 0.5 + 0.5;
 
-	ivec2 texSize = textureSize(transmissionTex, 0);
+	ivec2 texSize = textureSize(screenTex, 0);
 	float lod = log2(float(texSize.x)) * applyIorToRoughness(roughness, material.ior);
-	vec3 transmittedLight = textureLod(transmissionTex, refractionCoords, lod).rgb;
+	vec3 transmittedLight = textureLod(screenTex, refractionCoords, lod).rgb;
 	vec3 attenuatedColor = applyVolumeAttenuation(transmittedLight, length(transmissionRay), attenuationDistance, attenuationColor);
 
 	float NdotV = clamp(dot(n, v), 0.0, 1.0);
