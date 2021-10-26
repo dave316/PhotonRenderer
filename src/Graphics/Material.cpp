@@ -29,6 +29,8 @@ void resetTexInfo(Material::Ptr material, std::string name)
 
 Material::Ptr getDefaultMaterial()
 {
+	// This is super slow! Don't set everything if it is not needed...
+
 	auto defaultMaterial = Material::create();
 
 	// PBR MetallicRough parameters
@@ -39,34 +41,34 @@ Material::Ptr getDefaultMaterial()
 	defaultMaterial->addProperty("material.emissiveFactor", glm::vec3(0.0));
 	defaultMaterial->addProperty("material.alphaCutOff", 0.0f);
 	defaultMaterial->addProperty("material.alphaMode", 0);
-	resetTexInfo(defaultMaterial, "baseColorTex");
-	resetTexInfo(defaultMaterial, "pbrTex");
-	resetTexInfo(defaultMaterial, "normalTex");
-	resetTexInfo(defaultMaterial, "emissiveTex");
-	resetTexInfo(defaultMaterial, "occlusionTex");
+	defaultMaterial->addProperty("baseColorTex.use", false);
+	defaultMaterial->addProperty("pbrTex.use", false);
+	defaultMaterial->addProperty("normalTex.use", false);
+	defaultMaterial->addProperty("emissiveTex.use", false);
+	defaultMaterial->addProperty("occlusionTex.use", false);
 
 	// Sheen
 	defaultMaterial->addProperty("material.sheenColorFactor", glm::vec3(0));
 	defaultMaterial->addProperty("material.sheenRoughnessFactor", 0.0f);
-	resetTexInfo(defaultMaterial, "sheenColorTex");
-	resetTexInfo(defaultMaterial, "sheenRoughTex");
+	defaultMaterial->addProperty("sheenColorTex.use", false);
+	defaultMaterial->addProperty("sheenRoughTex.use", false);
 
 	// Clearcoat
 	defaultMaterial->addProperty("material.clearcoatFactor", 0.0f);
 	defaultMaterial->addProperty("material.clearcoatRoughnessFactor", 0.0f);
-	resetTexInfo(defaultMaterial, "clearCoatTex");
-	resetTexInfo(defaultMaterial, "clearCoatRoughTex");
-	resetTexInfo(defaultMaterial, "clearCoatNormalTex");
+	defaultMaterial->addProperty("clearCoatTex.use", false);
+	defaultMaterial->addProperty("clearCoatRoughTex.use", false);
+	defaultMaterial->addProperty("clearCoatNormalTex.use", false);
 
 	// Transmission
 	defaultMaterial->addProperty("material.transmissionFactor", 0.0f);
-	resetTexInfo(defaultMaterial, "transmissionTex");
+	defaultMaterial->addProperty("transmissionTex.use", false);
 
 	// Volume
 	defaultMaterial->addProperty("material.thicknessFactor", 0.0f);
 	defaultMaterial->addProperty("material.attenuationDistance", 0.0f);
 	defaultMaterial->addProperty("material.attenuationColor", glm::vec3(1.0f));
-	resetTexInfo(defaultMaterial, "thicknessTex");
+	defaultMaterial->addProperty("thicknessTex.use", false);
 
 	// IOR
 	defaultMaterial->addProperty("material.ior", 1.5f);
@@ -74,22 +76,22 @@ Material::Ptr getDefaultMaterial()
 	// Specular
 	defaultMaterial->addProperty("material.specularFactor", 1.0f);
 	defaultMaterial->addProperty("material.specularColorFactor", glm::vec3(1.0f));
-	resetTexInfo(defaultMaterial, "specularTex");
-	resetTexInfo(defaultMaterial, "specularColorTex");
+	defaultMaterial->addProperty("specularTex.use", false);
+	defaultMaterial->addProperty("specularColorTex.use", false);
 
 	// Iridescence
 	defaultMaterial->addProperty("material.iridescenceFactor", 0.0f);
 	defaultMaterial->addProperty("material.iridescenceIOR", 1.8f);
 	defaultMaterial->addProperty("material.iridescenceThicknessMin", 400.0f);
 	defaultMaterial->addProperty("material.iridescenceThicknessMax", 1200.0f);
-	resetTexInfo(defaultMaterial, "iridescenceTex");
-	resetTexInfo(defaultMaterial, "iridescenceThicknessTex");
+	defaultMaterial->addProperty("iridescenceTex.use", false);
+	defaultMaterial->addProperty("iridescenceThicknessTex.use", false);
 
 	// Anisotropy
 	defaultMaterial->addProperty("material.anisotropyFactor", 0.0f);
 	defaultMaterial->addProperty("material.anisotropyDirection", glm::vec3(1, 0, 0));
-	resetTexInfo(defaultMaterial, "anisotropyTex");
-	resetTexInfo(defaultMaterial, "anisotropyDirectionTex");
+	defaultMaterial->addProperty("anisotropyTex.use", false);
+	defaultMaterial->addProperty("anisotropyDirectionTex.use", false);
 
 	// Unlit
 	defaultMaterial->addProperty("material.unlit", false);

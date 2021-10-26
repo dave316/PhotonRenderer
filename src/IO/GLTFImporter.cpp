@@ -694,17 +694,9 @@ namespace IO
 				if(calcTangentSpace)
 					surface.calcTangentSpace();
 
-				auto defaultMaterial = Material::create();
-				defaultMaterial->addProperty("material.baseColorFactor", glm::vec4(1.0));
-				defaultMaterial->addProperty("material.roughnessFactor", 1.0f);
-				defaultMaterial->addProperty("material.metallicFactor", 0.0f);
-				defaultMaterial->addProperty("material.occlusionFactor", 0.0f);
-				defaultMaterial->addProperty("material.emissiveFactor", glm::vec3(0.0));
-				defaultMaterial->addProperty("material.useBaseColorTex", false);
-				defaultMaterial->addProperty("material.usePbrTex", false);
-				defaultMaterial->addProperty("material.useNormalTex", false);
-				defaultMaterial->addProperty("material.useEmissiveTex", false);
-
+				auto defaultMaterial = getDefaultMaterial();
+				defaultMaterial->addProperty("material.computeFlatNormals", computeFlatNormals);
+				
 				Primitive primitive;
 				primitive.mesh = Mesh::create(name, surface, 0);
 				for (auto materialIndex : materialIndices)
@@ -714,8 +706,7 @@ namespace IO
 						auto mat = materials[materialIndex];
 						mat->addProperty("material.computeFlatNormals", computeFlatNormals);
 						primitive.materials.push_back(mat);
-					}
-						
+					}						
 				}
 				if (primitive.materials.empty())
 					primitive.materials.push_back(defaultMaterial);
@@ -924,8 +915,6 @@ namespace IO
 
 	void GLTFImporter::loadMaterials(const json::Document& doc, const std::string& path)
 	{
-		// TODO: abstract texture info and extension loading to optimize code
-
 		if (!doc.HasMember("materials"))
 			return;
 

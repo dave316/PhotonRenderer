@@ -5,7 +5,7 @@
 #define CLEARCOAT
 #define TRANSMISSION
 #define SPECULAR
-//#define IRIDESCENCE
+#define IRIDESCENCE
 //#define ANISOTROPY
 
 layout(location = 0) in vec3 wPosition;
@@ -233,7 +233,7 @@ void main()
 
 #ifdef SHEEN
 		vec3 sheen = getIBLRadianceCharlie(n, v, sheenRoughness, sheenColor);
-		float albedoScalingIBL = 1.0 - max3(sheenColor) * E(NdotV, sheenRoughness);
+		float albedoScalingIBL = 1.0;// - max3(sheenColor) * E(NdotV, sheenRoughness);
 		ambient = diffuse * albedoScalingIBL + (specular * albedoScalingIBL + sheen) * ao;
 #else
 		ambient = diffuse + specular * ao;
@@ -245,6 +245,12 @@ void main()
 		ambient = ambient * (1.0 - clearCoatFactor * clearCoatFresnel) + clearCoat * clearCoatFactor;
 #endif
 	}
+//	else
+//	{
+//		vec3 transmission = transmissionFactor * getIBLVolumeRefraction(n, v, roughness, baseColor.rgb, F0, vec3(1.0), wPosition, thickness, material.attenuationDistance, material.attenuationColor);
+//		if(transmissionFactor > 0.0)
+//			ambient = mix(ambient, transmission, transmissionFactor);
+//	}
 
 	// direct light (diffuse+specular)
 	vec3 lo = vec3(0);
@@ -280,7 +286,7 @@ void main()
 		float shadow = 1.0; // TODO: compute shadows for other light types
 //		if(light.type > 0)
 //			shadow = getShadow(wPosition, i);
-//
+
 		float rangeAttenuation = 1.0f;
 		float spotAttenuation = 1.0f;
 
