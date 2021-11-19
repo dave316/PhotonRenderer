@@ -67,8 +67,10 @@ bool Renderer::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "DragonAttenuation";
+	std::string name = "IridescenceSuzanne";
 	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	//loadModel(name, gltfPath + "/" + name + "/glTF-KTX-BasisU/" + name + ".gltf");
+	//loadModel(name, gltfPath + "/" + name + "/glTF/PBR - Metallic Roughness Alpha-blend.gltf");
 	//name = "IridescentDishWithOlives";
 	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//rootEntitis[name]->getComponent<Transform>()->setPosition(glm::vec3(0, 0.5, 2));
@@ -101,11 +103,41 @@ bool Renderer::init()
 
 	//initSceneAnisotropy();
 	//initSceneMaterials();
+	//initKTXTest();
 	initLights();
 	initFBOs();
 	initFonts();
 
 	return true;
+}
+
+void Renderer::initKTXTest()
+{
+	std::string path = "C:/Users/dave316/Documents/Code/PhotonRendererGH/assets/glTF-Sample-Models/2.0/StainedGlassLamp";
+	std::string fn = path + "/glTF-KTX-BasisU/StainedGlassLamp_glass_basecolor-alpha.ktx2";
+	auto tex = IO::loadTextureKTX(fn);
+	//std::string fn = path + "/glTF/StainedGlassLamp_glass_basecolor-alpha.png";
+	//auto tex = IO::loadTexture(fn, true);
+
+	auto mat = getDefaultMaterial();
+	mat->addTexture("baseColorTex.tsampler", tex);
+	mat->addProperty("baseColorTex.use", true);
+	mat->addProperty("baseColorTex.uvIndex", 0);
+	mat->addProperty("baseColorTex.uvTransform", glm::mat3(1));
+	//mat->addProperty("material.roughnessFactor", 0.1f);
+	mat->addProperty("material.metallicFactor", 0.0f);
+
+	Primitive prim;
+	prim.mesh = Primitives::createQuad(glm::vec3(0), 1.0f);
+	prim.materials.push_back(mat);
+
+	auto renderable = Renderable::create();
+	renderable->addPrimitive(prim);
+
+	auto plane = Entity::create("plane");
+	plane->addComponent(renderable);
+	
+	rootEntitis.insert(std::make_pair("plane", plane));	
 }
 
 void Renderer::initSceneMaterials()
@@ -118,24 +150,24 @@ void Renderer::initSceneMaterials()
 
 		auto mat = getDefaultMaterial();
 		//mat->addProperty("material.baseColorFactor", glm::vec4(1.0, 0.4, 0.263, 1.0));
-		mat->addProperty("material.baseColorFactor", glm::vec4(1.0, 1.0, 1.0, 1.0));
+		mat->addProperty("material.baseColorFactor", glm::vec4(1.0, 0.5, 0.1, 1.0));
 		mat->addProperty("material.metallicFactor", 0.0f);
-		mat->addProperty("material.roughnessFactor", 0.1f);
-		//mat->addProperty("material.sheenColorFactor", glm::vec3(1));
+		mat->addProperty("material.roughnessFactor", 0.7f);
+		//mat->addProperty("material.sheenColorFactor", glm::vec3(1.0f));
 		//mat->addProperty("material.sheenRoughnessFactor", 0.4f);
 		//mat->addProperty("material.clearcoatFactor", 1.0f);
 		//mat->addProperty("material.clearcoatRoughnessFactor", 0.1f);
-		mat->addProperty("material.transmissionFactor", 1.0f);
-		mat->addProperty("material.thicknessFactor", 0.1f);
-		mat->addProperty("material.attenuationDistance", 1.0f);
-		mat->addProperty("material.attenuationColor", glm::vec3(0.1f,0.1f,1.0f));
-		mat->addProperty("material.ior", 1.5f);
-		mat->addProperty("material.iridescenceFactor", 1.0f);
-		mat->addProperty("material.iridescenceIOR", 1.8f);
-		mat->addProperty("material.iridescenceThicknessMax", 600.0f);
+		//mat->addProperty("material.transmissionFactor", 1.0f);
+		//mat->addProperty("material.thicknessFactor", 1.0f);
+		//mat->addProperty("material.attenuationDistance", 1.0f);
+		//mat->addProperty("material.attenuationColor", glm::vec3(1.0f));
+		//mat->addProperty("material.ior", 1.5f);
+		//mat->addProperty("material.iridescenceFactor", 1.0f);
+		//mat->addProperty("material.iridescenceIOR", 1.8f);
+		//mat->addProperty("material.iridescenceThicknessMax", 600.0f);
 		//mat->addProperty("material.anisotropyFactor", 0.9f);
 		//mat->addProperty("material.anisotropyDirection", glm::vec3(1,0,0));
-		mat->setTransmissive(true);
+		mat->setTransmissive(false);
 
 		Primitive prim;
 		prim.mesh = mesh;
@@ -289,8 +321,8 @@ void Renderer::initEnvMaps()
 	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
 
 	std::string assetPath = "../../../../assets";
-	//auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
-	auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
+	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
+	//auto pano = IO::loadTextureHDR(assetPath + "/Newport_Loft/Newport_Loft_Ref.hdr");
 	//auto pano = IO::loadTextureHDR(assetPath + "/office.hdr");
 
 	if (pano == nullptr)
@@ -475,8 +507,8 @@ void Renderer::initLights()
 	//	lights.insert(std::make_pair(lightName, light));
 	//}
 
-	//auto light = Light::create(LightType::POINT, glm::vec3(0.85f, 0.78f, 0.65f), 25, 10);
-	//light->setPostion(glm::vec3(0, 0, 2));
+	//auto light = Light::create(LightType::POINT, glm::vec3(0.85f, 0.78f, 0.65f), 100, 100);
+	//light->setPostion(glm::vec3(0, 2, 0));
 	//lights.insert(std::make_pair("light", light));
 
 	//auto light = Light::create(LightType::DIRECTIONAL, glm::vec3(1.0f), 2, 10);
@@ -484,7 +516,7 @@ void Renderer::initLights()
 	//lights.insert(std::make_pair("light", light)); 
 
 	//auto spotLight = Light::create(LightType::SPOT, glm::vec3(0.85f, 0.78f, 0.65f), 100, 100);
-	//spotLight->setPostion(glm::vec3(0, 0.1, 0));
+	//spotLight->setPostion(glm::vec3(0, 0.5, 0));
 	//spotLight->setDirection(glm::vec3(-1, 0, 0));
 	//spotLight->setConeAngles(0.0, 0.5);
 	//lights.insert(std::make_pair("light", spotLight));
@@ -508,7 +540,7 @@ void Renderer::initLights()
 		auto light = it.second;
 
 		glm::vec3 pos = light->getPosition();
-		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.01f, 25.0f);
+		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
 		std::vector<glm::mat4> VP;
 		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
 		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
@@ -547,11 +579,11 @@ void Renderer::initShader()
 
 	// TODO: fix shadow maps! Reduce texture unit usage, too many active...
 
-	//std::vector<int> units;
-	//for (int i = 10; i < 15; i++)
-	//	units.push_back(i);
-	//defaultShader->setUniform("shadowMaps[0]", units);
-	//defaultShader->setUniform("numLights", (int)lights.size());
+	std::vector<int> units;
+	for (int i = 10; i < 15; i++)
+		units.push_back(i);
+	defaultShader->setUniform("shadowMaps[0]", units);
+	defaultShader->setUniform("numLights", (int)lights.size());
 
 	skyboxShader = shaders["Skybox"];
 	skyboxShader->setUniform("envMap", 0);
@@ -1023,8 +1055,8 @@ void Renderer::render()
 		charlieLUT->use(20);
 	}
 	
-	//for (int i = 0; i < shadowFBOs.size(); i++)
-	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
+	for (int i = 0; i < shadowFBOs.size(); i++)
+		shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
 	// offscreen pass for transmission
 	screenFBO->begin();

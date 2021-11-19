@@ -46,6 +46,16 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 	//	std::cout << "GL extension " << i << ": " << ext << std::endl;
 	//}
 
+	GLint numFormats = 0;
+	glGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS, &numFormats);
+	std::cout << "formats: " << numFormats << std::endl;
+	GLint* formats = new GLint[numFormats];
+	glGetIntegerv(GL_COMPRESSED_TEXTURE_FORMATS, formats);
+	for (GLint i = 0; i < numFormats; i++)
+	{
+		std::cout << "GL compressed format " << i << ": " << formats[i] << std::endl;
+	}
+
 	//if (gl3wInit() != GL3W_OK)
 	//{
 	//	std::cout << "error initializing GL3W!" << std::endl;

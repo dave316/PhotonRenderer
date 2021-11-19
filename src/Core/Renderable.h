@@ -15,6 +15,7 @@ struct Primitive
 	Mesh::Ptr mesh;
 	std::vector<Material::Ptr> materials;
 	unsigned int materialIndex = 0;
+	bool computeFlatNormals = false;
 
 	Material::Ptr getMaterial()
 	{

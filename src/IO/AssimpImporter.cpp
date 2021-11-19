@@ -530,7 +530,7 @@ namespace IO
 
 		//std::cout << "new mesh " << surface.vertices.size() << " " << surface.triangles.size() << std::endl;
 
-		return Mesh::create(pMesh->mName.C_Str(), surface, pMesh->mMaterialIndex);
+		return Mesh::create(pMesh->mName.C_Str(), surface, 4, pMesh->mMaterialIndex);
 	}
 
 	glm::vec4 AssimpImporter::toVec4(const aiColor4D& aiCol4)

@@ -31,6 +31,7 @@ private:
 	GL::VertexBuffer<Vertex> vertexBuffer;
 	GL::IndexBuffer<GLuint> indexBuffer;
 	GL::VertexArray vao;
+	GLenum topology;
 
 	TriangleSurface surface;
 
@@ -40,7 +41,7 @@ private:
 	Mesh& operator=(const Mesh&) = delete;
 public:
 
-	Mesh(const std::string& name, TriangleSurface& surface, unsigned int index);
+	Mesh(const std::string& name, TriangleSurface& surface, GLenum topology, unsigned int index);
 	~Mesh();
 	void flipWindingOrder();
 	void updatGeometry(TriangleSurface& surface);
@@ -53,9 +54,9 @@ public:
 		return name;
 	}
 	typedef std::shared_ptr<Mesh> Ptr;
-	static Ptr create(const std::string& name, TriangleSurface& surface, unsigned int materialIndex)
+	static Ptr create(const std::string& name, TriangleSurface& surface, GLenum topology, unsigned int materialIndex)
 	{
-		return std::make_shared<Mesh>(name, surface, materialIndex);
+		return std::make_shared<Mesh>(name, surface, topology, materialIndex);
 	}
 };
 

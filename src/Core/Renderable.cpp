@@ -32,6 +32,7 @@ void Renderable::render(Shader::Ptr shader)
 {
 	for (auto& p : primitives)
 	{
+		shader->setUniform("material.computeFlatNormals", p.computeFlatNormals);
 		auto mat = p.getMaterial();
 		if (mat->isDoubleSided())
 			glDisable(GL_CULL_FACE);

@@ -78,7 +78,8 @@ void main()
 	if(material.unlit)
 	{
 		baseColor = vertexColor * getBaseColor(texCoord0, texCoord1);
-		vec3 unlitColor = baseColor.rgb;
+		vec3 emission = getEmission(texCoord0, texCoord1);
+		vec3 unlitColor = emission + baseColor.rgb;
 		float unlitAlpha = baseColor.a;
 		if(useGammaEncoding)
 			unlitColor = pow(unlitColor, vec3(1.0 / 2.2));
@@ -284,8 +285,8 @@ void main()
 #endif
 #endif
 		float shadow = 1.0; // TODO: compute shadows for other light types
-//		if(light.type > 0)
-//			shadow = getShadow(wPosition, i);
+		if(light.type > 0)
+			shadow = getShadow(wPosition, i);
 
 		float rangeAttenuation = 1.0f;
 		float spotAttenuation = 1.0f;

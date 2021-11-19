@@ -19,5 +19,5 @@ void main()
 
 	Light light = lights[lightIndex];
 	float lightDist = length(wPosition - light.position);
-	gl_FragDepth = lightDist / 25.0; // TODO: put in light class (range of light)
+	gl_FragDepth = lightDist / light.range; // TODO: put in light class (range of light)
 }

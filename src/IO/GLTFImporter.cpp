@@ -37,9 +37,11 @@ namespace IO
 		supportedExtensions.insert("KHR_materials_specular");
 		supportedExtensions.insert("KHR_materials_unlit");
 		supportedExtensions.insert("KHR_materials_variants");
+		supportedExtensions.insert("KHR_materials_iridescence");
 		supportedExtensions.insert("KHR_materials_pbrSpecularGlossiness");
 		supportedExtensions.insert("KHR_lights_punctual");
 		supportedExtensions.insert("KHR_texture_transform");
+		supportedExtensions.insert("KHR_texture_basisu");		
 	}
 
 	Entity::Ptr GLTFImporter::importModel(std::string filename)
@@ -561,6 +563,12 @@ namespace IO
 					materialIndices.push_back(primitiveNode["material"].GetInt());
 				}
 
+				int mode = 4;
+				if (primitiveNode.HasMember("mode"))
+				{
+					mode = primitiveNode["mode"].GetInt();
+				}
+
 				if (primitiveNode.HasMember("extensions"))
 				{
 					// TODO: add variant - material mapping
@@ -685,27 +693,42 @@ namespace IO
 				bool computeFlatNormals = false;
 				if (calcNormals)
 				{
-					if (surface.triangles.empty())
-						surface.calcFlatNormals();
-					else
-						computeFlatNormals = true;
+					if (mode == 4)
+					{
+						if (surface.triangles.empty())
+							surface.calcFlatNormals();
+						else
+							computeFlatNormals = true;
+					}
 				}
 
 				if(calcTangentSpace)
 					surface.calcTangentSpace();
 
 				auto defaultMaterial = getDefaultMaterial();
-				defaultMaterial->addProperty("material.computeFlatNormals", computeFlatNormals);
-				
+				if (mode != 4 && calcNormals) // TODO: check outher triangle topologies
+					defaultMaterial->addProperty("material.unlit", true);
+
 				Primitive primitive;
-				primitive.mesh = Mesh::create(name, surface, 0);
+				primitive.mesh = Mesh::create(name, surface, mode, 0);
+				primitive.computeFlatNormals = computeFlatNormals;
 				for (auto materialIndex : materialIndices)
 				{
 					if (materialIndex < materials.size())
 					{
 						auto mat = materials[materialIndex];
-						mat->addProperty("material.computeFlatNormals", computeFlatNormals);
-						primitive.materials.push_back(mat);
+						if (mode != 4 && calcNormals)
+						{
+							glm::vec4 baseColor = mat->getPropertyValue<glm::vec4>("material.baseColorFactor");
+							glm::vec3 emission = mat->getPropertyValue<glm::vec3>("material.emissiveFactor");
+							defaultMaterial->addProperty("material.baseColorFactor", baseColor);
+							defaultMaterial->addProperty("material.emissiveFactor", emission);
+							primitive.materials.push_back(defaultMaterial);
+						}
+						else
+						{
+							primitive.materials.push_back(mat);
+						}
 					}						
 				}
 				if (primitive.materials.empty())
@@ -723,10 +746,20 @@ namespace IO
 
 	Texture2D::Ptr GLTFImporter::loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB)
 	{
-		auto tex = IO::loadTexture(path + "/" + texInfo.filename, sRGB);
+		Texture2D::Ptr tex = nullptr;
 		TextureSampler& sampler = texInfo.sampler;
-		if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
-			tex->generateMipmaps();
+		auto idx = texInfo.filename.find_last_of('.') + 1;
+		auto len = texInfo.filename.length();
+		auto fileExt = texInfo.filename.substr(idx, len - idx);
+		if (fileExt.compare("ktx2") == 0)
+			tex = IO::loadTextureKTX(path + "/" + texInfo.filename);
+		else
+		{
+			tex = IO::loadTexture(path + "/" + texInfo.filename, sRGB);	
+			if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
+				tex->generateMipmaps();
+		}
+
 		tex->setFilter(GL::TextureFilter(sampler.minFilter), GL::TextureFilter(sampler.magFilter));
 		tex->setWrap(GL::TextureWrap(sampler.wrapS), GL::TextureWrap(sampler.wrapT));
 		return tex;
@@ -1270,8 +1303,20 @@ namespace IO
 			{
 				TextureInfo texInfo;
 
-				int imageIndex = textureNode["source"].GetInt();
-				texInfo.filename = imageFiles[imageIndex];
+				if (textureNode.HasMember("source"))
+				{
+					int imageIndex = textureNode["source"].GetInt();
+					texInfo.filename = imageFiles[imageIndex];
+				}
+				else if (textureNode.HasMember("extensions"))
+				{
+					auto& extNode = textureNode["extensions"];
+					if (extNode.HasMember("KHR_texture_basisu"))
+					{
+						int imageIndex = extNode["KHR_texture_basisu"]["source"].GetInt();
+						texInfo.filename = imageFiles[imageIndex];
+					}
+				}
 
 				int samplerIndex = -1;
 				if (textureNode.HasMember("sampler"))

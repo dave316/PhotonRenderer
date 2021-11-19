@@ -45,6 +45,11 @@ public:
 		shader->setUniform(name, value);
 	}
 
+	T getValue()
+	{
+		return value;
+	}
+
 	typedef std::shared_ptr<Property<T>> Ptr;
 	static Ptr create(const std::string& name, T value, bool useTextureMap)
 	{
@@ -70,6 +75,13 @@ public:
 	void addProperty(const std::string& name, T value)
 	{
 		properties[name] = Property<T>::create(name, value, false);
+	}
+
+	template<typename T>
+	T getPropertyValue(const std::string& name)
+	{
+		auto prop = std::dynamic_pointer_cast<Property<T>>(properties[name]);
+		return prop->getValue();
 	}
 
 	void addTexture(const std::string& name, Texture2D::Ptr texture)

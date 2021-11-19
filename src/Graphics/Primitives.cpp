@@ -97,7 +97,7 @@ namespace Primitives
 
 		surface.calcTangentSpace();
 
-		return Mesh::create("sphere", surface, 0);
+		return Mesh::create("sphere", surface, 4, 0);
 	}
 
 	Mesh::Ptr createCube(glm::vec3 position, float edgeLength)
@@ -121,7 +121,7 @@ namespace Primitives
 		addFace(surface, v5, v6, v2, v1);
 		addFace(surface, v3, v4, v8, v7);
 
-		return Mesh::create("cube", surface, 0);
+		return Mesh::create("cube", surface, 4, 0);
 	}
 
 	Mesh::Ptr createQuad(glm::vec3 position, float edgeLength)
@@ -140,6 +140,6 @@ namespace Primitives
 
 		surface.calcTangentSpace();
 
-		return Mesh::create("quad", surface, 0);
+		return Mesh::create("quad", surface, 4, 0);
 	}
 }

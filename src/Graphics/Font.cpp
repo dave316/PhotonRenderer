@@ -203,7 +203,7 @@ Mesh::Ptr Font::createText(const std::string& text, unsigned int size, bool bold
 		surface.addTriangle(tri);
 	}
 
-	return Mesh::create("text_mesh", surface, 0); // mat index for text?
+	return Mesh::create("text_mesh", surface, 4, 0); // mat index for text?
 }
 
 void Font::useAtlas(GLuint unit, bool bold, bool italic)

@@ -9,6 +9,8 @@
 #include <memory>
 #include <iostream>
 
+#include <ktx.h>
+
 namespace IO
 {
 	Texture2D::Ptr loadTexture(const std::string& filename, bool sRGB)
@@ -128,5 +130,27 @@ namespace IO
 		}
 
 		return nullptr;		
+	}
+
+	Texture2D::Ptr loadTextureKTX(const std::string& filename)
+	{
+		// TODO: check tex info (cubemaps, mipmaps, arrays, etc) and load accordingly
+		// TODO: check available texture compression formats before uploading
+		// TODO: check errors...
+		ktxTexture2* texture;
+		KTX_error_code result;
+
+		result = ktxTexture2_CreateFromNamedFile(filename.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &texture);
+		result = ktxTexture2_TranscodeBasis(texture, KTX_TTF_BC7_RGBA, 0);
+
+		auto tex = Texture2D::create(texture->baseWidth, texture->baseHeight, GL::RGBA8);
+		tex->bind();
+		GLuint id = tex->getID();
+		GLenum target, error;
+		result = ktxTexture_GLUpload(ktxTexture(texture), &id, &target, &error);
+
+		ktxTexture_Destroy(ktxTexture(texture));
+
+		return tex;
 	}
 }

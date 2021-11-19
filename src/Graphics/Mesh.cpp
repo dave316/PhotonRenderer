@@ -2,8 +2,8 @@
 
 #include <iostream>
 
-Mesh::Mesh(const std::string& name, TriangleSurface& surface, unsigned int materialIndex) :
-	name(name), materialIndex(materialIndex)
+Mesh::Mesh(const std::string& name, TriangleSurface& surface, GLenum topology, unsigned int materialIndex) :
+	name(name), topology(topology), materialIndex(materialIndex)
 {
 	updatGeometry(surface);
 }
@@ -71,9 +71,9 @@ void Mesh::draw()
 {
 	vao.bind();
 	if (indexBuffer.size() > 0)
-		glDrawElements(GL_TRIANGLES, indexBuffer.size(), GL_UNSIGNED_INT, 0);
+		glDrawElements(topology, indexBuffer.size(), GL_UNSIGNED_INT, 0);
 	else
-		glDrawArrays(GL_TRIANGLES, 0, vertexBuffer.size());
+		glDrawArrays(topology, 0, vertexBuffer.size());
 	vao.unbind();
 }
 

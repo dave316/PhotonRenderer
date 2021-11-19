@@ -57,6 +57,7 @@ public:
 	Renderer(unsigned int width, unsigned int height);
 	~Renderer();
 	bool init();
+	void initKTXTest();
 	void initSceneMaterials();
 	void initSceneAnisotropy();
 	void initEnvMaps();
