@@ -84,9 +84,21 @@ namespace IO
 			int wrapT = GL::TextureWrap::REPEAT;
 		};
 
+		struct ImageInfo
+		{
+			bool isExternalFile = false;
+			int bufferView;
+			std::string filename;
+			std::string mimeType;
+		};
+		std::vector<ImageInfo> images;
+
 		struct TextureInfo
 		{
+			bool isExternalFile;
+			int bufferView;
 			std::string filename;
+			std::string mimeType;
 			TextureSampler sampler;
 		};
 		std::vector<TextureInfo> textures;
@@ -118,6 +130,7 @@ namespace IO
 		GLTFImporter(const GLTFImporter&) = delete;
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
 
+		std::string loadGLB(std::string filename);
 		void checkExtensions(const json::Document& doc);
 		void loadExtensionData(const json::Document& doc);
 		void loadBuffers(const json::Document& doc, const std::string& path);

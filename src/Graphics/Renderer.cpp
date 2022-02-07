@@ -19,6 +19,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
+#include <gli/gli.hpp>
+
 namespace json = rapidjson;
 
 void extern debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
@@ -52,7 +54,7 @@ bool Renderer::init()
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
-	glClearColor(0.0f, 0.4f, 0.1f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	//glClearColor(0.8f, 0.77f, 0.54f, 1.0f);
 	//glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 	glViewport(0, 0, width, height);
@@ -67,8 +69,9 @@ bool Renderer::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "IridescenceSuzanne";
-	loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	std::string name = "MosquitoInAmber";
+	//loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	loadModel(name, gltfPath + "/" + name + "/glTF-Binary/" + name + ".glb");
 	//loadModel(name, gltfPath + "/" + name + "/glTF-KTX-BasisU/" + name + ".gltf");
 	//loadModel(name, gltfPath + "/" + name + "/glTF/PBR - Metallic Roughness Alpha-blend.gltf");
 	//name = "IridescentDishWithOlives";
@@ -114,10 +117,10 @@ bool Renderer::init()
 void Renderer::initKTXTest()
 {
 	std::string path = "C:/Users/dave316/Documents/Code/PhotonRendererGH/assets/glTF-Sample-Models/2.0/StainedGlassLamp";
-	std::string fn = path + "/glTF-KTX-BasisU/StainedGlassLamp_glass_basecolor-alpha.ktx2";
-	auto tex = IO::loadTextureKTX(fn);
-	//std::string fn = path + "/glTF/StainedGlassLamp_glass_basecolor-alpha.png";
-	//auto tex = IO::loadTexture(fn, true);
+	//std::string fn = path + "/glTF-KTX-BasisU/StainedGlassLamp_glass_basecolor-alpha.ktx2";
+	//auto tex = IO::loadTextureKTX(fn);
+	std::string fn = path + "/glTF/StainedGlassLamp_glass_basecolor-alpha.png";
+	auto tex = IO::loadTexture(fn, true);
 
 	auto mat = getDefaultMaterial();
 	mat->addTexture("baseColorTex.tsampler", tex);
@@ -1054,7 +1057,7 @@ void Renderer::render()
 		ggxLUT->use(19);
 		charlieLUT->use(20);
 	}
-	
+
 	for (int i = 0; i < shadowFBOs.size(); i++)
 		shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
@@ -1068,7 +1071,7 @@ void Renderer::render()
 		cubeMap->use(0);
 		unitCube->draw();
 		glCullFace(GL_BACK);
-	}	
+	}
 
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", false);
@@ -1080,11 +1083,6 @@ void Renderer::render()
 	// main render pass
 	glViewport(0, 0, width, height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	screenTex->use(14);
-	defaultShader->use();
-	defaultShader->setUniform("useGammaEncoding", true);
-	renderScene(defaultShader, true);
-
 	if (useSkybox)
 	{
 		glCullFace(GL_FRONT);
@@ -1094,6 +1092,11 @@ void Renderer::render()
 		unitCube->draw();
 		glCullFace(GL_BACK);
 	}
+
+	screenTex->use(14);
+	defaultShader->use();
+	defaultShader->setUniform("useGammaEncoding", true);
+	renderScene(defaultShader, true);
 }
 
 void Renderer::renderText()

@@ -16,6 +16,8 @@ foreach(SRC IN ITEMS ${SRC_LIST})
 endforeach()
 
 include_directories("../../src")
+include_directories("../../src/3rdParty")
+
 add_executable(GLTFViewer ${SRC_LIST})
 target_link_libraries(GLTFViewer PRIVATE libphoton)
 

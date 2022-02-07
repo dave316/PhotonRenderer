@@ -1,8 +1,8 @@
 #include "Application.h"
 
-#include <GUI/imgui_impl_glfw.h>
-#include <GUI/imgui_impl_opengl3.h>
-#include <GUI/ImGuiFileDialog.h>
+#include <imgui/imgui_impl_glfw.h>
+#include <imgui/imgui_impl_opengl3.h>
+#include <imgui/ImGuiFileDialog.h>
 
 #include <algorithm>
 

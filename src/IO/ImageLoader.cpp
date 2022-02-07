@@ -9,10 +9,71 @@
 #include <memory>
 #include <iostream>
 
+#ifdef USE_KTXLIB
 #include <ktx.h>
+#endif // 
 
 namespace IO
 {
+	Texture2D::Ptr loadTextureFromMemory(std::vector<unsigned char>& buffer, bool sRGB)
+	{
+		int w, h, c;
+		stbi_set_flip_vertically_on_load(false);
+		std::unique_ptr<unsigned char> data(stbi_load_from_memory(buffer.data(), buffer.size(), &w, &h, &c, 0));
+
+		GL::TextureFormat format = GL::RGB8;
+		if (sRGB)
+		{
+			switch (c)
+			{
+			case 1: format = GL::R8; break;
+			case 2: format = GL::RG8;
+			{
+				unsigned int imgSize = w * h;
+				unsigned int stride = 4;
+				unsigned char* buffer = new unsigned char[imgSize * stride];
+				unsigned char* imgBuffer = data.get();
+				for (int i = 0; i < imgSize; i++)
+				{
+					buffer[i * stride + 0] = imgBuffer[i * 2];
+					buffer[i * stride + 1] = imgBuffer[i * 2];
+					buffer[i * stride + 2] = imgBuffer[i * 2];
+					buffer[i * stride + 3] = imgBuffer[i * 2 + 1];
+				}
+
+				data.reset(buffer);
+				format = GL::SRGBA8;
+				break;
+			}
+			case 3: format = GL::SRGB8; break;
+			case 4: format = GL::SRGBA8; break;
+			default:
+				std::cout << "error: no format for " << c << " channels" << std::endl;
+				return nullptr;
+				break;
+			}
+		}
+		else
+		{
+			switch (c)
+			{
+			case 1: format = GL::R8; break;
+			case 2: format = GL::RG8; break;
+			case 3: format = GL::RGB8; break;
+			case 4: format = GL::RGBA8; break;
+			default:
+				std::cout << "error: no format for " << c << " channels" << std::endl;
+				return nullptr;
+				break;
+			}
+		}
+
+		auto tex = Texture2D::create(w, h, format);
+		tex->upload(data.get());
+
+		return tex;
+	}
+
 	Texture2D::Ptr loadTexture(const std::string& filename, bool sRGB)
 	{
 		// TODO: handling of 1 and 2 channel images
@@ -132,6 +193,7 @@ namespace IO
 		return nullptr;		
 	}
 
+#ifdef USE_KTXLIB
 	Texture2D::Ptr loadTextureKTX(const std::string& filename)
 	{
 		// TODO: check tex info (cubemaps, mipmaps, arrays, etc) and load accordingly
@@ -153,4 +215,5 @@ namespace IO
 
 		return tex;
 	}
+#endif
 }

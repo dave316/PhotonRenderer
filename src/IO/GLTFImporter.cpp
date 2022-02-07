@@ -11,6 +11,18 @@
 
 namespace IO
 {
+	unsigned int getUInt32FromBuffer(unsigned char* buf, int index)
+	{
+		unsigned int value = 0;
+		int shiftValue = 0;
+		for (int i = 0; i < 4; i++)
+		{
+			value |= (int)buf[index + i] << shiftValue;
+			shiftValue += 8;
+		}
+		return value;
+	}
+
 	std::vector<unsigned char> readBinaryFile(const std::string& filename, unsigned int byteLength)
 	{
 		std::vector<unsigned char> buffer;
@@ -48,21 +60,38 @@ namespace IO
 	{
 		std::replace(filename.begin(), filename.end(), '\\', '/');
 		std::string path = filename.substr(0, filename.find_last_of('/'));
+		int index = filename.find_last_of('.') + 1;
+		std::string ext = filename.substr(index, filename.length() - index);
+		std::cout << "file extension: " << ext << std::endl;
 
-		std::ifstream file(filename);
-		if(!file.is_open())
-		{ 
-			std::cout << "error opening file " << filename << std::endl;
+		std::string content;
+		if (ext.compare("gltf") == 0)
+		{
+			std::ifstream file(filename);
+			if(!file.is_open())
+			{ 
+				std::cout << "error opening file " << filename << std::endl;
+				return nullptr;
+			}
+
+			std::stringstream ss;
+			ss << file.rdbuf();
+			content = ss.str(); 
+		}
+		else if (ext.compare("glb") == 0)
+		{
+			content = loadGLB(filename);
+			//std::cout << content << std::endl;
+		}
+		else
+		{
+			std::cout << "unknown extension " << ext << std::endl;
 			return nullptr;
 		}
 
-		std::stringstream ss;
-		ss << file.rdbuf();
-		std::string content = ss.str();
-
 		json::Document doc;
 		doc.Parse(content.c_str());
-
+		
 		checkExtensions(doc);
 		loadExtensionData(doc);
 		loadBuffers(doc, path);
@@ -76,6 +105,55 @@ namespace IO
 		auto root = loadScene(doc);
 
  		return root;
+	}
+
+	std::string GLTFImporter::loadGLB(std::string filename)
+	{
+		std::ifstream file(filename, std::ios::binary | std::ios::ate);
+		int size = file.tellg();
+		file.seekg(0, std::ios::beg);
+		std::vector<unsigned char> buffer(size);
+		file.read((char*)buffer.data(), buffer.size());
+		std::cout << "filesize: " << size << std::endl;
+
+		// header
+		int baseIndex = 0;
+		std::string magic(5, '\0');
+		for (int i = 0; i < 4; i++)
+			magic[i] = buffer[baseIndex + i];
+		unsigned int version = getUInt32FromBuffer(buffer.data(), baseIndex + 4);
+		unsigned int length = getUInt32FromBuffer(buffer.data(), baseIndex + 8);
+		std::cout << "magic number: " << magic << std::endl;
+		std::cout << "version: " << version << std::endl;
+		std::cout << "length: " << length << std::endl;
+		baseIndex += 12;
+
+		// chunks
+		unsigned int chunkLen = getUInt32FromBuffer(buffer.data(), baseIndex);
+		baseIndex += 4;
+		std::string type(5, '\0');
+		for (int i = 0; i < 4; i++)
+			type[i] = buffer[baseIndex + i];
+		baseIndex += 4;
+		std::cout << "chunk 0, type: " << type << ", len: " << chunkLen << std::endl;
+		std::string content(buffer.begin() + baseIndex, buffer.begin() + baseIndex + chunkLen);
+		baseIndex += chunkLen;
+
+		// TODO: check first if bin chunk exists...
+		chunkLen = getUInt32FromBuffer(buffer.data(), baseIndex);
+		baseIndex += 4;
+		std::string type2(5, '\0');
+		for (int i = 0; i < 4; i++)
+			type2[i] = buffer[baseIndex + i];
+		baseIndex += 4;
+		std::cout << "chunk 1, type: " << type2 << ", len: " << chunkLen << std::endl;
+
+		Buffer binChunk;
+		binChunk.data.resize(chunkLen);
+		std::copy(buffer.begin() + baseIndex, buffer.begin() + baseIndex + chunkLen, binChunk.data.begin());
+		buffers.push_back(binChunk);
+		
+		return content;
 	}
 
 	void GLTFImporter::checkExtensions(const json::Document& doc)
@@ -179,10 +257,13 @@ namespace IO
 		for (auto& bufferNode : buffersNode->value.GetArray())
 		{
 			Buffer buffer;
-			std::string uri(bufferNode.FindMember("uri")->value.GetString());
-			unsigned int byteLength = bufferNode.FindMember("byteLength")->value.GetInt();
-			buffer.data = readBinaryFile(path + "/" + uri, byteLength);
-			buffers.push_back(buffer);
+			if (bufferNode.HasMember("uri"))
+			{
+				std::string uri(bufferNode.FindMember("uri")->value.GetString());
+				unsigned int byteLength = bufferNode.FindMember("byteLength")->value.GetInt();
+				buffer.data = readBinaryFile(path + "/" + uri, byteLength);
+				buffers.push_back(buffer);
+			}
 		}
 
 		auto bufferViewsNode = doc.FindMember("bufferViews");
@@ -751,11 +832,28 @@ namespace IO
 		auto idx = texInfo.filename.find_last_of('.') + 1;
 		auto len = texInfo.filename.length();
 		auto fileExt = texInfo.filename.substr(idx, len - idx);
+#if USE_KTXLIB
 		if (fileExt.compare("ktx2") == 0)
 			tex = IO::loadTextureKTX(path + "/" + texInfo.filename);
 		else
+#endif
+		if(texInfo.isExternalFile)
 		{
 			tex = IO::loadTexture(path + "/" + texInfo.filename, sRGB);	
+			if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
+				tex->generateMipmaps();
+		}
+		else
+		{
+			// TODO: load texture from binary chunk
+			std::vector<unsigned char> data;
+			BufferView& bv = bufferViews[texInfo.bufferView];
+			Buffer& buffer = buffers[bv.buffer];
+			int offset = bv.byteOffset;
+			data.resize(bv.byteLength);
+			memcpy(data.data(), &buffer.data[offset], bv.byteLength);
+
+			tex = IO::loadTextureFromMemory(data, sRGB);
 			if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
 				tex->generateMipmaps();
 		}
@@ -1260,9 +1358,11 @@ namespace IO
 		if (!doc.HasMember("images"))
 			return;
 
-		std::vector<std::string> imageFiles;
+		
+		std::vector<ImageInfo> imageFiles;
 		for (auto& imagesNode : doc["images"].GetArray())
 		{
+			ImageInfo info;
 			if (imagesNode.HasMember("uri"))
 			{
 				std::string filename = imagesNode["uri"].GetString();
@@ -1270,13 +1370,15 @@ namespace IO
 				int index; // TODO: add proper parsing of URIs
 				while ((index = filename.find("%20")) >= 0)
 					filename.replace(index, 3, " ");
-
-				imageFiles.push_back(filename);
+				info.filename = filename;
+				info.isExternalFile = true;
+				//imageFiles.push_back(filename);
 			}
-			else
-			{
-				std::cout << "loading images from binary buffer not supported!" << std::endl;
-			}
+			if (imagesNode.HasMember("mimeType"))
+				info.mimeType = imagesNode["mimeType"].GetString();
+			if (imagesNode.HasMember("bufferView"))
+				info.bufferView = imagesNode["bufferView"].GetInt();
+			images.push_back(info);
 		}
 
 		std::vector<TextureSampler> samplers;
@@ -1302,11 +1404,13 @@ namespace IO
 			for (auto& textureNode : doc["textures"].GetArray())
 			{
 				TextureInfo texInfo;
-
 				if (textureNode.HasMember("source"))
 				{
 					int imageIndex = textureNode["source"].GetInt();
-					texInfo.filename = imageFiles[imageIndex];
+					texInfo.filename = images[imageIndex].filename;
+					texInfo.mimeType = images[imageIndex].mimeType;
+					texInfo.bufferView = images[imageIndex].bufferView;
+					texInfo.isExternalFile = images[imageIndex].isExternalFile;
 				}
 				else if (textureNode.HasMember("extensions"))
 				{
@@ -1314,7 +1418,10 @@ namespace IO
 					if (extNode.HasMember("KHR_texture_basisu"))
 					{
 						int imageIndex = extNode["KHR_texture_basisu"]["source"].GetInt();
-						texInfo.filename = imageFiles[imageIndex];
+						texInfo.filename = images[imageIndex].filename;
+						texInfo.mimeType = images[imageIndex].mimeType;
+						texInfo.bufferView = images[imageIndex].bufferView;
+						texInfo.isExternalFile = images[imageIndex].isExternalFile;
 					}
 				}
 
