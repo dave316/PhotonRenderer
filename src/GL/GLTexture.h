@@ -175,6 +175,16 @@ namespace GL
 			unbind();
 		}
 
+		void download(void* data, GL::TextureFormat format)
+		{
+			GLenum dataFormat = getDataFormat(format);
+			GLenum dataType = getDataType(format);
+
+			bind();
+			glGetTexImage(Target, 0, dataFormat, dataType, (GLvoid*)data);
+			unbind();
+		}
+
 		void setFilter(TextureFilter minFilter, TextureFilter magFilter)
 		{
 			//GLint minFilter = GL_LINEAR;

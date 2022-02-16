@@ -41,6 +41,8 @@ public:
 	void rotate(float angle, glm::vec3 axis);
 	void calcNormalMatrix();
 	glm::mat4 getTransform();
+	glm::vec3 getPosition();
+	glm::quat getRotation();
 };
 
 #endif // INCLUDED_TRANSFORM

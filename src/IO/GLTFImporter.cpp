@@ -62,7 +62,7 @@ namespace IO
 		std::string path = filename.substr(0, filename.find_last_of('/'));
 		int index = filename.find_last_of('.') + 1;
 		std::string ext = filename.substr(index, filename.length() - index);
-		std::cout << "file extension: " << ext << std::endl;
+		//std::cout << "file extension: " << ext << std::endl;
 
 		std::string content;
 		if (ext.compare("gltf") == 0)
@@ -429,7 +429,7 @@ namespace IO
 					loadData(output, weights);
 
 					int numTargets = weights.size() / times.size();
-					const int maxtargets = 8;
+					const int maxtargets = 2;
 
 					if (numTargets > maxtargets)
 						std::cout << "Warning, max. 2 morph targets are supported!" << std::endl;

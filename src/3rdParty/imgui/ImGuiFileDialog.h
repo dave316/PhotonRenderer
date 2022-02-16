@@ -159,29 +159,54 @@ void drawGui()
 }
 
 -----------------------------------------------------------------------------------------------------------------
-## Filter Infos
+## File Style
 -----------------------------------------------------------------------------------------------------------------
 
-You can define color for a filter type
-Example code :
-ImGuiFileDialog::Instance()->SetExtentionInfos(".cpp", ImVec4(1,1,0, 0.9));
-ImGuiFileDialog::Instance()->SetExtentionInfos(".h", ImVec4(0,1,0, 0.9));
-ImGuiFileDialog::Instance()->SetExtentionInfos(".hpp", ImVec4(0,0,1, 0.9));
-ImGuiFileDialog::Instance()->SetExtentionInfos(".md", ImVec4(1,0,1, 0.9));
+You can define style for files/dirs/links in many ways :
 
+the style can be colors, icons and fonts
 
-![alt text](doc/color_filter.png)
+the general form is :
+ImGuiFileDialog::Instance()->SetFileStyle(styleType, criteria, color, icon, font);
 
-and also specific icons (with icon font files) or file type names :
+styleType can be thoses :
+IGFD_FileStyle_None						// define none style
+IGFD_FileStyleByTypeFile				// define style for all files
+IGFD_FileStyleByTypeDir					// define style for all dir
+IGFD_FileStyleByTypeLink				// define style for all link
+IGFD_FileStyleByExtention				// define style by extention, for files or links
+IGFD_FileStyleByFullName				// define style for particular file/dir/link full name (filename + extention)
+IGFD_FileStyleByContainedInFullName		// define style for file/dir/link when criteria is contained in full name
 
-Example code :
-// add an icon for png files
-ImGuiFileDialog::Instance()->SetExtentionInfos(".png", ImVec4(0,1,1,0.9), ICON_IMFDLG_FILE_TYPE_PIC);
-// add a text for gif files (the default value is [File]
-ImGuiFileDialog::Instance()->SetExtentionInfos(".gif", ImVec4(0, 1, 0.5, 0.9), "[GIF]");
+samples :
 
+define style by file extention
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".png", ImVec4(0.0f, 1.0f, 1.0f, 0.9f), ICON_IGFD_FILE_PIC, font1);
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".gif", ImVec4(0.0f, 1.0f, 0.5f, 0.9f), "[GIF]");
 
-![alt text](doc/filter_Icon.png)
+define style for all directories
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(0.5f, 1.0f, 0.9f, 0.9f), ICON_IGFD_FOLDER);
+can be for a specific directory
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, ".git", ImVec4(0.5f, 1.0f, 0.9f, 0.9f), ICON_IGFD_FOLDER);
+
+define style for all files
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile, "", ImVec4(0.5f, 1.0f, 0.9f, 0.9f), ICON_IGFD_FILE);
+can be for a specific file
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile, ".git", ImVec4(0.5f, 1.0f, 0.9f, 0.9f), ICON_IGFD_FILE);
+
+define style for all links
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeLink, "", ImVec4(0.5f, 1.0f, 0.9f, 0.9f));
+can be for a specific link
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeLink, "Readme.md", ImVec4(0.5f, 1.0f, 0.9f, 0.9f));
+
+define style for any files/dirs/links by fullname
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByFullName, "doc", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_FILE_PIC);
+
+define style for any dirs by file who are containing this string
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.9f, 0.2f, 0.0f, 0.9f), ICON_IGFD_BOOKMARK);
+
+define style for any files by file who are containing this string
+ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeFile | IGFD_FileStyleByContainedInFullName, ".git", ImVec4(0.5f, 0.8f, 0.5f, 0.9f), ICON_IGFD_SAVE);
 
 -----------------------------------------------------------------------------------------------------------------
 ## Filter Collections
@@ -517,13 +542,15 @@ you just need to uncomment that in the config file
 
 #define USE_STD_FILESYSTEM
 
+in this mode dirent is not more required
+
 -----------------------------------------------------------------------------------------------------------------
 ## How to Integrate ImGuiFileDialog in your project
 -----------------------------------------------------------------------------------------------------------------
 
 ### ImGuiFileDialog require :
 
-* dirent v1.23 (https://github.com/tronkko/dirent/tree/v1.23) lib, only for windows. Successfully tested with version v1.23 only
+* dirent v1.23 (only when USE_STD_FILESYSTEM is not defined) (https://github.com/tronkko/dirent/tree/v1.23) lib, only for windows. Successfully tested with version v1.23 only
 * Dear ImGui (https://github.com/ocornut/imgui/tree/master) (with/without tables widgets)
 
 ### Customize ImGuiFileDialog :
@@ -554,13 +581,27 @@ ImGuiFontStudio is using also ImGuiFileDialog.
 #ifndef IMGUIFILEDIALOG_H
 #define IMGUIFILEDIALOG_H
 
-#define IMGUIFILEDIALOG_VERSION "v0.6.1"
+// compatible with 1.87 WIP
+#define IMGUIFILEDIALOG_VERSION "v0.6.4"
 
 #ifndef CUSTOM_IMGUIFILEDIALOG_CONFIG
 #include "ImGuiFileDialogConfig.h"
 #else // CUSTOM_IMGUIFILEDIALOG_CONFIG
 #include CUSTOM_IMGUIFILEDIALOG_CONFIG
 #endif // CUSTOM_IMGUIFILEDIALOG_CONFIG
+
+// file style enum for file display (color, icon, font)
+typedef int IGFD_FileStyleFlags; // -> enum IGFD_FileStyleFlags_
+enum IGFD_FileStyleFlags_ // by evaluation / priority order
+{
+	IGFD_FileStyle_None = 0,						// define none style
+	IGFD_FileStyleByTypeFile = (1 << 0),			// define style for all files
+	IGFD_FileStyleByTypeDir = (1 << 1),				// define style for all dir
+	IGFD_FileStyleByTypeLink = (1 << 2),			// define style for all link
+	IGFD_FileStyleByExtention = (1 << 3),			// define style by extention, for files or links
+	IGFD_FileStyleByFullName = (1 << 4),			// define style for particular file/dir/link full name (filename + extention)
+	IGFD_FileStyleByContainedInFullName = (1 << 5),	// define style for file/dir/link when criteria is contained in full name
+};
 
 typedef int ImGuiFileDialogFlags; // -> enum ImGuiFileDialogFlags_
 enum ImGuiFileDialogFlags_
@@ -572,6 +613,11 @@ enum ImGuiFileDialogFlags_
 	ImGuiFileDialogFlags_HideColumnType = (1 << 3),								// hide column file type
 	ImGuiFileDialogFlags_HideColumnSize = (1 << 4),								// hide column file size
 	ImGuiFileDialogFlags_HideColumnDate = (1 << 5),								// hide column file date
+#ifdef USE_THUMBNAILS
+	ImGuiFileDialogFlags_DisableThumbnailMode = (1 << 6),						// disable the thumbnail mode
+#endif
+	ImGuiFileDialogFlags_ReadOnlyFileNameField = (1 << 7),						// don't let user type in filename field
+																				// for file open style dialogs
 	ImGuiFileDialogFlags_Default = ImGuiFileDialogFlags_ConfirmOverwrite
 };
 
@@ -612,6 +658,26 @@ struct IGFD_Thumbnail_Info
 
 namespace IGFD
 {
+#ifndef defaultSortField
+#define defaultSortField FIELD_FILENAME
+#endif // defaultSortField
+
+#ifndef defaultSortOrderFilename
+#define defaultSortOrderFilename true
+#endif // defaultSortOrderFilename
+#ifndef defaultSortOrderType
+#define defaultSortOrderType true
+#endif // defaultSortOrderType
+#ifndef defaultSortOrderSize
+#define defaultSortOrderSize true
+#endif // defaultSortOrderSize
+#ifndef defaultSortOrderDate
+#define defaultSortOrderDate true
+#endif // defaultSortOrderDate
+#ifndef defaultSortOrderThumbnails
+#define defaultSortOrderThumbnails true
+#endif // defaultSortOrderThumbnails
+
 #ifndef MAX_FILE_DIALOG_NAME_BUFFER 
 #define MAX_FILE_DIALOG_NAME_BUFFER 1024
 #endif // MAX_FILE_DIALOG_NAME_BUFFER
@@ -640,21 +706,6 @@ namespace IGFD
 	public:
 		void Clear();																							// clear datas
 		void DrawSearchBar(FileDialogInternal& vFileDialogInternal);											// draw the search bar
-	};
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class FileExtentionInfos
-	{
-	public:
-		ImVec4 color = ImVec4(0, 0, 0, 0);
-		std::string icon;
-
-	public:
-		FileExtentionInfos();
-		FileExtentionInfos(const ImVec4& vColor, const std::string& vIcon = "");
 	};
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -695,41 +746,77 @@ namespace IGFD
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class FileStyle
+	{
+	public:
+		ImVec4 color = ImVec4(0, 0, 0, 0);
+		std::string icon;
+		ImFont* font = nullptr;
+		IGFD_FileStyleFlags flags = 0;
+
+	public:
+		FileStyle();
+		FileStyle(const FileStyle& vStyle);
+		FileStyle(const ImVec4& vColor, const std::string& vIcon = "", ImFont* vFont = nullptr);
+	};
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class FileInfos;
 	class FilterManager
 	{
 	public:
-		class FilterInfosStruct
+		class FilterInfos
 		{
 		public:
 			std::string filter;
 			std::set<std::string> collectionfilters;
 
 		public:
-			void clear();																						// clear the datas
-			bool empty() const;																					// is filter empty
-			bool exist(const std::string& vFilter) const;														// is filter exist
+			void clear();																					// clear the datas
+			bool empty() const;																				// is filter empty
+			bool exist(const std::string& vFilter) const;													// is filter exist
 		};
 
 	private:
-		std::vector<FilterInfosStruct> prParsedFilters;
-		std::unordered_map<std::string, FileExtentionInfos> prFileExtentionInfos;
-		FilterInfosStruct prSelectedFilter;
+		std::vector<FilterInfos> prParsedFilters;
+		std::unordered_map<IGFD_FileStyleFlags, std::unordered_map<std::string, std::shared_ptr<FileStyle>>> prFilesStyle;		// file infos for file extention only
+		FilterInfos prSelectedFilter;
 
 	public:
 		std::string puDLGFilters;
 		std::string puDLGdefaultExt;
 
 	public:
-		void ParseFilters(const char* vFilters);																// Parse filter syntax, detect and parse filter collection
-		void SetSelectedFilterWithExt(const std::string& vFilter);												// Select filter
-		void SetExtentionInfos(const std::string& vFilter, const FileExtentionInfos& vInfos);					// link filter to ExtentionInfos
-		void SetExtentionInfos(const std::string& vFilter, const ImVec4& vColor, const std::string& vIcon);		// link filter to Color and Icon
-		bool GetExtentionInfos(const std::string& vFilter, ImVec4* vOutColor, std::string* vOutIcon);			// get Color and Icon for Filter
-		void ClearExtentionInfos();																				// clear prFileExtentionInfos
+		void ParseFilters(const char* vFilters);															// Parse filter syntax, detect and parse filter collection
+		void SetSelectedFilterWithExt(const std::string& vFilter);											// Select filter
+		
+		bool prFillFileStyle(std::shared_ptr<FileInfos> vFileInfos)  const;									// fill with the good style
+		
+		void SetFileStyle(
+			const IGFD_FileStyleFlags& vFlags,
+			const char* vCriteria,
+			const FileStyle& vInfos);																		// Set FileStyle
+		void SetFileStyle(
+			const IGFD_FileStyleFlags& vFlags,
+			const char* vCriteria,
+			const ImVec4& vColor,
+			const std::string& vIcon,
+			ImFont* vFont);																					// link file style to Color and Icon and Font
+		bool GetFileStyle(
+			const IGFD_FileStyleFlags& vFlags,
+			const std::string& vCriteria,
+			ImVec4* vOutColor,
+			std::string* vOutIcon,
+			ImFont** vOutFont);																				// Get Color and Icon for Filter
+		void ClearFilesStyle();																				// clear prFileStyle
+
 		bool IsCoveredByFilters(const std::string& vTag) const;													// check if current file extention (vTag) is covered by current filter
 		bool DrawFilterComboBox(FileDialogInternal& vFileDialogInternal);										// draw the filter combobox
-		FilterInfosStruct GetSelectedFilter();																	// get the current selected filter
-		std::string ReplaceExtentionWithCurrentFilter(const std::string vFile) const;									// replace the extention of the current file by the selected filter
+		FilterInfos GetSelectedFilter();																	// get the current selected filter
+		std::string ReplaceExtentionWithCurrentFilter(const std::string& vFile) const;							// replace the extention of the current file by the selected filter
 		void SetDefaultFilterIfNotDefined();																	// define the first filter if no filter is selected
 	};
 
@@ -740,14 +827,15 @@ namespace IGFD
 	class FileInfos
 	{
 	public:
-		char fileType = ' ';					// dirent fileType (f:file, d:directory, l:link)				
-		std::string filePath;					// path of the file
-		std::string fileName;					// filename of the file
-		std::string fileName_optimized;			// optimized for search => insensitivecase
-		std::string fileExt;					// extention of the file
-		size_t fileSize = 0;					// for sorting operations
-		std::string formatedFileSize;			// file size formated (10 o, 10 ko, 10 mo, 10 go)
-		std::string fileModifDate;				// file user defined format of the date (data + time by default)
+		char fileType = ' ';								// dirent fileType (f:file, d:directory, l:link)				
+		std::string filePath;								// path of the file
+		std::string fileNameExt;							// filename of the file (file name + extention) (but no path)
+		std::string fileNameExt_optimized;					// optimized for search => insensitivecase
+		std::string fileExt;								// extention of the file
+		size_t fileSize = 0;								// for sorting operations
+		std::string formatedFileSize;						// file size formated (10 o, 10 ko, 10 mo, 10 go)
+		std::string fileModifDate;							// file user defined format of the date (data + time by default)
+		std::shared_ptr<FileStyle> fileStyle = nullptr;		// style of the file
 #ifdef USE_THUMBNAILS
 		IGFD_Thumbnail_Info thumbnailInfo;		// structre for the display for image file tetxure
 #endif // USE_THUMBNAILS
@@ -798,9 +886,18 @@ namespace IGFD
 		std::string puHeaderFileDate;										// detail view name of column date + time
 #ifdef USE_THUMBNAILS
 		std::string puHeaderFileThumbnails;									// detail view name of column thumbnails
-		bool puSortingDirection[5] = { true, true, true, true, true };		// detail view // true => Descending, false => Ascending
+		bool puSortingDirection[5] = {										// true => Ascending, false => Descending
+			defaultSortOrderFilename,
+			defaultSortOrderType,
+			defaultSortOrderSize,
+			defaultSortOrderDate,
+			defaultSortOrderThumbnails };
 #else
-		bool puSortingDirection[4] = { true, true, true, true };			// detail view // true => Descending, false => Ascending
+		bool puSortingDirection[4] = {										// true => Ascending, false => Descending
+			defaultSortOrderFilename,
+			defaultSortOrderType,
+			defaultSortOrderSize,
+			defaultSortOrderDate };
 #endif
 		SortingFieldEnum puSortingField = SortingFieldEnum::FIELD_FILENAME;	// detail view sorting column
 		bool puShowDrives = false;											// drives are shown (only on os windows)
@@ -815,7 +912,7 @@ namespace IGFD
 	private:
 		static std::string prRoundNumber(double vvalue, int n);											// custom rounding number
 		static std::string prFormatFileSize(size_t vByteSize);											// format file size field
-		static std::string prOptimizeFilenameForSearchOperations(const std::string& vFileName);			// turn all text in lower case for search facilitie
+		static std::string prOptimizeFilenameForSearchOperations(const std::string& vFileNameExt);		// turn all text in lower case for search facilitie
 		static void prCompleteFileInfos(const std::shared_ptr<FileInfos>& FileInfos);					// set time and date infos of a file (detail view mode)
 		void prRemoveFileNameInSelection(const std::string& vFileName);									// selection : remove a file name
 		void prAddFileNameInSelection(const std::string& vFileName, bool vSetLastSelectionFileName);	// selection : add a file name
@@ -839,8 +936,7 @@ namespace IGFD
 		void ClearAll();
 		void ApplyFilteringOnFileList(const FileDialogInternal& vFileDialogInternal);
 		void OpenCurrentPath(const FileDialogInternal& vFileDialogInternal);							// set the path of the dialog, will launch the directory scan for populate the file listview
-		void SortFields(const FileDialogInternal& vFileDialogInternal, 
-			const SortingFieldEnum& vSortingField, const bool& vCanChangeOrder);						// will sort a column
+		void SortFields(const FileDialogInternal& vFileDialogInternal);									// will sort a column
 		bool GetDrives();																				// list drives on windows platform
 		bool CreateDir(const std::string& vPath);														// create a directory on the file system
 		void ComposeNewPath(std::vector<std::string>::iterator vIter);									// compose a path from the compose path widget
@@ -920,7 +1016,7 @@ namespace IGFD
 		void prDrawThumbnailGenerationProgress();								// a little progressbar who will display the texture gen status
 		void prAddThumbnailToLoad(const std::shared_ptr<FileInfos>& vFileInfos);		// add texture to load in the thread
 		void prAddThumbnailToCreate(const std::shared_ptr<FileInfos>& vFileInfos);
-		void prAddThumbnailToDestroy(IGFD_Thumbnail_Info vIGFD_Thumbnail_Info);
+		void prAddThumbnailToDestroy(const IGFD_Thumbnail_Info& vIGFD_Thumbnail_Info);
 		void prDrawDisplayModeToolBar();										// draw display mode toolbar (file list, thumbnails list, small thumbnails grid, big thumbnails grid)
 		void prClearThumbnails(FileDialogInternal& vFileDialogInternal);
 
@@ -1041,6 +1137,11 @@ namespace IGFD
 		float puDLGoptionsPaneWidth = 0.0f;
 		bool puDLGmodal = false;
 		bool puNeedToExitDialog = false;
+
+		bool puUseCustomLocale = false;
+		int puLocaleCategory = LC_ALL;	// locale category to use
+		std::string puLocaleBegin; // the locale who will be applied at start of the display dialog
+		std::string puLocaleEnd; // the locale who will be applaied at end of the display dialog
 
 	public:
 		void NewFrame();			// new frame, so maybe neded to do somethings, like reset events
@@ -1172,34 +1273,44 @@ namespace IGFD
 		void Close();												// close dialog
 
 		// queries
-		bool WasOpenedThisFrame(const std::string& vKey) const;			// say if the dialog key was already opened this frame
-		bool WasOpenedThisFrame() const;									// say if the dialog was already opened this frame
-		bool IsOpened(const std::string& vKey) const;						// say if the key is opened
-		bool IsOpened() const;											// say if the dialog is opened somewhere
-		std::string GetOpenedKey() const;									// return the dialog key who is opened, return nothing if not opened
+		bool WasOpenedThisFrame(const std::string& vKey) const;		// say if the dialog key was already opened this frame
+		bool WasOpenedThisFrame() const;							// say if the dialog was already opened this frame
+		bool IsOpened(const std::string& vKey) const;				// say if the key is opened
+		bool IsOpened() const;										// say if the dialog is opened somewhere
+		std::string GetOpenedKey() const;							// return the dialog key who is opened, return nothing if not opened
 
 		// get result
-		bool IsOk() const;												// true => Dialog Closed with Ok result / false : Dialog closed with cancel result
+		bool IsOk() const;											// true => Dialog Closed with Ok result / false : Dialog closed with cancel result
 		std::map<std::string, std::string> GetSelection();			// Open File behavior : will return selection via a map<FileName, FilePathName>
 		std::string GetFilePathName();								// Save File behavior : will always return the content of the field with current filter extention and current path
 		std::string GetCurrentFileName();							// Save File behavior : will always return the content of the field with current filter extention
 		std::string GetCurrentPath();								// will return current path
 		std::string GetCurrentFilter();								// will return selected filter
-		UserDatas GetUserDatas() const;									// will return user datas send with Open Dialog/Modal
+		UserDatas GetUserDatas() const;								// will return user datas send with Open Dialog/Modal
 
-		// extentions displaying
-		void SetExtentionInfos(										// SetExtention datas for have custom display of particular file type
-			const std::string& vFilter,								// extention filter to tune
-			const FileExtentionInfos& vInfos);						// Filter Extention Struct who contain Color and Icon/Text for the display of the file with extention filter
-		void SetExtentionInfos(										// SetExtention datas for have custom display of particular file type
-			const std::string& vFilter,								// extention filter to tune
+		// file style by extentions
+		void SetFileStyle(											// SetExtention datas for have custom display of particular file type
+			const IGFD_FileStyleFlags& vFlags,						// file style
+			const char* vCriteria,									// extention filter to tune
+			const FileStyle& vInfos);								// Filter Extention Struct who contain Color and Icon/Text for the display of the file with extention filter
+		void SetFileStyle(											// SetExtention datas for have custom display of particular file type
+			const IGFD_FileStyleFlags& vFlags,							// file style
+			const char* vCriteria,									// extention filter to tune
 			const ImVec4& vColor,									// wanted color for the display of the file with extention filter
-			const std::string& vIcon = "");							// wanted text or icon of the file with extention filter
-		bool GetExtentionInfos(										// GetExtention datas. return true is extention exist
-			const std::string& vFilter,								// extention filter (same as used in SetExtentionInfos)
+			const std::string& vIcon = "",							// wanted text or icon of the file with extention filter
+			ImFont *vFont = nullptr);                               // wantes font
+		bool GetFileStyle(											// GetExtention datas. return true is extention exist
+			const IGFD_FileStyleFlags& vFlags,							// file style
+			const std::string& vCriteria,									// extention filter (same as used in SetExtentionInfos)
 			ImVec4* vOutColor,										// color to retrieve
-			std::string* vOutIcon = 0);								// icon or text to retrieve
-		void ClearExtentionInfos();									// clear extentions setttings
+			std::string* vOutIcon = nullptr,						// icon or text to retrieve
+            ImFont** vOutFont = nullptr);                           // font to retreive
+		void ClearFilesStyle();										// clear extentions setttings
+
+		void SetLocales(											// set locales to use before and after the dialog display
+			const int& vLocaleCategory,								// set local category
+			const std::string& vLocaleBegin,						// locale to use at begining of the dialog display
+			const std::string& vLocaleEnd);							// locale to use at the end of the dialog display
 
 	protected:
 		void NewFrame();											// new frame just at begining of display
@@ -1207,7 +1318,8 @@ namespace IGFD
 		void QuitFrame();											// quit frame when qui quit the dialog
 
 		// others
-		bool prConfirm_Or_OpenOverWriteFileDialog_IfNeeded(bool vLastAction, ImGuiWindowFlags vFlags);	// treatment of the result, start the confirm to overwrite dialog if needed (if defined with flag)
+		bool prConfirm_Or_OpenOverWriteFileDialog_IfNeeded(
+			bool vLastAction, ImGuiWindowFlags vFlags);				// treatment of the result, start the confirm to overwrite dialog if needed (if defined with flag)
 	
 	public:
 		// dialog parts
@@ -1217,13 +1329,28 @@ namespace IGFD
 
 		// widgets components
 		virtual void prDrawSidePane(float vHeight);					// draw side pane
-		virtual bool prSelectableItem(int vidx, std::shared_ptr<FileInfos> vInfos, bool vSelected, const char* vFmt, ...);
+		virtual bool prSelectableItem(int vidx, 
+			std::shared_ptr<FileInfos> vInfos, 
+			bool vSelected, const char* vFmt, ...);					// draw a custom selectable behavior item
 		virtual void prDrawFileListView(ImVec2 vSize);				// draw file list view (default mode)
 
 #ifdef USE_THUMBNAILS
 		virtual void prDrawThumbnailsListView(ImVec2 vSize);		// draw file list view with small thumbnails on the same line
 		virtual void prDrawThumbnailsGridView(ImVec2 vSize);		// draw a grid of small thumbnails
 #endif
+
+		// to be called only by these function and theirs overrides
+		// - prDrawFileListView
+		// - prDrawThumbnailsListView
+		// - prDrawThumbnailsGridView
+		void prBeginFileColorIconStyle(
+			std::shared_ptr<FileInfos> vFileInfos, 
+			bool& vOutShowColor, 
+			std::string& vOutStr, 
+			ImFont** vOutFont);										// begin style apply of filter with color an icon if any
+		void prEndFileColorIconStyle(
+			const bool& vShowColor,
+			ImFont* vFont);											// end style apply of filter
 	};
 }
 
@@ -1430,26 +1557,38 @@ IMGUIFILEDIALOG_API char* IGFD_GetCurrentFilter(			// will return selected filte
 IMGUIFILEDIALOG_API void* IGFD_GetUserDatas(				// will return user datas send with Open Dialog/Modal
 	ImGuiFileDialog* vContext);								// ImGuiFileDialog context											
 
-IMGUIFILEDIALOG_API void IGFD_SetExtentionInfos(			// SetExtention datas for have custom display of particular file type
+IMGUIFILEDIALOG_API void IGFD_SetFileStyle(					// SetExtention datas for have custom display of particular file type
 	ImGuiFileDialog* vContext,								// ImGuiFileDialog context 
+	IGFD_FileStyleFlags vFileStyleFlags,					// file style type
 	const char* vFilter,									// extention filter to tune
 	ImVec4 vColor,											// wanted color for the display of the file with extention filter
-	const char* vIconText);									// wanted text or icon of the file with extention filter (can be sued with font icon)
+	const char* vIconText,									// wanted text or icon of the file with extention filter (can be sued with font icon)
+	ImFont* vFont);											// wanted font pointer
 
-IMGUIFILEDIALOG_API void IGFD_SetExtentionInfos2(			// SetExtention datas for have custom display of particular file type
+IMGUIFILEDIALOG_API void IGFD_SetFileStyle2(				// SetExtention datas for have custom display of particular file type
 	ImGuiFileDialog* vContext,								// ImGuiFileDialog context 
+	IGFD_FileStyleFlags vFileStyleFlags,					// file style type
 	const char* vFilter,									// extention filter to tune
 	float vR, float vG, float vB, float vA,					// wanted color channels RGBA for the display of the file with extention filter
-	const char* vIconText);									// wanted text or icon of the file with extention filter (can be sued with font icon)
+	const char* vIconText,									// wanted text or icon of the file with extention filter (can be sued with font icon)
+	ImFont* vFont);											// wanted font pointer
 
-IMGUIFILEDIALOG_API bool IGFD_GetExtentionInfos(
+IMGUIFILEDIALOG_API bool IGFD_GetFileStyle(
 	ImGuiFileDialog* vContext,								// ImGuiFileDialog context 
+	IGFD_FileStyleFlags vFileStyleFlags,					// file style type
 	const char* vFilter,									// extention filter (same as used in SetExtentionInfos)
 	ImVec4* vOutColor,										// color to retrieve
-	char** vOutIconText);									// icon or text to retrieve
+	char** vOutIconText,									// icon or text to retrieve
+	ImFont** vOutFont);										// font pointer to retrived
 
-IMGUIFILEDIALOG_API void IGFD_ClearExtentionInfos(			// clear extentions setttings
+IMGUIFILEDIALOG_API void IGFD_ClearFilesStyle(				// clear extentions setttings
 	ImGuiFileDialog* vContext);								// ImGuiFileDialog context
+
+IMGUIFILEDIALOG_API void SetLocales(						// set locales to use before and after display
+	ImGuiFileDialog* vContext,								// ImGuiFileDialog context 
+	const int vCategory,									// set local category
+	const char* vBeginLocale,								// locale to use at begining of the dialog display
+	const char* vEndLocale);								// locale to set at end of the dialog display
 
 #ifdef USE_EXPLORATION_BY_KEYS
 IMGUIFILEDIALOG_API void IGFD_SetFlashingAttenuationInSeconds(	// set the flashing time of the line in file list when use exploration keys

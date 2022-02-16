@@ -87,6 +87,16 @@ glm::mat4 Transform::getTransform()
 	return transform;
 }
 
+glm::vec3 Transform::getPosition()
+{
+	return position;
+}
+
+glm::quat Transform::getRotation()
+{
+	return rotation;
+}
+
 void Transform::calcNormalMatrix()
 {
 	normalTransform = glm::inverseTranspose(glm::mat3(transform));

@@ -5,7 +5,7 @@
 #define CLEARCOAT
 #define TRANSMISSION
 #define SPECULAR
-#define IRIDESCENCE
+//#define IRIDESCENCE
 //#define ANISOTROPY
 
 layout(location = 0) in vec3 wPosition;

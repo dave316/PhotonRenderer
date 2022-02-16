@@ -20,8 +20,17 @@ bool Application::init()
 	if (!renderer.init())
 		return false;
 
-	renderer.updateAnimations(0.0f);
-	renderer.updateShadows();
+	std::string assetPath = "../../../../assets";
+	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
+	std::string name = "GlamVelvetSofa";
+
+	scene = Scene::create("scene");
+	scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	scene->updateAnimations(0.0f);
+
+	renderer.initEnv(scene);
+	renderer.initLights(scene);
+	renderer.updateShadows(scene);
 
 	setupInput();
 
@@ -42,7 +51,7 @@ void Application::setupInput()
 	input.setMouseMoveCallback(std::bind(&Camera::updateRotation, &camera, _1, _2));
 	input.setMouseWheelCallback(std::bind(&Camera::updateSpeed, &camera, _1, _2));
 
-	input.addKeyCallback(GLFW_KEY_M, GLFW_PRESS, std::bind(&Renderer::nextMaterial, &renderer));
+	input.addKeyCallback(GLFW_KEY_M, GLFW_PRESS, std::bind(&Scene::nextMaterial, scene.get()));
 	//input.addKeyCallback(GLFW_KEY_C, GLFW_PRESS, std::bind(&Renderer::nextCamera, &renderer));
 	input.addKeyCallback(GLFW_KEY_SPACE, GLFW_PRESS, [&] {animate = !animate; });
 
@@ -61,7 +70,7 @@ void Application::handleDrop(int count, const char** paths)
 	std::replace(path.begin(), path.end(), '\\', '/');
 
 	std::cout << "loading model " << path << std::endl;
-	renderer.loadModel("model", path);
+	//renderer.loadModel("model", path);
 }
 
 void Application::loop()
@@ -87,15 +96,15 @@ void Application::loop()
 
 			if (animate)
 			{
-				renderer.updateAnimations(animTime);
-				renderer.updateAnimationState(animTime);
-				renderer.updateShadows();
+				scene->updateAnimations(animTime);
+				scene->updateAnimationState(animTime);
+				renderer.updateShadows(scene);
 			}	
 			animTime = 0.0f;
 		}
 
-		renderer.render();
-		renderer.renderText();
+		renderer.render(scene);
+		//renderer.renderText();
 
 		window.swapBuffers();
 

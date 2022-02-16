@@ -14,6 +14,7 @@ class Application
 	GLWindow window;
 	InputHandler input;
 	Renderer renderer;
+	Scene::Ptr scene;
 	bool animate = true;
 
 	Application(const Application&) = delete;

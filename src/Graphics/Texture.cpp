@@ -15,6 +15,11 @@ void Texture2D::upload(void* data)
 	texture.upload(data, width, height, format);
 }
 
+void Texture2D::download(void* data)
+{
+	texture.download(data, format);
+}
+
 void Texture2D::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
 {
 	texture.setFilter(minFilter, magFilter);

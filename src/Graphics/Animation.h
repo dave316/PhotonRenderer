@@ -4,7 +4,6 @@
 #pragma once
 
 #include <Core/Entity.h>
-#include <Graphics/Animation.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>

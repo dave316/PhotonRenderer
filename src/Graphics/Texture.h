@@ -24,6 +24,7 @@ class Texture2D : public Texture
 public:
 	Texture2D(unsigned int width, unsigned int height, GL::TextureFormat format);
 	void upload(void* data);
+	void download(void* data);
 	void setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter);
 	void setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT);
 	void generateMipmaps();
