@@ -99,6 +99,22 @@ void Camera::setFov(float fov)
 	this->fov = glm::radians(fov);
 }
 
+void Camera::setPlanes(float zNear, float zFar)
+{
+	this->zNear = zNear;
+	this->zFar = zFar;
+}
+
+float Camera::getFov()
+{
+	return fov;
+}
+
+float Camera::getAspect() 
+{
+	return aspect;
+}
+
 void Camera::updateRotation(float dx, float dy)
 {
 	yaw += dx * rotationSpeed;

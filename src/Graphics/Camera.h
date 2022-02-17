@@ -51,11 +51,14 @@ public:
 		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
 		float fov = 60.0f,
 		float aspect = 4.0f / 3.0f,
-		float zNear = 0.01f,
-		float zFar = 100.0f);
+		float zNear = 0.1f,
+		float zFar = 1000.0f);
 
 	void setAspect(float aspect);
 	void setFov(float fov);
+	void setPlanes(float zNear, float zFar);
+	float getFov();
+	float getAspect();
 
 	glm::mat4 getViewMatrix() const;
 	glm::mat4 getProjectionMatrix() const;

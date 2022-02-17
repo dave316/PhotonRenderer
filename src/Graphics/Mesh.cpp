@@ -67,6 +67,11 @@ void Mesh::updatGeometry(TriangleSurface& surface)
 	vao.unbind();
 }
 
+void Mesh::setBoundingBox(glm::vec3& minPoint, glm::vec3& maxPoint)
+{
+	boundingBox = AABB(minPoint, maxPoint);
+}
+
 void Mesh::draw()
 {
 	vao.bind();
@@ -82,6 +87,11 @@ void Mesh::drawPoints()
 	vao.bind();
 	glDrawArrays(GL_POINTS, 0, vertexBuffer.size());
 	vao.unbind();
+}
+
+AABB Mesh::getBoundingBox()
+{
+	return boundingBox;
 }
 
 std::vector<Vertex> Mesh::getVertices()

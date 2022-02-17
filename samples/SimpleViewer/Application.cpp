@@ -1,5 +1,5 @@
 #include "Application.h"
-
+#include <Graphics/Primitives.h>
 #include <algorithm>
 
 using namespace std::placeholders;
@@ -22,11 +22,31 @@ bool Application::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "GlamVelvetSofa";
+	std::string name = "DamagedHelmet";
 
 	scene = Scene::create("scene");
 	scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	scene->updateAnimations(0.0f);
+	auto bbox = scene->getBoundingBox();
+	glm::vec3 minPoint = bbox.getMinPoint();
+	glm::vec3 maxPoint = bbox.getMaxPoint();
+	glm::vec3 diag = maxPoint - minPoint;
+	
+	float aspect = camera.getAspect();
+	float fovy = camera.getFov();
+	float fovx = fovy * aspect;
+	float xZoom = diag.x * 0.5 / glm::tan(fovx / 2.0f);
+	float yZoom = diag.y * 0.5 / glm::tan(fovy / 2.0f);
+	float dist = glm::max(xZoom, yZoom);
+	glm::vec3 center = bbox.getCenter();
+	center.z += dist * 2.0f;
+	camera.setPosition(center);
+
+	float longestDistance = 10.0f * glm::distance(minPoint, maxPoint);
+	float zNear = dist - (longestDistance * 0.6f);
+	float zFar = dist + (longestDistance * 0.6f);
+	zNear = glm::max(zNear, zFar / 10000.0f);
+	camera.setPlanes(zNear, zFar);
 
 	renderer.initEnv(scene);
 	renderer.initLights(scene);

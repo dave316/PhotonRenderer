@@ -11,6 +11,7 @@ namespace Primitives
 
 	Mesh::Ptr createSphere(glm::vec3 position, float radius, unsigned int rings, unsigned int sectors);
 	Mesh::Ptr createCube(glm::vec3 position, float edgeLength);
+	Mesh::Ptr createBox(glm::vec3 position, glm::vec3 size);
 	Mesh::Ptr createQuad(glm::vec3 position, float edgeLength);
 }
 

@@ -58,6 +58,7 @@ public:
 	std::vector<Vertex> getVertices();
 	void computeJoints(std::vector<Entity::Ptr>& nodes);
 	Skin getSkin();
+	AABB getBoundingBox();
 	typedef std::shared_ptr<Renderable> Ptr;
 	static Ptr create()
 	{

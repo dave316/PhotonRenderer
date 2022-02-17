@@ -33,6 +33,7 @@ private:
 	GL::VertexArray vao;
 	GLenum topology;
 
+	AABB boundingBox;
 	TriangleSurface surface;
 
 	unsigned int materialIndex;
@@ -45,9 +46,11 @@ public:
 	~Mesh();
 	void flipWindingOrder();
 	void updatGeometry(TriangleSurface& surface);
+	void setBoundingBox(glm::vec3& minPoint, glm::vec3& maxPoint);
 	unsigned int getMaterialIndex() { return materialIndex; }
 	void draw();
 	void drawPoints();
+	AABB getBoundingBox();
 	std::vector<Vertex> getVertices();
 	std::string getName()
 	{

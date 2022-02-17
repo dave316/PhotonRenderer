@@ -294,8 +294,26 @@ namespace IO
 			accessor.componentType = accessorNode.FindMember("componentType")->value.GetInt();
 			accessor.count = accessorNode.FindMember("count")->value.GetInt();
 			accessor.type = accessorNode.FindMember("type")->value.GetString();
+			if (accessorNode.HasMember("min"))
+				for (auto& minNode : accessorNode["min"].GetArray())
+					accessor.minValues.push_back(minNode.GetFloat());
+			if (accessorNode.HasMember("max"))
+				for (auto& maxNode : accessorNode["max"].GetArray())
+					accessor.maxValues.push_back(maxNode.GetFloat());
 			accessors.push_back(accessor);
 		}
+
+		//for (auto& acc : accessors)
+		//{
+		//	std::cout << "min: ";
+		//	for (auto& minV : acc.minValues)
+		//		std::cout << minV << " ";
+		//	std::cout << std::endl;
+		//	std::cout << "max: ";
+		//	for (auto& maxV : acc.maxValues)
+		//		std::cout << maxV << " ";
+		//	std::cout << std::endl;
+		//}		
 
 		//std::cout << "GLTF loadBuffers" << std::endl;
 		//std::cout << "----------------" << std::endl;
@@ -531,7 +549,8 @@ namespace IO
 				primitivNum++;
 
 				// TODO: check accessor component type and cast data accordingly
-				
+				glm::vec3 minPoint;
+				glm::vec3 maxPoint;
 				std::vector<glm::vec3> positions;
 				std::vector<glm::vec4> colors;
 				std::vector<glm::vec3> normals;
@@ -549,6 +568,12 @@ namespace IO
 				{
 					int accIndex = attributesNode["POSITION"].GetInt();
 					loadData(accIndex, positions);
+
+					for (int i = 0; i < 3; i++)
+					{
+						minPoint[i] = accessors[accIndex].minValues[i];
+						maxPoint[i] = accessors[accIndex].maxValues[i];
+					}				 
 				}
 
 				if (attributesNode.HasMember("COLOR_0"))
@@ -792,6 +817,7 @@ namespace IO
 
 				Primitive primitive;
 				primitive.mesh = Mesh::create(name, surface, mode, 0);
+				primitive.mesh->setBoundingBox(minPoint, maxPoint);
 				primitive.computeFlatNormals = computeFlatNormals;
 				for (auto materialIndex : materialIndices)
 				{
@@ -919,7 +945,12 @@ namespace IO
 				if (perspectiveNode.HasMember("zfar"))
 					zfar = perspectiveNode["zfar"].GetFloat();
 				
-				cam.P = glm::ortho(-xmag, xmag, -ymag, ymag, znear, zfar);
+				//cam.P = glm::ortho(-xmag, xmag, -ymag, ymag, znear, zfar);
+				cam.P = glm::mat4(1.0f);
+				cam.P[0][0] = 1.0f / xmag;
+				cam.P[1][1] = 1.0f / ymag;
+				cam.P[2][2] = 2.0f / (znear - zfar);
+				cam.P[3][2] = (zfar + znear) / (znear - zfar);
 				cameras.push_back(cam);
 			}
 			else

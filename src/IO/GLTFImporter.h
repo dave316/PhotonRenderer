@@ -53,6 +53,8 @@ namespace IO
 			int componentType;
 			int count;
 			std::string type;
+			std::vector<float> minValues;
+			std::vector<float> maxValues;
 		};
 
 		struct AnimationSampler

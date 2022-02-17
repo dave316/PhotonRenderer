@@ -212,7 +212,7 @@ void Renderer::updateShadows(Scene::Ptr scene)
 	auto views = scene->getViews();
 
 	// should be put in light class together with the updating
-	for (int i = 0; i < shadowFBOs.size(); i++)
+	for (int i = 0; i < views.size(); i++)
 	{
 		shadowFBOs[i]->begin();
 		glCullFace(GL_FRONT);

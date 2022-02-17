@@ -124,6 +124,33 @@ namespace Primitives
 		return Mesh::create("cube", surface, 4, 0);
 	}
 
+	Mesh::Ptr createBox(glm::vec3 position, glm::vec3 size)
+	{
+		std::vector<Vertex> vertices;
+		std::vector<GLuint> indices;
+
+		glm::vec3 extent = size / 2.0f;
+
+		glm::vec3 v1 = glm::vec3(-extent.x, -extent.y, extent.z) + position;
+		glm::vec3 v2 = glm::vec3(extent.x, -extent.y, extent.z) + position;
+		glm::vec3 v3 = glm::vec3(-extent.x, extent.y, extent.z) + position;
+		glm::vec3 v4 = glm::vec3(extent.x, extent.y, extent.z) + position;
+		glm::vec3 v5 = glm::vec3(-extent.x, -extent.y, -extent.z) + position;
+		glm::vec3 v6 = glm::vec3(extent.x, -extent.y, -extent.z) + position;
+		glm::vec3 v7 = glm::vec3(-extent.x, extent.y, -extent.z) + position;
+		glm::vec3 v8 = glm::vec3(extent.x, extent.y, -extent.z) + position;
+
+		TriangleSurface surface;
+		addFace(surface, v1, v2, v4, v3);
+		addFace(surface, v6, v5, v7, v8);
+		addFace(surface, v5, v1, v3, v7);
+		addFace(surface, v2, v6, v8, v4);
+		addFace(surface, v5, v6, v2, v1);
+		addFace(surface, v3, v4, v8, v7);
+
+		return Mesh::create("box", surface, 4, 0);
+	}
+
 	Mesh::Ptr createQuad(glm::vec3 position, float edgeLength)
 	{
 		std::vector<Vertex> vertices;

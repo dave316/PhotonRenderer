@@ -39,6 +39,7 @@ public:
 	void initEnvMaps(std::map<std::string, Shader::Ptr>& shaders);
 	void initLights(Shader::Ptr defaultShader);
 	void loadModel(std::string name, std::string path);
+	void addEntity(std::string name, Entity::Ptr entity);
 	void updateAnimations(float dt);
 	void updateAnimationState(float dt);
 	void playAnimations();
@@ -55,6 +56,7 @@ public:
 	std::vector<std::vector<glm::mat4>>& getViews();
 	std::vector<std::string> getCameraNames();
 	std::vector<std::string> getVariantNames();
+	AABB getBoundingBox();
 
 	typedef std::shared_ptr<Scene> Ptr;
 	static Ptr create(const std::string& name)

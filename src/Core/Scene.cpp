@@ -218,6 +218,11 @@ void Scene::loadModel(std::string name, std::string path)
 	importer.clear();
 }
 
+void Scene::addEntity(std::string name, Entity::Ptr entity)
+{
+	rootEntities.insert(std::make_pair(name, entity));
+}
+
 void Scene::updateAnimations(float dt)
 {
 	for (auto [name, rootEntity] : rootEntities)
@@ -359,4 +364,28 @@ std::vector<std::string> Scene::getCameraNames()
 std::vector<std::string> Scene::getVariantNames()
 {
 	return variants;
+}
+
+AABB Scene::getBoundingBox()
+{
+	// compute bounding box around loaded scene
+	AABB sceneBBox;
+	for (auto [_,entity] : rootEntities)
+	{		
+		auto renderables = entity->getChildrenWithComponent<Renderable>();
+		for (auto e : renderables)
+		{
+			auto t = e->getComponent<Transform>();
+			auto r = e->getComponent<Renderable>();
+
+			AABB bbox = r->getBoundingBox();
+			glm::mat4 M = t->getTransform();
+			glm::vec3 minPoint = glm::vec3(M * glm::vec4(bbox.getMinPoint(), 1.0f));
+			glm::vec3 maxPoint = glm::vec3(M * glm::vec4(bbox.getMaxPoint(), 1.0f));
+			sceneBBox.expand(minPoint);
+			sceneBBox.expand(maxPoint);
+		}
+	}
+
+	return sceneBBox;
 }

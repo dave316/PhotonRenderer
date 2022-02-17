@@ -142,6 +142,14 @@ Skin Renderable::getSkin()
 	return skin;
 }
 
+AABB Renderable::getBoundingBox()
+{
+	AABB boundingBox;
+	for (auto& p : primitives)
+		boundingBox.expand(p.mesh->getBoundingBox());
+	return boundingBox;
+}
+
 void Renderable::computeJoints(std::vector<Entity::Ptr>& nodes)
 {
 	skin.computeJoints(nodes);

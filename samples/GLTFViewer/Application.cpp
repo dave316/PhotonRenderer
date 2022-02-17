@@ -183,6 +183,27 @@ void Application::gui()
 					scene->loadModel(info.name, fullPath);
 					renderer.initLights(scene);
 
+					auto bbox = scene->getBoundingBox();
+					glm::vec3 minPoint = bbox.getMinPoint();
+					glm::vec3 maxPoint = bbox.getMaxPoint();
+					glm::vec3 diag = maxPoint - minPoint;
+					//float maxAxisLength = glm::max(diag.x, diag.y);
+					float aspect = camera.getAspect();
+					float fovy = camera.getFov();
+					float fovx = fovy * aspect;
+					float xZoom = diag.x * 0.5 / glm::tan(fovx / 2.0f);
+					float yZoom = diag.y * 0.5 / glm::tan(fovy / 2.0f);
+					float dist = glm::max(xZoom, yZoom);
+					glm::vec3 center = bbox.getCenter();
+					center.z += dist * 2.0f;
+					camera.setPosition(center);
+
+					float longestDistance = 10.0f * glm::distance(minPoint, maxPoint);
+					float zNear = dist - (longestDistance * 0.6f);
+					float zFar = dist + (longestDistance * 0.6f);
+					zNear = glm::max(zNear, zFar / 10000.0f);
+					camera.setPlanes(zNear, zFar);
+
 					prevIndex = sampleIndex;
 					std::cout << "selected " << samplesInfo[sampleIndex].name << std::endl;
 				}
