@@ -12,7 +12,7 @@ struct GLTFSampleInfo
 {
 	std::string name;
 	std::string screenshot;
-	std::map<std::string, std::string> variants;
+	std::vector<std::pair<std::string, std::string>> variants;
 };
 
 class Application
@@ -28,7 +28,7 @@ class Application
 
 	bool animate = true;
 	int cameraIndex = 0;
-	int variantIndex = 0;
+	int materialIndex = 0;
 	
 	Application(const Application&) = delete;
 	Application& operator=(const Application&) = delete;
@@ -38,6 +38,7 @@ public:
 	void setupInput();
 	void handleDrop(int count, const char** paths);
 	void initGLTFSamples(const std::string& samplesPath);
+	void initCamera();
 	void gui();
 	void loop();
 	void shutdown();

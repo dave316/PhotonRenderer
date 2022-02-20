@@ -31,7 +31,7 @@ void Camera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov, f
 	pitch = 0.0f;
 	movementSpeed = 1.0f;
 	rotationSpeed = 0.1f;
-	velocity = 1.0f;
+	velocity = movementSpeed * 0.1f;
 }
 
 glm::mat4 Camera::getViewMatrix() const
@@ -105,6 +105,16 @@ void Camera::setPlanes(float zNear, float zFar)
 	this->zFar = zFar;
 }
 
+void Camera::setSpeed(float speed)
+{
+	this->movementSpeed = speed;
+}
+
+void Camera::setVelocity(float velocity)
+{
+	this->velocity = velocity;
+}
+
 float Camera::getFov()
 {
 	return fov;
@@ -123,13 +133,8 @@ void Camera::updateRotation(float dx, float dy)
 
 void Camera::updateSpeed(float dx, float dy)
 {
-	if (movementSpeed <= 1.0f && dy < 0.0f)
-		velocity = 0.1f;
-	if (movementSpeed >= 1.0f && dy > 0.0f)
-		velocity = 1.0f;
-
 	movementSpeed += dy * velocity;
-	movementSpeed = std::max(0.1f, movementSpeed);
+	movementSpeed = std::max(velocity, movementSpeed);
 }
 
 void Camera::rotate(float deltaTime)

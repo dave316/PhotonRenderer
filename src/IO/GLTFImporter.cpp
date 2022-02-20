@@ -1,5 +1,8 @@
 #include "GLTFImporter.h"
 
+#include <base64/base64.h>
+#include <draco/mesh/mesh.h>
+#include <draco/compression/decode.h>
 #include <IO/ImageLoader.h>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -103,6 +106,8 @@ namespace IO
 		loadAnimations(doc);
 
 		auto root = loadScene(doc);
+
+		
 
  		return root;
 	}
@@ -259,11 +264,27 @@ namespace IO
 			Buffer buffer;
 			if (bufferNode.HasMember("uri"))
 			{
-				std::string uri(bufferNode.FindMember("uri")->value.GetString());
 				unsigned int byteLength = bufferNode.FindMember("byteLength")->value.GetInt();
-				buffer.data = readBinaryFile(path + "/" + uri, byteLength);
-				buffers.push_back(buffer);
+				std::string uri(bufferNode.FindMember("uri")->value.GetString());
+
+				if (uri.find(':') != std::string::npos) // data uri
+				{
+					int sepIndex = uri.find_last_of(',');
+					int dataStart = sepIndex + 1;
+					int dataLen = uri.length() - dataStart;
+					std::string dataURI = uri.substr(0, sepIndex); // TODO: check if media type is correct etc...
+					std::cout << dataURI << std::endl;
+
+					std::string dataBase64 = uri.substr(dataStart, dataLen);
+					std::string data = base64_decode(dataBase64);
+					buffer.data.insert(buffer.data.end(), data.begin(), data.end());
+				}
+				else // file uri
+				{
+					buffer.data = readBinaryFile(path + "/" + uri, byteLength);
+				}
 			}
+			buffers.push_back(buffer);
 		}
 
 		auto bufferViewsNode = doc.FindMember("bufferViews");
@@ -543,6 +564,42 @@ namespace IO
 			auto primitvesNode = meshNode.FindMember("primitives");
 			for (auto& primitiveNode : primitvesNode->value.GetArray())
 			{
+				if (primitiveNode.HasMember("extensions"))
+				{
+					auto& extensionNode = primitiveNode["extensions"];
+					if (extensionNode.HasMember("KHR_draco_mesh_compression"))
+					{
+						std::vector<unsigned char> compressedBuffer;
+						BufferView& bv = bufferViews[0]; // TODO: get bufferview from extension
+						Buffer& buffer = buffers[bv.buffer];
+						int offset = bv.byteOffset;
+						compressedBuffer.resize(bv.byteLength);
+						memcpy(compressedBuffer.data(), &buffer.data[offset], bv.byteLength);
+
+						draco::DecoderBuffer dracoBuffer;
+						draco::Decoder decoder;
+						dracoBuffer.Init((char*)compressedBuffer.data(), compressedBuffer.size());
+						auto status = decoder.DecodeMeshFromBuffer(&dracoBuffer);
+						auto dracoMesh = std::move(status).value();
+
+						std::cout << "attributes: " << dracoMesh->num_attributes() << std::endl;
+						std::cout << "points: " << dracoMesh->num_points() << std::endl;
+						std::cout << "faces: " << dracoMesh->num_faces() << std::endl;
+
+						std::vector<glm::vec3> positions;
+						auto positionAttr = dracoMesh->GetNamedAttribute(draco::GeometryAttribute::POSITION);
+						for (draco::AttributeValueIndex i(0); i < positionAttr->size(); i++)
+						{
+							glm::vec3 pos;
+							positionAttr->ConvertValue<float, 3>(i, glm::value_ptr(pos));
+							positions.push_back(pos);
+						}					
+
+						for (auto p : positions)
+							std::cout << p.x << " " << p.y << " " << p.z << std::endl;
+					}
+				}
+
 				TriangleSurface surface;
 				std::vector<unsigned int> materialIndices;
 
@@ -863,15 +920,31 @@ namespace IO
 			tex = IO::loadTextureKTX(path + "/" + texInfo.filename);
 		else
 #endif
-		if(texInfo.isExternalFile)
+		if(texInfo.isExternalFile) // load from file
 		{
 			tex = IO::loadTexture(path + "/" + texInfo.filename, sRGB);	
 			if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
 				tex->generateMipmaps();
 		}
-		else
+		else if (!texInfo.dataURI.empty()) // load from data URI
 		{
-			// TODO: load texture from binary chunk
+			int sepIndex = texInfo.dataURI.find_last_of(',');
+			int dataStart = sepIndex + 1;
+			int dataLen = texInfo.dataURI.length() - dataStart;
+			std::string dataURI = texInfo.dataURI.substr(0, sepIndex); // TODO: check if media type is correct etc...
+			std::cout << dataURI << std::endl;
+
+			std::string dataBase64 = texInfo.dataURI.substr(dataStart, dataLen);
+			std::string dataBinary = base64_decode(dataBase64);
+			std::vector<unsigned char> data;
+			data.insert(data.end(), dataBinary.begin(), dataBinary.end());
+
+			tex = IO::loadTextureFromMemory(data, sRGB);
+			if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
+				tex->generateMipmaps();
+		}
+		else // load texture from binary chunk
+		{			
 			std::vector<unsigned char> data;
 			BufferView& bv = bufferViews[texInfo.bufferView];
 			Buffer& buffer = buffers[bv.buffer];
@@ -1396,14 +1469,19 @@ namespace IO
 			ImageInfo info;
 			if (imagesNode.HasMember("uri"))
 			{
-				std::string filename = imagesNode["uri"].GetString();
-
-				int index; // TODO: add proper parsing of URIs
-				while ((index = filename.find("%20")) >= 0)
-					filename.replace(index, 3, " ");
-				info.filename = filename;
-				info.isExternalFile = true;
-				//imageFiles.push_back(filename);
+				std::string uri = imagesNode["uri"].GetString();
+				if (uri.find(':') == std::string::npos) // file uri
+				{
+					int index; // TODO: add proper parsing of URIs
+					while ((index = uri.find("%20")) >= 0)
+						uri.replace(index, 3, " ");
+					info.filename = uri;
+					info.isExternalFile = true;
+				}
+				else // data uri
+				{
+					info.dataURI = uri;
+				}
 			}
 			if (imagesNode.HasMember("mimeType"))
 				info.mimeType = imagesNode["mimeType"].GetString();
@@ -1441,6 +1519,7 @@ namespace IO
 					texInfo.filename = images[imageIndex].filename;
 					texInfo.mimeType = images[imageIndex].mimeType;
 					texInfo.bufferView = images[imageIndex].bufferView;
+					texInfo.dataURI = images[imageIndex].dataURI;
 					texInfo.isExternalFile = images[imageIndex].isExternalFile;
 				}
 				else if (textureNode.HasMember("extensions"))
@@ -1452,6 +1531,7 @@ namespace IO
 						texInfo.filename = images[imageIndex].filename;
 						texInfo.mimeType = images[imageIndex].mimeType;
 						texInfo.bufferView = images[imageIndex].bufferView;
+						texInfo.dataURI = images[imageIndex].dataURI;
 						texInfo.isExternalFile = images[imageIndex].isExternalFile;
 					}
 				}

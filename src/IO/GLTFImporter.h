@@ -92,6 +92,7 @@ namespace IO
 			int bufferView;
 			std::string filename;
 			std::string mimeType;
+			std::string dataURI;
 		};
 		std::vector<ImageInfo> images;
 
@@ -101,6 +102,7 @@ namespace IO
 			int bufferView;
 			std::string filename;
 			std::string mimeType;
+			std::string dataURI;
 			TextureSampler sampler;
 		};
 		std::vector<TextureInfo> textures;

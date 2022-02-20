@@ -22,6 +22,7 @@ class Application
 public:
 	Application(const char* title, unsigned int width, unsigned int height);
 	bool init();
+	void initCamera();
 	void setupInput();
 	void handleDrop(int count, const char** paths);
 	void loop();

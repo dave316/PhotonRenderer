@@ -22,16 +22,29 @@ bool Application::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "DamagedHelmet";
+	std::string name = "Box";
 
 	scene = Scene::create("scene");
 	scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	scene->updateAnimations(0.0f);
+
+	renderer.initEnv(scene);
+	renderer.initLights(scene);
+	renderer.updateShadows(scene);
+
+	initCamera();
+	setupInput();
+
+	return true;
+}
+
+void Application::initCamera()
+{
 	auto bbox = scene->getBoundingBox();
 	glm::vec3 minPoint = bbox.getMinPoint();
 	glm::vec3 maxPoint = bbox.getMaxPoint();
 	glm::vec3 diag = maxPoint - minPoint;
-	
+	//float maxAxisLength = glm::max(diag.x, diag.y);
 	float aspect = camera.getAspect();
 	float fovy = camera.getFov();
 	float fovx = fovy * aspect;
@@ -42,19 +55,14 @@ bool Application::init()
 	center.z += dist * 2.0f;
 	camera.setPosition(center);
 
-	float longestDistance = 10.0f * glm::distance(minPoint, maxPoint);
-	float zNear = dist - (longestDistance * 0.6f);
-	float zFar = dist + (longestDistance * 0.6f);
+	float longestDistance = glm::distance(minPoint, maxPoint);
+	float zNear = dist - (longestDistance * 5.0f);
+	float zFar = dist + (longestDistance * 5.0f);
 	zNear = glm::max(zNear, zFar / 10000.0f);
+	//std::cout << "zNear: " << zNear << " zFar: " << zFar << std::endl;
 	camera.setPlanes(zNear, zFar);
-
-	renderer.initEnv(scene);
-	renderer.initLights(scene);
-	renderer.updateShadows(scene);
-
-	setupInput();
-
-	return true;
+	camera.setSpeed(longestDistance);
+	camera.setVelocity(longestDistance * 0.1f);
 }
 
 void Application::setupInput()

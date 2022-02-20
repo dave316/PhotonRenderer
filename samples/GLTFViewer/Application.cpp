@@ -51,6 +51,65 @@ bool Application::init()
 	return true;
 }
 
+void Application::initCamera()
+{
+	auto bbox = scene->getBoundingBox();
+	glm::vec3 minPoint = bbox.getMinPoint();
+	glm::vec3 maxPoint = bbox.getMaxPoint();
+	glm::vec3 diag = maxPoint - minPoint;
+	//float maxAxisLength = glm::max(diag.x, diag.y);
+	float aspect = camera.getAspect();
+	float fovy = camera.getFov();
+	float fovx = fovy * aspect;
+	float xZoom = diag.x * 0.5 / glm::tan(fovx / 2.0f);
+	float yZoom = diag.y * 0.5 / glm::tan(fovy / 2.0f);
+	float dist = glm::max(xZoom, yZoom);
+	glm::vec3 center = bbox.getCenter();
+	center.z += dist * 2.0f;
+	camera.setPosition(center);
+
+	float longestDistance = glm::distance(minPoint, maxPoint);
+	float zNear = dist - (longestDistance * 5.0f);
+	float zFar = dist + (longestDistance * 5.0f);
+	zNear = glm::max(zNear, zFar / 10000.0f);
+	//std::cout << "zNear: " << zNear << " zFar: " << zFar << std::endl;
+	camera.setPlanes(zNear, zFar);
+	camera.setSpeed(longestDistance);
+	camera.setVelocity(longestDistance * 0.1f);
+}
+
+void Application::initGLTFSamples(const std::string& samplesPath)
+{
+	std::ifstream file(samplesPath + "/model-index.json");
+	if (!file.is_open())
+	{
+		std::cout << "could not open model-index.json, please set path to GLTF samples folder!" << std::endl;
+		return;
+	}
+
+	std::stringstream ss;
+	ss << file.rdbuf();
+	std::string jsonStr = ss.str();
+	json::Document jsonDoc;
+	jsonDoc.Parse(jsonStr.c_str());
+	for (auto& sampleNode : jsonDoc.GetArray())
+	{
+		GLTFSampleInfo info;
+		if (sampleNode.HasMember("name"))
+			info.name = sampleNode["name"].GetString();
+		if (sampleNode.HasMember("screenshot"))
+			info.screenshot = sampleNode["screenshot"].GetString();
+		if (sampleNode.HasMember("variants"))
+		{
+			auto& variantsNode = sampleNode["variants"];
+			for (auto it = variantsNode.MemberBegin(); it != variantsNode.MemberEnd(); ++it)
+				//info.variants.insert(std::make_pair(it->name.GetString(), it->value.GetString()));
+				info.variants.push_back(std::make_pair(it->name.GetString(), it->value.GetString()));
+		}
+		samplesInfo.push_back(info);
+	}
+}
+
 void Application::setupInput()
 {
 	input.addKeyCallback(GLFW_KEY_ESCAPE, GLFW_PRESS, std::bind(&GLWindow::close, &window));
@@ -86,36 +145,7 @@ void Application::handleDrop(int count, const char** paths)
 	//renderer.loadModel("model", path);
 }
 
-void Application::initGLTFSamples(const std::string& samplesPath)
-{
-	std::ifstream file(samplesPath + "/model-index.json");
-	if (!file.is_open())
-	{
-		std::cout << "could not open model-index.json, please set path to GLTF samples folder!" << std::endl;
-		return;
-	}
 
-	std::stringstream ss;
-	ss << file.rdbuf();
-	std::string jsonStr = ss.str();
-	json::Document jsonDoc;
-	jsonDoc.Parse(jsonStr.c_str());
-	for (auto& sampleNode : jsonDoc.GetArray())
-	{
-		GLTFSampleInfo info;
-		if (sampleNode.HasMember("name"))
-			info.name = sampleNode["name"].GetString();
-		if (sampleNode.HasMember("screenshot"))
-			info.screenshot = sampleNode["screenshot"].GetString();
-		if (sampleNode.HasMember("variants"))
-		{
-			auto& variantsNode = sampleNode["variants"];
-			for (auto it = variantsNode.MemberBegin(); it != variantsNode.MemberEnd(); ++it)
-				info.variants.insert(std::make_pair(it->name.GetString(), it->value.GetString()));
-		}
-		samplesInfo.push_back(info);
-	}
-}
 
 void Application::gui()
 {
@@ -156,9 +186,17 @@ void Application::gui()
 	{
 		if (!samplesInfo.empty())
 		{
-			static int prevIndex = 0;
 			static int sampleIndex = 0;
-			if (ImGui::BeginCombo("##samples", samplesInfo[sampleIndex].name.c_str()))
+			static int variantIndex = 0;
+			static int prevSampleIndex = 0;
+			static int prevVariantIndex = 0;
+			ImGui::Text("Sample");
+			ImGui::SameLine(100);
+
+			ImGuiComboFlags flags = ImGuiComboFlags_HeightLarge;
+
+			GLTFSampleInfo& currentInfo = samplesInfo[sampleIndex];
+			if (ImGui::BeginCombo("##sample", currentInfo.name.c_str(), flags))
 			{
 				for (int i = 0; i < samplesInfo.size(); i++)
 				{
@@ -169,43 +207,62 @@ void Application::gui()
 						ImGui::SetItemDefaultFocus();
 				}
 
-				if (sampleIndex != prevIndex)
+				if (sampleIndex != prevSampleIndex)
 				{
 					GLTFSampleInfo info = samplesInfo[sampleIndex];
 					scene->clear();
 					cameraIndex = 0;
-					variantIndex = 0;
+					materialIndex = 0;
 
-					// TODO: add variants combo box
-					std::string variant = "glTF";
-					std::string fn = info.variants[variant];
+					variantIndex = 0;
+					prevVariantIndex = 0;
+
+					std::string variant = info.variants[variantIndex].first;
+					std::string fn = info.variants[variantIndex].second;
 					std::string fullPath = samplePath + "/" + info.name + "/" + variant + "/" + fn;
 					scene->loadModel(info.name, fullPath);
 					renderer.initLights(scene);
 
-					auto bbox = scene->getBoundingBox();
-					glm::vec3 minPoint = bbox.getMinPoint();
-					glm::vec3 maxPoint = bbox.getMaxPoint();
-					glm::vec3 diag = maxPoint - minPoint;
-					//float maxAxisLength = glm::max(diag.x, diag.y);
-					float aspect = camera.getAspect();
-					float fovy = camera.getFov();
-					float fovx = fovy * aspect;
-					float xZoom = diag.x * 0.5 / glm::tan(fovx / 2.0f);
-					float yZoom = diag.y * 0.5 / glm::tan(fovy / 2.0f);
-					float dist = glm::max(xZoom, yZoom);
-					glm::vec3 center = bbox.getCenter();
-					center.z += dist * 2.0f;
-					camera.setPosition(center);
+					initCamera();
 
-					float longestDistance = 10.0f * glm::distance(minPoint, maxPoint);
-					float zNear = dist - (longestDistance * 0.6f);
-					float zFar = dist + (longestDistance * 0.6f);
-					zNear = glm::max(zNear, zFar / 10000.0f);
-					camera.setPlanes(zNear, zFar);
-
-					prevIndex = sampleIndex;
+					prevSampleIndex = sampleIndex;
 					std::cout << "selected " << samplesInfo[sampleIndex].name << std::endl;
+				}
+
+				ImGui::EndCombo();
+			}
+
+			ImGui::Text("Variant");
+			ImGui::SameLine(100);
+			auto& variants = currentInfo.variants;
+			if (ImGui::BeginCombo("##variant", variants[variantIndex].first.c_str()))
+			{
+				for (int i = 0; i < variants.size(); i++)
+				{
+					const bool isSelected = (variantIndex == i);
+					if (ImGui::Selectable(variants[i].first.c_str(), isSelected))
+						variantIndex = i;
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				if (variantIndex != prevVariantIndex)
+				{
+					GLTFSampleInfo info = samplesInfo[sampleIndex];
+					scene->clear();
+					cameraIndex = 0;
+					materialIndex = 0;
+
+					std::string variant = info.variants[variantIndex].first;
+					std::string fn = info.variants[variantIndex].second;
+					std::string fullPath = samplePath + "/" + info.name + "/" + variant + "/" + fn;
+					scene->loadModel(info.name, fullPath);
+					renderer.initLights(scene);
+
+					initCamera();
+
+					prevVariantIndex = variantIndex;
+					std::cout << "selected " << variants[variantIndex].first << std::endl;
 				}
 
 				ImGui::EndCombo();
@@ -219,9 +276,9 @@ void Application::gui()
 		auto cameras = scene->getCameraNames();
 		if (!cameras.empty())
 		{
-			ImGui::Text("Cameras");
+			ImGui::Text("Camera");
 			ImGui::SameLine();
-			if (ImGui::BeginCombo("##cameras", cameras[cameraIndex].c_str()))
+			if (ImGui::BeginCombo("##camera", cameras[cameraIndex].c_str()))
 			{
 				for (int i = 0; i < cameras.size(); i++)
 				{
@@ -242,23 +299,23 @@ void Application::gui()
 			}
 		}
 
-		auto variants = scene->getVariantNames();
-		if (!variants.empty())
+		auto materials = scene->getVariantNames();
+		if (!materials.empty())
 		{
-			ImGui::Text("Materials");
+			ImGui::Text("Material");
 			ImGui::SameLine();
-			if (ImGui::BeginCombo("##materials", variants[variantIndex].c_str()))
+			if (ImGui::BeginCombo("##material", materials[materialIndex].c_str()))
 			{
-				for (int i = 0; i < variants.size(); i++)
+				for (int i = 0; i < materials.size(); i++)
 				{
-					const bool isSelected = (variantIndex == i);
-					if (ImGui::Selectable(variants[i].c_str(), isSelected))
-						variantIndex = i;
+					const bool isSelected = (materialIndex == i);
+					if (ImGui::Selectable(materials[i].c_str(), isSelected))
+						materialIndex = i;
 					if (isSelected)
 						ImGui::SetItemDefaultFocus();
 				}
 
-				scene->switchVariant(variantIndex);
+				scene->switchVariant(materialIndex);
 
 				ImGui::EndCombo();
 			}
@@ -291,7 +348,7 @@ void Application::gui()
 		{
 			scene->clear();
 			cameraIndex = 0;
-			variantIndex = 0;
+			materialIndex = 0;
 
 			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 			std::string fileName = ImGuiFileDialog::Instance()->GetCurrentFileName();
@@ -301,6 +358,7 @@ void Application::gui()
 		ImGuiFileDialog::Instance()->Close();
 	}
 
+	//bool show_demo_window = true;
 	//ImGui::ShowDemoWindow(&show_demo_window);
 }
 

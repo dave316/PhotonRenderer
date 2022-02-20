@@ -57,6 +57,8 @@ public:
 	void setAspect(float aspect);
 	void setFov(float fov);
 	void setPlanes(float zNear, float zFar);
+	void setSpeed(float speed);
+	void setVelocity(float velocity);
 	float getFov();
 	float getAspect();
 
