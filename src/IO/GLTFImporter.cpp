@@ -44,6 +44,7 @@ namespace IO
 
 	GLTFImporter::GLTFImporter()
 	{
+		supportedExtensions.insert("KHR_draco_mesh_compression");
 		supportedExtensions.insert("KHR_materials_sheen");
 		supportedExtensions.insert("KHR_materials_clearcoat");
 		supportedExtensions.insert("KHR_materials_transmission");
@@ -119,7 +120,7 @@ namespace IO
 		file.seekg(0, std::ios::beg);
 		std::vector<unsigned char> buffer(size);
 		file.read((char*)buffer.data(), buffer.size());
-		std::cout << "filesize: " << size << std::endl;
+		//std::cout << "filesize: " << size << std::endl;
 
 		// header
 		int baseIndex = 0;
@@ -128,9 +129,9 @@ namespace IO
 			magic[i] = buffer[baseIndex + i];
 		unsigned int version = getUInt32FromBuffer(buffer.data(), baseIndex + 4);
 		unsigned int length = getUInt32FromBuffer(buffer.data(), baseIndex + 8);
-		std::cout << "magic number: " << magic << std::endl;
-		std::cout << "version: " << version << std::endl;
-		std::cout << "length: " << length << std::endl;
+		//std::cout << "magic number: " << magic << std::endl;
+		//std::cout << "version: " << version << std::endl;
+		//std::cout << "length: " << length << std::endl;
 		baseIndex += 12;
 
 		// chunks
@@ -140,7 +141,7 @@ namespace IO
 		for (int i = 0; i < 4; i++)
 			type[i] = buffer[baseIndex + i];
 		baseIndex += 4;
-		std::cout << "chunk 0, type: " << type << ", len: " << chunkLen << std::endl;
+		//std::cout << "chunk 0, type: " << type << ", len: " << chunkLen << std::endl;
 		std::string content(buffer.begin() + baseIndex, buffer.begin() + baseIndex + chunkLen);
 		baseIndex += chunkLen;
 
@@ -151,7 +152,7 @@ namespace IO
 		for (int i = 0; i < 4; i++)
 			type2[i] = buffer[baseIndex + i];
 		baseIndex += 4;
-		std::cout << "chunk 1, type: " << type2 << ", len: " << chunkLen << std::endl;
+		//std::cout << "chunk 1, type: " << type2 << ", len: " << chunkLen << std::endl;
 
 		Buffer binChunk;
 		binChunk.data.resize(chunkLen);
@@ -273,7 +274,7 @@ namespace IO
 					int dataStart = sepIndex + 1;
 					int dataLen = uri.length() - dataStart;
 					std::string dataURI = uri.substr(0, sepIndex); // TODO: check if media type is correct etc...
-					std::cout << dataURI << std::endl;
+					//std::cout << dataURI << std::endl;
 
 					std::string dataBase64 = uri.substr(dataStart, dataLen);
 					std::string data = base64_decode(dataBase64);
@@ -523,6 +524,7 @@ namespace IO
 				skin.addJoint(boneJoints[i], boneMatrices[i]);
 
 			//if (skinNode.HasMember("skeleton"))
+			// 
 			//	skin.rootNode = skinNode["skeleton"].GetInt();
 			//else
 			//	skin.rootNode = 0; // TODO: find root node in joints to attach skin to
@@ -560,8 +562,11 @@ namespace IO
 				}
 			}
 #endif
-
+			std::unique_ptr<draco::Mesh> dracoMesh;
+			int numPoints = 0;
+			bool compressedPrimitive = false;
 			auto primitvesNode = meshNode.FindMember("primitives");
+
 			for (auto& primitiveNode : primitvesNode->value.GetArray())
 			{
 				if (primitiveNode.HasMember("extensions"))
@@ -569,8 +574,16 @@ namespace IO
 					auto& extensionNode = primitiveNode["extensions"];
 					if (extensionNode.HasMember("KHR_draco_mesh_compression"))
 					{
+						const auto& dracoNode = extensionNode["KHR_draco_mesh_compression"];
+						int bufferViewIndex = 0;
+						if (dracoNode.HasMember("bufferView"))
+							bufferViewIndex = dracoNode["bufferView"].GetInt();
+
+						const auto& attrNode = dracoNode["attributes"];
+
+						compressedPrimitive = true;
 						std::vector<unsigned char> compressedBuffer;
-						BufferView& bv = bufferViews[0]; // TODO: get bufferview from extension
+						BufferView& bv = bufferViews[bufferViewIndex]; // TODO: get bufferview from extension
 						Buffer& buffer = buffers[bv.buffer];
 						int offset = bv.byteOffset;
 						compressedBuffer.resize(bv.byteLength);
@@ -580,23 +593,12 @@ namespace IO
 						draco::Decoder decoder;
 						dracoBuffer.Init((char*)compressedBuffer.data(), compressedBuffer.size());
 						auto status = decoder.DecodeMeshFromBuffer(&dracoBuffer);
-						auto dracoMesh = std::move(status).value();
+						dracoMesh = std::move(status).value();
+						numPoints = dracoMesh->num_points();
 
-						std::cout << "attributes: " << dracoMesh->num_attributes() << std::endl;
-						std::cout << "points: " << dracoMesh->num_points() << std::endl;
-						std::cout << "faces: " << dracoMesh->num_faces() << std::endl;
-
-						std::vector<glm::vec3> positions;
-						auto positionAttr = dracoMesh->GetNamedAttribute(draco::GeometryAttribute::POSITION);
-						for (draco::AttributeValueIndex i(0); i < positionAttr->size(); i++)
-						{
-							glm::vec3 pos;
-							positionAttr->ConvertValue<float, 3>(i, glm::value_ptr(pos));
-							positions.push_back(pos);
-						}					
-
-						for (auto p : positions)
-							std::cout << p.x << " " << p.y << " " << p.z << std::endl;
+						//std::cout << "attributes: " << dracoMesh->num_attributes() << std::endl;
+						//std::cout << "points: " << dracoMesh->num_points() << std::endl;
+						//std::cout << "faces: " << dracoMesh->num_faces() << std::endl;
 					}
 				}
 
@@ -620,17 +622,33 @@ namespace IO
 				std::vector<glm::vec4> boneWeights;
 				bool calcNormals = true;
 				bool calcTangentSpace = true;
-				auto& attributesNode = primitiveNode["attributes"];
+				const auto& attributesNode = primitiveNode["attributes"];
 				if (attributesNode.HasMember("POSITION"))
 				{
 					int accIndex = attributesNode["POSITION"].GetInt();
-					loadData(accIndex, positions);
-
 					for (int i = 0; i < 3; i++)
 					{
 						minPoint[i] = accessors[accIndex].minValues[i];
 						maxPoint[i] = accessors[accIndex].maxValues[i];
-					}				 
+					}
+
+					if (compressedPrimitive)
+					{
+						auto& attrNode = primitiveNode["extensions"]["KHR_draco_mesh_compression"]["attributes"];
+						int posIndex = attrNode["POSITION"].GetInt();
+						auto positionAttr = dracoMesh->GetAttributeByUniqueId(posIndex);
+						for (draco::PointIndex i(0); i < numPoints; i++)
+						{
+							glm::vec3 pos;
+							auto attrIndex = positionAttr->mapped_index(i);
+							positionAttr->ConvertValue<float, 3>(attrIndex, glm::value_ptr(pos));
+							positions.push_back(pos);
+						}
+					}
+					else
+					{
+						loadData(accIndex, positions);
+					}					
 				}
 
 				if (attributesNode.HasMember("COLOR_0"))
@@ -652,71 +670,174 @@ namespace IO
 
 				if (attributesNode.HasMember("NORMAL"))
 				{
-					int accIndex = attributesNode["NORMAL"].GetInt();
-					loadData(accIndex, normals);
 					calcNormals = false;
+					int accIndex = attributesNode["NORMAL"].GetInt();
+
+					if (compressedPrimitive)
+					{
+						auto& attrNode = primitiveNode["extensions"]["KHR_draco_mesh_compression"]["attributes"];
+						int normalIndex = attrNode["NORMAL"].GetInt();
+						auto normalAttr = dracoMesh->GetAttributeByUniqueId(normalIndex);
+						for (draco::PointIndex i(0); i < numPoints; i++)
+						{
+							glm::vec3 normal;
+							auto attrIndex = normalAttr->mapped_index(i);
+							normalAttr->ConvertValue<float, 3>(attrIndex, glm::value_ptr(normal));
+							normals.push_back(normal);
+						}
+					}
+					else
+					{
+						loadData(accIndex, normals);
+					}				
 				}
 				
 				if (attributesNode.HasMember("TEXCOORD_0"))
 				{
 					int accIndex = attributesNode["TEXCOORD_0"].GetInt();
-					loadData(accIndex, texCoords0);
+
+					if (compressedPrimitive)
+					{
+						auto& attrNode = primitiveNode["extensions"]["KHR_draco_mesh_compression"]["attributes"];
+						int texCoordIndex = attrNode["TEXCOORD_0"].GetInt();
+						auto texAttr = dracoMesh->GetAttributeByUniqueId(texCoordIndex);
+						for (draco::PointIndex i(0); i < numPoints; i++)
+						{
+							glm::vec2 texCoord;
+							auto attrIndex = texAttr->mapped_index(i);
+							texAttr->ConvertValue<float, 2>(attrIndex, glm::value_ptr(texCoord));
+							texCoords0.push_back(texCoord);
+						}
+					}
+					else
+					{
+						loadData(accIndex, texCoords0);
+					}					
 				}
 
 				if (attributesNode.HasMember("TEXCOORD_1"))
 				{
 					int accIndex = attributesNode["TEXCOORD_1"].GetInt();
-					loadData(accIndex, texCoords1);
+					if (compressedPrimitive)
+					{
+						std::cout << "second uv set not supported for draco compression!" << std::endl;
+					}
+					else
+					{
+						loadData(accIndex, texCoords1);
+					}				
 				}
 
 				if (attributesNode.HasMember("TANGENT"))
 				{
-					int accIndex = attributesNode["TANGENT"].GetInt();
-					loadData(accIndex, tangets);
 					calcTangentSpace = false;
+					int accIndex = attributesNode["TANGENT"].GetInt();
+					if (compressedPrimitive)
+					{
+						auto& attrNode = primitiveNode["extensions"]["KHR_draco_mesh_compression"]["attributes"];
+						int tangentIndex = attrNode["TANGENT"].GetInt();
+						auto tangetAttr = dracoMesh->GetAttributeByUniqueId(tangentIndex);
+						for (draco::PointIndex i(0); i < numPoints; i++)
+						{
+							glm::vec4 tangent;
+							auto attrIndex = tangetAttr->mapped_index(i);
+							tangetAttr->ConvertValue<float, 4>(attrIndex, glm::value_ptr(tangent));
+							tangets.push_back(tangent);
+						}
+					}
+					else
+					{
+						loadData(accIndex, tangets);
+					}
 				}
 
 				if (attributesNode.HasMember("JOINTS_0"))
 				{
 					int accIndex = attributesNode["JOINTS_0"].GetInt();
-					loadData(accIndex, boneIndices);
+					if (compressedPrimitive)
+					{
+						auto& attrNode = primitiveNode["extensions"]["KHR_draco_mesh_compression"]["attributes"];
+						int jointsIndex = attrNode["JOINTS_0"].GetInt();
+						auto jointAttr = dracoMesh->GetAttributeByUniqueId(jointsIndex);
+						for (draco::PointIndex i(0); i < numPoints; i++)
+						{
+							glm::u16vec4 joints;
+							auto attrIndex = jointAttr->mapped_index(i);
+							jointAttr->ConvertValue<unsigned short, 4>(attrIndex, glm::value_ptr(joints)); 
+							boneIndices.push_back(joints);
+						}
+					}
+					else
+					{
+						loadData(accIndex, boneIndices);
+					}					
 				}
 
 				if (attributesNode.HasMember("WEIGHTS_0"))
 				{
 					int accIndex = attributesNode["WEIGHTS_0"].GetInt();
-					loadData(accIndex, boneWeights);
+					if (compressedPrimitive)
+					{
+						auto& attrNode = primitiveNode["extensions"]["KHR_draco_mesh_compression"]["attributes"];
+						int weightsIndex = attrNode["WEIGHTS_0"].GetInt();
+						auto weightsAttr = dracoMesh->GetAttributeByUniqueId(weightsIndex);
+						for (draco::PointIndex i(0); i < numPoints; i++)
+						{
+							glm::vec4 weights;
+							auto attrIndex = weightsAttr->mapped_index(i);
+							weightsAttr->ConvertValue<float, 4>(attrIndex, glm::value_ptr(weights));
+							boneWeights.push_back(weights);
+						}
+
+					}
+					else
+					{
+						loadData(accIndex, boneWeights);
+					}					
 				}
 
 				if (primitiveNode.HasMember("indices"))
 				{
-					auto indicesNode = primitiveNode.FindMember("indices");
-					int accIndex = indicesNode->value.GetInt();
-					int type = accessors[accIndex].componentType;
-					switch (type)
+					if (compressedPrimitive)
 					{
-					case GL_UNSIGNED_BYTE:
-					{
-						std::vector<GLubyte> byteIndices;
-						loadData(accIndex, byteIndices);
-						for (auto i : byteIndices)
-							indices.push_back(i);
-						break;
+						// TODO: check accessor index type.
+						for (draco::FaceIndex f(0); f < dracoMesh->num_faces(); f++)
+						{
+							auto face = dracoMesh->face(f);
+							for (int i = 0; i < face.size(); i++)
+								indices.push_back(face[i].value());
+						}
 					}
-					case GL_UNSIGNED_SHORT:
+					else
 					{
-						std::vector<GLushort> shortIndices;
-						loadData(accIndex, shortIndices);
-						for (auto i : shortIndices)
-							indices.push_back(i);
-						break;
-					}
-					case GL_UNSIGNED_INT:
-						loadData(accIndex, indices);
-						break;
-					default:
-						std::cout << "index type not supported!!!" << std::endl;
-						break;
+						auto indicesNode = primitiveNode.FindMember("indices");
+						int accIndex = indicesNode->value.GetInt();
+						int type = accessors[accIndex].componentType;
+						switch (type)
+						{
+						case GL_UNSIGNED_BYTE:
+						{
+							std::vector<GLubyte> byteIndices;
+							loadData(accIndex, byteIndices);
+							for (auto i : byteIndices)
+								indices.push_back(i);
+							break;
+						}
+						case GL_UNSIGNED_SHORT:
+						{
+							std::vector<GLushort> shortIndices;
+							loadData(accIndex, shortIndices);
+							for (auto i : shortIndices)
+								indices.push_back(i);
+							break;
+						}
+						case GL_UNSIGNED_INT:
+							loadData(accIndex, indices);
+							break;
+						default:
+							std::cout << "index type not supported!!!" << std::endl;
+							break;
+						}
 					}
 					
 				}
@@ -932,7 +1053,7 @@ namespace IO
 			int dataStart = sepIndex + 1;
 			int dataLen = texInfo.dataURI.length() - dataStart;
 			std::string dataURI = texInfo.dataURI.substr(0, sepIndex); // TODO: check if media type is correct etc...
-			std::cout << dataURI << std::endl;
+			//std::cout << dataURI << std::endl;
 
 			std::string dataBase64 = texInfo.dataURI.substr(dataStart, dataLen);
 			std::string dataBinary = base64_decode(dataBase64);

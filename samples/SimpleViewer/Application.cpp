@@ -22,10 +22,10 @@ bool Application::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "Box";
+	std::string name = "BrainStem";
 
 	scene = Scene::create("scene");
-	scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	scene->loadModel(name, gltfPath + "/" + name + "/glTF-Draco/" + name + ".gltf");
 	scene->updateAnimations(0.0f);
 
 	renderer.initEnv(scene);

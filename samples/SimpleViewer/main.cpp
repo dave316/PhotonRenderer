@@ -10,7 +10,7 @@ int main()
 	//dracoBuffer.Init((char*)compressedBuffer.data(), compressedBuffer.size());
 	//auto mesh = decoder.DecodeMeshFromBuffer(&dracoBuffer);
 
-	Application app("PhotonRenderer", 1920, 1080);
+	Application app("PhotonRenderer", 1280, 720);
 	if (app.init())
 	{
 		app.loop();

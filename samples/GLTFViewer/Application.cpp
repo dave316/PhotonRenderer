@@ -28,7 +28,7 @@ bool Application::init()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
+	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 16); 
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -97,8 +97,8 @@ void Application::initGLTFSamples(const std::string& samplesPath)
 		GLTFSampleInfo info;
 		if (sampleNode.HasMember("name"))
 			info.name = sampleNode["name"].GetString();
-		if (sampleNode.HasMember("screenshot"))
-			info.screenshot = sampleNode["screenshot"].GetString();
+		//if (sampleNode.HasMember("screenshot"))
+		//	info.screenshot = sampleNode["screenshot"].GetString();
 		if (sampleNode.HasMember("variants"))
 		{
 			auto& variantsNode = sampleNode["variants"];
@@ -226,7 +226,8 @@ void Application::gui()
 					initCamera();
 
 					prevSampleIndex = sampleIndex;
-					std::cout << "selected " << samplesInfo[sampleIndex].name << std::endl;
+					std::cout << "loading " << fn << std::endl;
+					//std::cout << "selected " << samplesInfo[sampleIndex].name << std::endl;
 				}
 
 				ImGui::EndCombo();
@@ -262,7 +263,8 @@ void Application::gui()
 					initCamera();
 
 					prevVariantIndex = variantIndex;
-					std::cout << "selected " << variants[variantIndex].first << std::endl;
+					std::cout << "loading " << fn << std::endl;
+					//std::cout << "selected " << variants[variantIndex].first << std::endl;
 				}
 
 				ImGui::EndCombo();

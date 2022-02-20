@@ -216,6 +216,9 @@ void Scene::loadModel(std::string name, std::string path)
 	cameras = importer.getCameras();
 	variants = importer.getVariants();
 	importer.clear();
+
+	//for (auto& a : rootEntity->getComponentsInChildren<Animator>())
+	//	a->play();
 }
 
 void Scene::addEntity(std::string name, Entity::Ptr entity)
