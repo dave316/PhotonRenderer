@@ -12,6 +12,9 @@ find_package(opengl REQUIRED)
 find_package(rapidjson REQUIRED)
 find_package(stb REQUIRED)
 
+find_package(draco REQUIRED)
+find_package(Ktx CONFIG REQUIRED)
+
 set(CMAKE_CXX_STANDARD 17)
 set(BUILD_TARGET "PhotonRenderer")
 set(SRC_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -38,7 +41,7 @@ add_library(libphoton STATIC ${SRC_LIST} ${SHADER_LIST})
 if (WIN32)
     set_target_properties(libphoton PROPERTIES OUTPUT_NAME "libphoton")
 endif()
-target_link_libraries(libphoton PRIVATE glfw freetype GLEW::GLEW assimp::assimp imgui::imgui ${OPENGL_gl_LIBRARY})
+target_link_libraries(libphoton PRIVATE glfw draco freetype GLEW::GLEW assimp::assimp imgui::imgui KTX::ktx ${OPENGL_gl_LIBRARY})
 
 #add_executable(PhotonRenderer ${SRC_LIST} ${SHADER_LIST})
 #target_link_libraries(PhotonRenderer PRIVATE glfw freetype GLEW::GLEW assimp::assimp imgui::imgui ${OPENGL_gl_LIBRARY})

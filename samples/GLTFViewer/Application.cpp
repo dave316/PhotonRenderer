@@ -28,7 +28,7 @@ bool Application::init()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 16); 
+	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -87,6 +87,14 @@ void Application::initGLTFSamples(const std::string& samplesPath)
 		return;
 	}
 
+	std::set<std::string> supportedVariants;
+	supportedVariants.insert("glTF");
+	supportedVariants.insert("glTF-Binary");
+	supportedVariants.insert("glTF-Draco");
+	supportedVariants.insert("glTF-Embedded");
+	supportedVariants.insert("glTF-JPG-PNG");
+	supportedVariants.insert("glTF-KTX-BasisU");
+
 	std::stringstream ss;
 	ss << file.rdbuf();
 	std::string jsonStr = ss.str();
@@ -97,14 +105,19 @@ void Application::initGLTFSamples(const std::string& samplesPath)
 		GLTFSampleInfo info;
 		if (sampleNode.HasMember("name"))
 			info.name = sampleNode["name"].GetString();
-		//if (sampleNode.HasMember("screenshot"))
-		//	info.screenshot = sampleNode["screenshot"].GetString();
+		if (sampleNode.HasMember("screenshot"))
+			info.screenshot = sampleNode["screenshot"].GetString();
 		if (sampleNode.HasMember("variants"))
 		{
 			auto& variantsNode = sampleNode["variants"];
 			for (auto it = variantsNode.MemberBegin(); it != variantsNode.MemberEnd(); ++it)
-				//info.variants.insert(std::make_pair(it->name.GetString(), it->value.GetString()));
-				info.variants.push_back(std::make_pair(it->name.GetString(), it->value.GetString()));
+			{
+				std::string name = it->name.GetString();
+				if (supportedVariants.find(name) != supportedVariants.end())
+					info.variants.push_back(std::make_pair(it->name.GetString(), it->value.GetString()));
+				else
+					std::cout << info.name << ", variant " << name << " not supported!" << std::endl;
+			}
 		}
 		samplesInfo.push_back(info);
 	}
