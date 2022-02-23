@@ -52,6 +52,7 @@ namespace IO
 			int byteOffset = 0;
 			int componentType;
 			int count;
+			bool normalized = false;
 			std::string type;
 			std::vector<float> minValues;
 			std::vector<float> maxValues;
@@ -134,6 +135,8 @@ namespace IO
 		GLTFImporter(const GLTFImporter&) = delete;
 		GLTFImporter& operator=(const GLTFImporter&) = delete;
 
+		//std::vector<glm::vec3> loadVec3Buffer(int accIndex);
+
 		std::string loadGLB(std::string filename);
 		void checkExtensions(const json::Document& doc);
 		void loadExtensionData(const json::Document& doc);
@@ -172,6 +175,77 @@ namespace IO
 			}
 		}
 
+		template<int n>
+		void loadAttribute(int accIndex, std::vector<glm::vec<n, float, glm::packed_highp>>& buffer)
+		{
+			typedef glm::vec<n, float, glm::packed_highp> outVec;
+			int type = accessors[accIndex].componentType;
+			bool normalized = accessors[accIndex].normalized;
+			switch (type)
+			{
+			case GL_BYTE:
+			{
+				std::vector<glm::vec<n, glm::i8, glm::packed_highp>> positionsInt8;
+				loadData(accIndex, positionsInt8);
+				for (auto c : positionsInt8)
+				{
+					if (normalized)
+						buffer.push_back(glm::max(outVec(c) / 127.0f, -1.0f));
+					else
+						buffer.push_back(c);
+				}
+				break;
+			}
+			case GL_UNSIGNED_BYTE:
+			{
+				std::vector<glm::vec<n, glm::u8, glm::packed_highp>> positionsUInt8;
+				loadData(accIndex, positionsUInt8);
+				for (auto c : positionsUInt8)
+				{
+					if (normalized)
+						buffer.push_back(outVec(c) / 255.0f);
+					else
+						buffer.push_back(c);
+				}
+				break;
+			}
+			case GL_SHORT:
+			{
+				std::vector<glm::vec<n, glm::i16, glm::packed_highp>> positionsInt16;
+				loadData(accIndex, positionsInt16);
+				for (auto c : positionsInt16)
+				{
+					if (normalized)
+						buffer.push_back(glm::max(outVec(c) / 32767.0f, -1.0f));
+					else
+						buffer.push_back(c);
+				}
+				break;
+			}
+			case GL_UNSIGNED_SHORT:
+			{
+				std::vector<glm::vec<n, glm::u16, glm::packed_highp>> positionsUInt16;
+				loadData(accIndex, positionsUInt16);
+				for (auto c : positionsUInt16)
+				{
+					if (normalized)
+						buffer.push_back(outVec(c) / 65535.0f);
+					else
+						buffer.push_back(c);
+				}
+				break;
+			}
+			case GL_FLOAT:
+			{
+				loadData(accIndex, buffer);
+				break;
+			}
+			default:
+				std::cout << "component type " << type << " not supported!" << std::endl;
+				break;
+			}
+		}
+
 	public:
 
 		GLTFImporter();
@@ -182,7 +256,7 @@ namespace IO
 		std::vector<GLTFCamera> getCameras();
 		std::vector<std::string> getVariants();
 		void clear();
-	};
+	};	
 }
 
 #endif // INCLUDED_GLTFIMPORTER

@@ -92,6 +92,7 @@ void Application::initGLTFSamples(const std::string& samplesPath)
 	supportedVariants.insert("glTF-Binary");
 	supportedVariants.insert("glTF-Draco");
 	supportedVariants.insert("glTF-Embedded");
+	supportedVariants.insert("glTF-Quantized");
 	supportedVariants.insert("glTF-JPG-PNG");
 	supportedVariants.insert("glTF-KTX-BasisU");
 

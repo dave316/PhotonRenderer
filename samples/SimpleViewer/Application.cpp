@@ -22,10 +22,10 @@ bool Application::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "StainedGlassLamp";
+	std::string name = "Avocado";
 
 	scene = Scene::create("scene");
-	scene->loadModel(name, gltfPath + "/" + name + "/glTF-KTX-BasisU/" + name + ".gltf");
+	scene->loadModel(name, gltfPath + "/" + name + "/glTF-Quantized/" + name + ".gltf");
 	scene->updateAnimations(0.0f);
 
 	renderer.initEnv(scene);
@@ -34,7 +34,7 @@ bool Application::init()
 
 	initCamera();
 	setupInput();
-
+	
 	return true;
 }
 

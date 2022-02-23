@@ -45,19 +45,20 @@ namespace IO
 	GLTFImporter::GLTFImporter()
 	{
 		supportedExtensions.insert("KHR_draco_mesh_compression");
-		supportedExtensions.insert("KHR_materials_sheen");
+		supportedExtensions.insert("KHR_lights_punctual");
 		supportedExtensions.insert("KHR_materials_clearcoat");
-		supportedExtensions.insert("KHR_materials_transmission");
-		supportedExtensions.insert("KHR_materials_volume");
 		supportedExtensions.insert("KHR_materials_ior");
-		supportedExtensions.insert("KHR_materials_specular");
-		supportedExtensions.insert("KHR_materials_unlit");
-		supportedExtensions.insert("KHR_materials_variants");
 		supportedExtensions.insert("KHR_materials_iridescence");
 		supportedExtensions.insert("KHR_materials_pbrSpecularGlossiness");
-		supportedExtensions.insert("KHR_lights_punctual");
+		supportedExtensions.insert("KHR_materials_sheen");
+		supportedExtensions.insert("KHR_materials_specular");
+		supportedExtensions.insert("KHR_materials_transmission");
+		supportedExtensions.insert("KHR_materials_unlit");
+		supportedExtensions.insert("KHR_materials_variants");
+		supportedExtensions.insert("KHR_materials_volume");
+		supportedExtensions.insert("KHR_mesh_quantization");
 		supportedExtensions.insert("KHR_texture_transform");
-		supportedExtensions.insert("KHR_texture_basisu");		
+		supportedExtensions.insert("KHR_texture_basisu");
 	}
 
 	Entity::Ptr GLTFImporter::importModel(std::string filename)
@@ -314,6 +315,8 @@ namespace IO
 			if (accessorNode.HasMember("byteOffset"))
 				accessor.byteOffset = accessorNode["byteOffset"].GetInt();
 			accessor.componentType = accessorNode.FindMember("componentType")->value.GetInt();
+			if (accessorNode.HasMember("normalized"))
+				accessor.normalized = accessorNode["normalized"].GetBool();
 			accessor.count = accessorNode.FindMember("count")->value.GetInt();
 			accessor.type = accessorNode.FindMember("type")->value.GetString();
 			if (accessorNode.HasMember("min"))
@@ -464,9 +467,9 @@ namespace IO
 				else if (targetPath.compare("weights") == 0)
 				{
 					std::vector<float> times;
-					std::vector<float> weights;
+					std::vector<glm::vec1> weights;
 					loadData(input, times);
-					loadData(output, weights);
+					loadAttribute(output, weights);
 
 					int numTargets = weights.size() / times.size();
 					const int maxtargets = 2;
@@ -482,7 +485,7 @@ namespace IO
 
 						std::vector<float> w;
 						for (int j = 0; j < maxtargets; j++)
-							w.push_back(weights[i * numTargets + j]);
+							w.push_back(weights[i * numTargets + j].x);
 						channel.weights.push_back(std::make_pair(times[i], w));
 					}
 				}
@@ -615,7 +618,7 @@ namespace IO
 				std::vector<glm::vec3> normals;
 				std::vector<glm::vec2> texCoords0;
 				std::vector<glm::vec2> texCoords1;
-				std::vector<glm::vec4> tangets;
+				std::vector<glm::vec4> tangents;
 				std::vector<GLuint> indices;
 				std::vector<glm::u16vec4> boneIndices;
 				//std::vector<GLushort> boneIndices;
@@ -628,6 +631,7 @@ namespace IO
 					int accIndex = attributesNode["POSITION"].GetInt();
 					for (int i = 0; i < 3; i++)
 					{
+						// TODO: handle quantized values
 						minPoint[i] = accessors[accIndex].minValues[i];
 						maxPoint[i] = accessors[accIndex].maxValues[i];
 					}
@@ -647,7 +651,7 @@ namespace IO
 					}
 					else
 					{
-						loadData(accIndex, positions);
+						loadAttribute(accIndex, positions);
 					}					
 				}
 
@@ -688,7 +692,7 @@ namespace IO
 					}
 					else
 					{
-						loadData(accIndex, normals);
+						loadAttribute(accIndex, normals);
 					}				
 				}
 				
@@ -711,7 +715,7 @@ namespace IO
 					}
 					else
 					{
-						loadData(accIndex, texCoords0);
+						loadAttribute(accIndex, texCoords0);
 					}					
 				}
 
@@ -742,12 +746,12 @@ namespace IO
 							glm::vec4 tangent;
 							auto attrIndex = tangetAttr->mapped_index(i);
 							tangetAttr->ConvertValue<float, 4>(attrIndex, glm::value_ptr(tangent));
-							tangets.push_back(tangent);
+							tangents.push_back(tangent);
 						}
 					}
 					else
 					{
-						loadData(accIndex, tangets);
+						loadAttribute(accIndex, tangents);
 					}
 				}
 
@@ -885,21 +889,18 @@ namespace IO
 						Target t;
 						if (targetNode.HasMember("POSITION"))
 						{
-							auto posNode = targetNode.FindMember("POSITION");
-							int accIndex = posNode->value.GetInt();
-							loadData(accIndex, t.positions);
+							int accIndex = targetNode["POSITION"].GetInt();
+							 loadAttribute(accIndex, t.positions);
 						}
 						if (targetNode.HasMember("NORMAL"))
 						{
-							auto normalNode = targetNode.FindMember("NORMAL");
-							int accIndex = normalNode->value.GetInt();
-							loadData(accIndex, t.normals);
+							int accIndex = targetNode["NORMAL"].GetInt();
+							loadAttribute(accIndex, t.normals);
 						}
 						if (targetNode.HasMember("TANGENT"))
 						{
-							auto tangentNode = targetNode.FindMember("TANGENT");
-							int accIndex = tangentNode->value.GetInt();
-							loadData(accIndex, t.tangents);
+							int accIndex = targetNode["TANGENT"].GetInt();
+							loadAttribute<3>(accIndex, t.tangents);
 						}	
 						morphTargets.push_back(t);
 					}
@@ -916,8 +917,8 @@ namespace IO
 						v.texCoord0 = texCoords0[i];
 					if (i < texCoords1.size())
 						v.texCoord1 = texCoords1[i];
-					if (i < tangets.size())
-						v.tangent = tangets[i];
+					if (i < tangents.size())
+						v.tangent = tangents[i];
 					if (i < boneIndices.size())
 						v.boneIDs = glm::vec4(boneIndices[i].x, boneIndices[i].y, boneIndices[i].z, boneIndices[i].w) + glm::vec4(numJoints);
 					if (i < boneWeights.size())
@@ -1583,7 +1584,6 @@ namespace IO
 		if (!doc.HasMember("images"))
 			return;
 
-		
 		std::vector<ImageInfo> imageFiles;
 		for (auto& imagesNode : doc["images"].GetArray())
 		{

@@ -47,10 +47,10 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 	//}
 
 	//GLint numFormats = 0;
-	//glGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS, &numFormats);
+	//glGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS_ARB, &numFormats);
 	//std::cout << "formats: " << numFormats << std::endl;
 	//GLint* formats = new GLint[numFormats];
-	//glGetIntegerv(GL_COMPRESSED_TEXTURE_FORMATS, formats);
+	//glGetIntegerv(GL_COMPRESSED_TEXTURE_FORMATS_ARB, formats);
 	//for (GLint i = 0; i < numFormats; i++)
 	//{
 	//	std::cout << "GL compressed format " << i << ": " << formats[i] << std::endl;
