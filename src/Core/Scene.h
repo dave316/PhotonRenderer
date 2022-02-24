@@ -16,6 +16,7 @@ private:
 	std::string name;
 	std::map<std::string, Entity::Ptr> rootEntities;
 	std::map<std::string, Light::Ptr> lights;
+	std::vector<Mesh::Ptr> boundingBoxes;
 	GL::UniformBuffer<Light::UniformData> lightUBO;
 	std::vector<Framebuffer::Ptr> shadowFBOs;
 	std::vector<std::vector<glm::mat4>> views;
@@ -47,6 +48,7 @@ public:
 	void switchAnimations(int index);
 	void switchVariant(int idx);
 	void nextMaterial();
+	void renderBoxes(Shader::Ptr shader);
 	void useIBL();
 	void useSkybox();
 	void clear();
@@ -57,6 +59,8 @@ public:
 	std::vector<std::string> getCameraNames();
 	std::vector<std::string> getVariantNames();
 	AABB getBoundingBox();
+	Entity::Ptr getCurrentModel();
+	Entity::Ptr selectModelRaycast(glm::vec3 start, glm::vec3 end);
 
 	typedef std::shared_ptr<Scene> Ptr;
 	static Ptr create(const std::string& name)

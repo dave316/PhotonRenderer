@@ -366,7 +366,7 @@ void main()
 		intensity = pow(intensity, vec3(1.0 / 2.2));
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
-		fragColor = vec4(intensity, transparency);
+		fragColor = vec4(intensity, 1.0);
 	else 
 		fragColor = vec4(intensity * transparency, transparency);
 }

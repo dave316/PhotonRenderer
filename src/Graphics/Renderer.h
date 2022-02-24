@@ -21,6 +21,7 @@ class Renderer
 	Shader::Ptr defaultShader;
 	Shader::Ptr skyboxShader;
 	Shader::Ptr textShader;
+	Shader::Ptr unlitShader;
 
 	std::vector<Font::Ptr> fonts;
 	std::vector<Text2D::Ptr> texts; // add component for text objects/renderer
@@ -29,7 +30,9 @@ class Renderer
 	GL::UniformBuffer<Camera::UniformData> cameraUBO;
 
 	Framebuffer::Ptr screenFBO;
+	Framebuffer::Ptr refractionFBO;
 	Texture2D::Ptr screenTex;
+	Texture2D::Ptr refractionTex;
 	Mesh::Ptr screenQuad;
 	Mesh::Ptr unitCube;
 	Texture2D::Ptr ggxLUT;
@@ -51,12 +54,13 @@ public:
 	void initEnv(Scene::Ptr scene);
 	void initLights(Scene::Ptr scene);
 	void initFonts();
-
+	void resize(unsigned int width, unsigned int height);
 	void updateCamera(Camera& camera);
 	void updateCamera(glm::mat4 P, glm::mat4 V, glm::vec3 pos);
 	void updateShadows(Scene::Ptr scene);
 	void renderScene(Scene::Ptr scene, Shader::Ptr shader, bool transmission);
-	void render(Scene::Ptr scene);
+	void renderToScreen(Scene::Ptr scene);
+	Texture2D::Ptr renderToTexture(Scene::Ptr scene);
 	void renderText();
 };
 

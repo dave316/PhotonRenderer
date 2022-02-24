@@ -131,7 +131,7 @@ void Application::loop()
 			animTime = 0.0f;
 		}
 
-		renderer.render(scene);
+		renderer.renderToScreen(scene);
 		//renderer.renderText();
 
 		window.swapBuffers();

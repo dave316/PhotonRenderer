@@ -4,6 +4,8 @@
 #include <IO/ImageLoader.h>
 #include <IO/AssimpImporter.h>
 
+#include <Physics/Intersection.h>
+
 Scene::Scene(const std::string& name) :
 	name(name)
 {}
@@ -154,6 +156,10 @@ void Scene::initEnvMaps(std::map<std::string, Shader::Ptr>& shaders)
 
 void Scene::initLights(Shader::Ptr defaultShader)
 {
+	Light::Ptr light = Light::create(LightType::POINT, glm::vec3(1), 10.0f, 10.0f);
+	light->setPostion(glm::vec3(0, 1, 0));
+	lights.insert(std::make_pair("light", light));
+
 	int i = 0;
 	std::vector<Light::UniformData> lightData(lights.size());
 	for (auto it : lights)
@@ -217,6 +223,22 @@ void Scene::loadModel(std::string name, std::string path)
 	variants = importer.getVariants();
 	importer.clear();
 
+	AABB modelBox;
+	auto renderables = rootEntity->getChildrenWithComponent<Renderable>();
+	for (auto e : renderables)
+	{
+		auto t = e->getComponent<Transform>();
+		auto r = e->getComponent<Renderable>();
+
+		glm::mat4 M = t->getTransform();
+		AABB bbox = r->getBoundingBox();
+		modelBox.expand(glm::vec3(M * glm::vec4(bbox.getMinPoint(), 1.0f)));
+		modelBox.expand(glm::vec3(M * glm::vec4(bbox.getMaxPoint(), 1.0f)));
+	}
+
+	boundingBoxes.push_back(Primitives::createLineBox(modelBox.getCenter(), modelBox.getSize()));
+
+
 	//for (auto& a : rootEntity->getComponentsInChildren<Animator>())
 	//	a->play();
 }
@@ -271,6 +293,17 @@ void Scene::nextMaterial()
 		auto renderables = e->getComponentsInChildren<Renderable>();
 		for (auto r : renderables)
 			r->switchMaterial(materialIndex);
+	}
+}
+
+void Scene::renderBoxes(Shader::Ptr shader)
+{
+	shader->use();
+	shader->setUniform("useTex", false);
+	shader->setUniform("orthoProjection", false);
+	for (auto boxMesh : boundingBoxes)
+	{
+		boxMesh->draw();
 	}
 }
 
@@ -391,4 +424,45 @@ AABB Scene::getBoundingBox()
 	}
 
 	return sceneBBox;
+}
+
+Entity::Ptr Scene::getCurrentModel()
+{
+	if (currentModel.empty())
+		return nullptr;
+
+	return rootEntities[currentModel];
+}
+
+Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
+{
+	for (auto [_, entity] : rootEntities)
+	{
+		//AABB modelBox; // TODO: This could precomputed for root nodes, or select AABB for each submesh
+		auto renderables = entity->getChildrenWithComponent<Renderable>();
+		for (auto e : renderables)
+		{
+			auto t = e->getComponent<Transform>();
+			auto r = e->getComponent<Renderable>();
+
+			AABB bbox = r->getBoundingBox();
+			//modelBox.expand(bbox.getMinPoint());
+			//modelBox.expand(bbox.getMaxPoint());
+
+			glm::mat4 M_I = glm::inverse(t->getTransform());
+			glm::vec3 startModel = glm::vec3(M_I * glm::vec4(start, 1.0f));
+			glm::vec3 endModel = glm::vec3(M_I * glm::vec4(end, 1.0f));
+
+			Ray ray;
+			ray.origin = startModel;
+			ray.direction = glm::normalize(endModel - startModel);
+			ray.dirInv = 1.0f / ray.direction;
+
+			// TODO: check which box is the nearest one to the camera
+			glm::vec3 hitpoint;
+			if (Intersection::rayBoxIntersection(ray, bbox, hitpoint))
+				return entity;
+		}
+	}
+	return nullptr;
 }

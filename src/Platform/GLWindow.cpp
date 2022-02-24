@@ -107,7 +107,12 @@ void GLWindow::close()
 	glfwSetWindowShouldClose(window, GLFW_TRUE);
 }
 
-GLFWwindow*  GLWindow::getWindow()
+GLFWwindow* GLWindow::getWindow()
 {
 	return window;
+}
+
+std::string GLWindow::getName() const
+{
+	return std::string(title);
 }

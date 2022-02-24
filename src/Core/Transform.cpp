@@ -1,6 +1,7 @@
 #include "Transform.h"
 #include <iostream>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 
 Transform::Transform() :
 	position(0.0f),
@@ -34,6 +35,13 @@ void Transform::setScale(glm::vec3 s)
 	this->scale = s;
 }
 
+void Transform::setTransform(glm::mat4 M)
+{
+	glm::vec3 skew;
+	glm::vec4 persp;
+	glm::decompose(M, scale, rotation, position, skew, persp);
+}
+
 void Transform::setLocalPostion(glm::vec3 p)
 {
 	localPosition = p;
@@ -47,6 +55,13 @@ void Transform::setLocalRotation(glm::quat q)
 void Transform::setLocalScale(glm::vec3 s)
 {
 	localScale = s;
+}
+
+void Transform::setLocalTransform(glm::mat4 M)
+{
+	glm::vec3 skew;
+	glm::vec4 persp;
+	glm::decompose(M, localScale, localRotation, localPosition, skew, persp);
 }
 
 void Transform::update(glm::mat4 parentTransform)

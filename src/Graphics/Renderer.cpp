@@ -56,6 +56,7 @@ bool Renderer::init()
 	initShader();
 	initLUTs();
 
+	//std::string assetPath = "../../../../assets";
 	std::string assetPath = "../../../../assets";
 	lutSheenE = IO::loadTexture16(assetPath + "/lut_sheen_E.png", false);	
 
@@ -109,9 +110,14 @@ void Renderer::initFBOs()
 {
 	int w = width;
 	int h = height;
+	refractionTex = Texture2D::create(w, h, GL::RGBA8);
+	refractionTex->generateMipmaps();
+	refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+	refractionFBO = Framebuffer::create(w, h);
+	refractionFBO->addRenderTexture(GL::COLOR0, refractionTex);
+	refractionFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
+
 	screenTex = Texture2D::create(w, h, GL::RGBA8);
-	screenTex->generateMipmaps();
-	screenTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
 	screenFBO = Framebuffer::create(w, h);
 	screenFBO->addRenderTexture(GL::COLOR0, screenTex);
 	screenFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
@@ -148,7 +154,7 @@ void Renderer::initShader()
 	textShader->setUniform("P", glm::ortho(0.0f, (float)width, 0.0f, (float)height));
 	textShader->setUniform("atlas", 0);
 
-	auto unlitShader = shaders["Unlit"];
+	unlitShader = shaders["Unlit"];
 	unlitShader->setUniform("orthoProjection", true);
 	unlitShader->setUniform("useTex", true);
 	unlitShader->setUniform("tex", 0);
@@ -201,6 +207,14 @@ void Renderer::initFonts()
 	fonts.push_back(font);
 
 	FT_Done_FreeType(ft);
+}
+
+void Renderer::resize(unsigned int width, unsigned int height)
+{
+	this->width = width;
+	this->height = height;
+
+	initFBOs();
 }
 
 void Renderer::updateShadows(Scene::Ptr scene)
@@ -303,7 +317,7 @@ void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr shader, bool transmissi
 	}
 }
 
-void Renderer::render(Scene::Ptr scene)
+void Renderer::renderToScreen(Scene::Ptr scene)
 {
 	if (useIBL)
 	{
@@ -321,7 +335,7 @@ void Renderer::render(Scene::Ptr scene)
 	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
 	// offscreen pass for transmission
-	screenFBO->begin();
+	refractionFBO->begin();
 	if (useSkybox)
 	{
 		glCullFace(GL_FRONT);
@@ -336,9 +350,9 @@ void Renderer::render(Scene::Ptr scene)
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", false);
 	renderScene(scene, defaultShader, false);
-	screenFBO->end();
-	screenTex->generateMipmaps();
-	screenTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+	refractionFBO->end();
+	refractionTex->generateMipmaps();
+	refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
 
 	// main render pass
 	glViewport(0, 0, width, height);
@@ -354,10 +368,76 @@ void Renderer::render(Scene::Ptr scene)
 		glCullFace(GL_BACK);
 	}
 
-	screenTex->use(14);
+	refractionTex->use(14);
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", true);
 	renderScene(scene, defaultShader, true);
+}
+
+Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
+{
+	if (useIBL)
+	{
+		//irradianceMap->use(15);
+		//specularMapGGX->use(16);
+		//specularMapCharlie->use(17);
+		scene->useIBL();
+		lutSheenE->use(18);
+		ggxLUT->use(19);
+		charlieLUT->use(20);
+	}
+	scene->useIBL();
+
+	//for (int i = 0; i < shadowFBOs.size(); i++)
+	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
+
+	// offscreen pass for transmission
+	refractionFBO->begin();
+	if (useSkybox)
+	{
+		glCullFace(GL_FRONT);
+		skyboxShader->use();
+		skyboxShader->setUniform("useGammaEncoding", false);
+		//cubeMap->use(0);
+		scene->useSkybox();
+		unitCube->draw();
+		glCullFace(GL_BACK);
+	}
+
+	defaultShader->use();
+	defaultShader->setUniform("useGammaEncoding", false);
+	renderScene(scene, defaultShader, false);
+	refractionFBO->end();
+	refractionTex->generateMipmaps();
+	refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+
+	// main render pass
+	screenFBO->begin();
+	if (useSkybox)
+	{
+		glCullFace(GL_FRONT);
+		skyboxShader->use();
+		skyboxShader->setUniform("useGammaEncoding", true);
+		//cubeMap->use(0);
+		scene->useSkybox();
+		unitCube->draw();
+		glCullFace(GL_BACK);
+	}
+
+	refractionTex->use(14);
+	defaultShader->use();
+	defaultShader->setUniform("useGammaEncoding", true);
+	renderScene(scene, defaultShader, true);
+	//scene->renderBoxes(unlitShader);
+	screenFBO->end();
+
+	//glViewport(0, 0, width, height);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//screenTex->use(0);
+	//unlitShader->use();
+	//screenQuad->draw();
+
+	return screenTex;
 }
 
 void Renderer::renderText()

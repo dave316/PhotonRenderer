@@ -61,21 +61,26 @@ namespace IO
 		supportedExtensions.insert("KHR_texture_basisu");
 	}
 
-	Entity::Ptr GLTFImporter::importModel(std::string filename)
+	Entity::Ptr GLTFImporter::importModel(std::string fullPath)
 	{
-		std::replace(filename.begin(), filename.end(), '\\', '/');
-		std::string path = filename.substr(0, filename.find_last_of('/'));
-		int index = filename.find_last_of('.') + 1;
-		std::string ext = filename.substr(index, filename.length() - index);
+		std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
+		int lastSlash = fullPath.find_last_of('/');
+		int fnIndex = lastSlash + 1;
+		std::string path = fullPath.substr(0, lastSlash);
+		std::string filename = fullPath.substr(fnIndex, fullPath.length() - fnIndex);
+		int lastDot = filename.find_last_of('.');
+		int extIndex = lastDot + 1;
+		std::string name = filename.substr(0, lastDot);
+		std::string ext = filename.substr(extIndex, filename.length() - extIndex);
 		//std::cout << "file extension: " << ext << std::endl;
 
 		std::string content;
 		if (ext.compare("gltf") == 0)
 		{
-			std::ifstream file(filename);
+			std::ifstream file(fullPath);
 			if(!file.is_open())
 			{ 
-				std::cout << "error opening file " << filename << std::endl;
+				std::cout << "error opening file " << fullPath << std::endl;
 				return nullptr;
 			}
 
@@ -85,7 +90,7 @@ namespace IO
 		}
 		else if (ext.compare("glb") == 0)
 		{
-			content = loadGLB(filename);
+			content = loadGLB(fullPath);
 			//std::cout << content << std::endl;
 		}
 		else
@@ -107,9 +112,7 @@ namespace IO
 		loadSkins(doc);
 		loadAnimations(doc);
 
-		auto root = loadScene(doc);
-
-		
+		auto root = loadScene(name, doc);
 
  		return root;
 	}
@@ -1805,13 +1808,15 @@ namespace IO
 		return entity;
 	}
 
-	Entity::Ptr GLTFImporter::loadScene(const json::Document& doc)
+	Entity::Ptr GLTFImporter::loadScene(std::string name, const json::Document& doc)
 	{
 		if (doc.HasMember("nodes")) // TODO: maybe check the libraries first before parsing the json at all
 		{
 			for (auto& node : doc["nodes"].GetArray())
 			{
 				GLTFNode gltfNode;
+				if (node.HasMember("name"))
+					gltfNode.name = node["name"].GetString();
 				if (node.HasMember("camera"))
 					gltfNode.camIndex = node["camera"].GetInt();
 				if (node.HasMember("mesh"))
@@ -1854,7 +1859,7 @@ namespace IO
 		}
 		
 		// TODO: dont add an empty root node! use the one from GLTF instead
-		auto root = Entity::create("root");
+		auto root = Entity::create(name);
 		auto rootTransform = root->getComponent<Transform>();
 		auto rootNode = nodes[0];
 

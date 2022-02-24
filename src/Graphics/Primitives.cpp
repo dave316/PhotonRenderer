@@ -46,6 +46,54 @@ namespace Primitives
 		surface.addTriangle(t1);
 	}
 
+	void addLine(TriangleSurface& surface, glm::vec3& v0, glm::vec3& v1, glm::vec3& v2, glm::vec3& v3)
+	{
+		uint32_t baseIndex = (uint32_t)surface.vertices.size();
+
+		Vertex v[4];
+		v[0].position = v0;
+		v[1].position = v1;
+		v[2].position = v2;
+		v[3].position = v3;
+
+		glm::vec3 n = calcNormal(v0, v1, v2);
+		v[0].normal = n;
+		v[1].normal = n;
+		v[2].normal = n;
+		v[3].normal = n;
+
+		v[0].texCoord0 = glm::vec2(0.0f, 0.0f);
+		v[1].texCoord0 = glm::vec2(1.0f, 0.0f);
+		v[2].texCoord0 = glm::vec2(1.0f, 1.0f);
+		v[3].texCoord0 = glm::vec2(0.0f, 1.0f);
+
+		surface.addVertex(v[0]);
+		surface.addVertex(v[1]);
+		surface.addVertex(v[1]);
+		surface.addVertex(v[2]);
+		surface.addVertex(v[2]);
+		surface.addVertex(v[3]);
+		surface.addVertex(v[3]);
+		surface.addVertex(v[0]);
+
+
+		//vertices.push_back(v[0]);
+		//vertices.push_back(v[1]);
+		//vertices.push_back(v[2]);
+		//vertices.push_back(v[3]);
+
+		//indices.push_back(baseIndex);
+		//indices.push_back(baseIndex + 1);
+
+		//indices.push_back(baseIndex + 1);
+		//indices.push_back(baseIndex + 2);
+
+		//indices.push_back(baseIndex + 2);
+		//indices.push_back(baseIndex + 3);
+
+		//indices.push_back(baseIndex + 3);
+		//indices.push_back(baseIndex);
+	}
 
 	Mesh::Ptr createSphere(glm::vec3 position, float radius, unsigned int rings, unsigned int sectors)
 	{
@@ -126,9 +174,6 @@ namespace Primitives
 
 	Mesh::Ptr createBox(glm::vec3 position, glm::vec3 size)
 	{
-		std::vector<Vertex> vertices;
-		std::vector<GLuint> indices;
-
 		glm::vec3 extent = size / 2.0f;
 
 		glm::vec3 v1 = glm::vec3(-extent.x, -extent.y, extent.z) + position;
@@ -149,6 +194,30 @@ namespace Primitives
 		addFace(surface, v3, v4, v8, v7);
 
 		return Mesh::create("box", surface, 4, 0);
+	}
+
+	Mesh::Ptr createLineBox(glm::vec3 position, glm::vec3 size)
+	{
+		glm::vec3 extent = size / 2.0f;
+
+		glm::vec3 v1 = glm::vec3(-extent.x, -extent.y, extent.z) + position;
+		glm::vec3 v2 = glm::vec3(extent.x, -extent.y, extent.z) + position;
+		glm::vec3 v3 = glm::vec3(-extent.x, extent.y, extent.z) + position;
+		glm::vec3 v4 = glm::vec3(extent.x, extent.y, extent.z) + position;
+		glm::vec3 v5 = glm::vec3(-extent.x, -extent.y, -extent.z) + position;
+		glm::vec3 v6 = glm::vec3(extent.x, -extent.y, -extent.z) + position;
+		glm::vec3 v7 = glm::vec3(-extent.x, extent.y, -extent.z) + position;
+		glm::vec3 v8 = glm::vec3(extent.x, extent.y, -extent.z) + position;
+
+		TriangleSurface surface;
+		addLine(surface, v1, v2, v4, v3);
+		addLine(surface, v6, v5, v7, v8);
+		addLine(surface, v5, v1, v3, v7);
+		addLine(surface, v2, v6, v8, v4);
+		addLine(surface, v5, v6, v2, v1);
+		addLine(surface, v3, v4, v8, v7);
+
+		return Mesh::create("line_box", surface, 1, 0);
 	}
 
 	Mesh::Ptr createQuad(glm::vec3 position, float edgeLength)

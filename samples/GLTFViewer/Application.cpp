@@ -397,8 +397,6 @@ void Application::loop()
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		gui();
-
 		if (animTime > tickTime)
 		{
 			if (cameraIndex == 0)
@@ -421,8 +419,10 @@ void Application::loop()
 			animTime = 0.0f;
 		}
 
-		renderer.render(scene);
+		//renderer.renderToScreen(scene);
 		//renderer.renderText();
+
+		gui();
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

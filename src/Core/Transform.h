@@ -32,9 +32,11 @@ public:
 	void setPosition(glm::vec3 p);
 	void setRotation(glm::quat q);
 	void setScale(glm::vec3 s);
+	void setTransform(glm::mat4 M);
 	void setLocalPostion(glm::vec3 p);
 	void setLocalRotation(glm::quat q);
 	void setLocalScale(glm::vec3 s);
+	void setLocalTransform(glm::mat4 M);
 	void update(glm::mat4 parentTransform);
 	void setUniforms(Shader::Ptr shader);
 	void translate(glm::vec3 t);

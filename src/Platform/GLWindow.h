@@ -28,6 +28,7 @@ public:
 	bool shouldClose();
 	void close();
 	GLFWwindow* getWindow();
+	std::string getName() const;
 };
 
 #endif // INCLUDED_GLWINDOW
