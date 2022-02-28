@@ -102,21 +102,24 @@ void Editor::setupInput()
 
 void Editor::handleDrop(int count, const char** paths)
 {
-	if (count != 1)
+	//if (count != 1)
+	//{
+	//	std::cout << "only one file allowed!" << std::endl;
+	//	return;
+	//}
+
+	// TODO: check if valid files etc.
+	for (int i = 0; i < count; i++)
 	{
-		std::cout << "only one file allowed!" << std::endl;
-		return;
-	}		
-
-	std::string fullPath(paths[0]);
-	std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
-	int fnIndex = fullPath.find_last_of('/') + 1;
-	std::string filename = fullPath.substr(fnIndex, fullPath.length() - fnIndex);
-	int lastDot = filename.find_last_of('.');
-	std::string name = filename.substr(0, lastDot);
-
-	scene->loadModel(name, fullPath);
-	initCamera();
+		std::string fullPath(paths[i]);
+		std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
+		int fnIndex = fullPath.find_last_of('/') + 1;
+		std::string filename = fullPath.substr(fnIndex, fullPath.length() - fnIndex);
+		int lastDot = filename.find_last_of('.');
+		std::string name = filename.substr(0, lastDot);
+		scene->loadModel(name, fullPath);
+		//initCamera();
+	}
 }
 
 void Editor::selectModel()
@@ -206,8 +209,8 @@ void Editor::gui()
 		windowSize = ImGui::GetWindowSize();
 		if (windowSize.x != lastSize.x || windowSize.y != lastSize.y)
 		{
-			std::cout << "window size: " << windowSize.x << " " << windowSize.y << std::endl;
-			std::cout << "window pos: " << ImGui::GetCursorScreenPos().x << " " << ImGui::GetCursorScreenPos().y << std::endl;
+			//std::cout << "window size: " << windowSize.x << " " << windowSize.y << std::endl;
+			//std::cout << "window pos: " << ImGui::GetCursorScreenPos().x << " " << ImGui::GetCursorScreenPos().y << std::endl;
 			camera.setAspect(windowSize.x / windowSize.y);
 			renderer.resize(windowSize.x, windowSize.y);
 		}			
@@ -224,11 +227,8 @@ void Editor::gui()
 		);
 
 		windowPos = ImGui::GetCursorScreenPos();
-		//std::cout << ImGui::GetMousePos().x << " " << ImGui::GetMousePos().y << std::endl;
 
-		static float bounds[] = { -0.5f, -0.5f, -0.5f, 0.5f, 0.5f, 0.5f };
 		ImGuizmo::SetID(0);
-		//static glm::mat4 modelMatrix = glm::mat4(1.0f);
 
 		if (selectedModel != nullptr)
 		{

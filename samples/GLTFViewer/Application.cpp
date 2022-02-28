@@ -419,7 +419,7 @@ void Application::loop()
 			animTime = 0.0f;
 		}
 
-		//renderer.renderToScreen(scene);
+		renderer.renderToScreen(scene);
 		//renderer.renderText();
 
 		gui();
