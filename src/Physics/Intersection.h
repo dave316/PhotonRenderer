@@ -21,6 +21,26 @@ namespace Intersection
 		hitPoint = ray.origin + tmin * ray.direction;
 		return true;
 	}
+
+	inline static bool raySphereIntersection(Ray& ray, const Sphere& sphere, glm::vec3 &hitpoint)
+	{
+		glm::vec3 v = ray.origin - sphere.position;
+		float a = glm::dot(v, ray.direction);
+		float b = glm::dot(v, v) - sphere.radius * sphere.radius;
+		if (a > 0.0f && b > 0.0f)
+			return false;
+
+		float d = a * a - b;
+		if (d < 0.0f)
+			return false;
+
+		float t = -a - glm::sqrt(d);
+		if (t < 0.0f)
+			t = 0.0f;
+
+		hitpoint = ray.origin + t * ray.direction;
+		return true;
+	}
 }
 
 #endif // INCLUDED_COLLISION

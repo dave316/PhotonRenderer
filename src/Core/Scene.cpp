@@ -436,7 +436,9 @@ Entity::Ptr Scene::getCurrentModel()
 
 Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 {
-	for (auto [_, entity] : rootEntities)
+	std::string nearestModel = "";
+	float minDist = std::numeric_limits<float>::max();
+	for (auto [name, entity] : rootEntities)
 	{
 		//AABB modelBox; // TODO: This could precomputed for root nodes, or select AABB for each submesh
 		auto renderables = entity->getChildrenWithComponent<Renderable>();
@@ -446,9 +448,6 @@ Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 			auto r = e->getComponent<Renderable>();
 
 			AABB bbox = r->getBoundingBox();
-			//modelBox.expand(bbox.getMinPoint());
-			//modelBox.expand(bbox.getMaxPoint());
-
 			glm::mat4 M_I = glm::inverse(t->getTransform());
 			glm::vec3 startModel = glm::vec3(M_I * glm::vec4(start, 1.0f));
 			glm::vec3 endModel = glm::vec3(M_I * glm::vec4(end, 1.0f));
@@ -458,11 +457,21 @@ Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 			ray.direction = glm::normalize(endModel - startModel);
 			ray.dirInv = 1.0f / ray.direction;
 
-			// TODO: check which box is the nearest one to the camera
 			glm::vec3 hitpoint;
 			if (Intersection::rayBoxIntersection(ray, bbox, hitpoint))
-				return entity;
+			{
+				float dist = glm::distance(hitpoint, ray.origin);
+				if (dist < minDist)
+				{
+					minDist = dist;
+					nearestModel = name;
+				}
+			}
 		}
 	}
+
+	if (rootEntities.find(nearestModel) != rootEntities.end())
+		return rootEntities[nearestModel];
+
 	return nullptr;
 }

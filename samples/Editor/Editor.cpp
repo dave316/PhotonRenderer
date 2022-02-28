@@ -29,7 +29,7 @@ bool Editor::init()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
+	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 18); 
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -240,22 +240,23 @@ void Editor::gui()
 			ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowSize.x, windowSize.y);
 
-			ImVec2 vMin = ImGui::GetWindowContentRegionMin();
-			ImVec2 vMax = ImGui::GetWindowContentRegionMax();
-
-			vMin.x += ImGui::GetWindowPos().x;
-			vMin.y += ImGui::GetWindowPos().y;
-			vMax.x += ImGui::GetWindowPos().x;
-			vMax.y += ImGui::GetWindowPos().y;
-
-			//ImGuiWindow; //*window = ImGui::GetCurrentWindow();
-			gizmoWindowFlags = ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(vMin, vMax) ? ImGuiWindowFlags_NoMove : 0;
-
 			//ImGuizmo::DrawCubes(V, P, M, 1);
 			ImGuizmo::Manipulate(V, P, op, ImGuizmo::LOCAL, M);
 			t->setTransform(modelMatrix);
 			selectedModel->update(glm::mat4(1.0f));
 		}
+
+		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
+		ImVec2 vMax = ImGui::GetWindowContentRegionMax();
+
+		vMin.x += ImGui::GetWindowPos().x;
+		vMin.y += ImGui::GetWindowPos().y;
+		vMax.x += ImGui::GetWindowPos().x;
+		vMax.y += ImGui::GetWindowPos().y;
+
+		//ImGuiWindow; //*window = ImGui::GetCurrentWindow();
+		gizmoWindowFlags = ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(vMin, vMax) ? ImGuiWindowFlags_NoMove : 0;
+
 	}
 	ImGui::End();
 
