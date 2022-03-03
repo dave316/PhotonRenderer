@@ -18,7 +18,7 @@
 //	primitives.push_back(p);
 //}
 
-void Renderable::addPrimitive(Primitive& primitve)
+void Renderable::addPrimitive(RenderPrimitive& primitve)
 {
 	primitives.push_back(primitve);
 }

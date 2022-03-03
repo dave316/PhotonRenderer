@@ -119,7 +119,7 @@ namespace IO
 		glm::vec4 persp;
 		glm::decompose(M, scale, rotation, translation, skew, persp);
 
-		auto entity = Entity::create(name);
+		auto entity = Entity::create(name, nullptr);
 		auto t = entity->getComponent<Transform>();
 		t->setPosition(translation);
 		t->setRotation(rotation);
@@ -137,7 +137,7 @@ namespace IO
 			auto r = Renderable::create();
 			for (auto m : nodeMeshes)
 			{
-				Primitive prim;
+				RenderPrimitive prim;
 				prim.mesh = m;
 				prim.materials.push_back(materials[m->getMaterialIndex()]);
 				r->addPrimitive(prim);

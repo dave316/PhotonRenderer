@@ -14,12 +14,13 @@
 class Entity : public std::enable_shared_from_this<Entity>
 {
 private:
+	std::shared_ptr<Entity> parent = nullptr;
 	std::string name;
 	std::map<std::type_index, Component::Ptr> components;
 	std::vector<std::shared_ptr<Entity>> children;
 
 public:
-	Entity(const std::string& name) : name(name)
+	Entity(const std::string& name, std::shared_ptr<Entity> parent) : name(name), parent(parent)
 	{
 		auto t = Transform::Ptr(new Transform());
 		addComponent(t);
@@ -99,6 +100,30 @@ public:
 		children.push_back(child);
 	}
 
+	void removeChild(std::string name)
+	{
+		// TODO: this is terrible... find a better way to implement this
+		int index = -1;
+		for (int i = 0; i < children.size(); i++)
+		{
+			if (children[i]->getName().compare(name) == 0)
+			{
+				index = i;
+				break;
+			}
+		}
+
+		if (index >= 0)
+			children.erase(children.begin() + index);
+	}
+	
+	void getAllNodes(std::map<std::string, std::shared_ptr<Entity>>& nodes)
+	{
+		nodes.insert(std::make_pair(name, shared_from_this()));
+		for (auto child : children)
+			child->getAllNodes(nodes);
+	}
+
 	void update(glm::mat4 parentTransform)
 	{
 		auto t = getComponent<Transform>();
@@ -118,15 +143,25 @@ public:
 		return children.size();
 	}
 
+	void setParent(std::shared_ptr<Entity> parent)
+	{
+		this->parent = parent;
+	}
+
+	std::shared_ptr<Entity> getParent()
+	{
+		return parent;
+	}
+
 	std::shared_ptr<Entity> getChild(int index)
 	{
 		return children[index];
 	}
 
 	typedef std::shared_ptr<Entity> Ptr;
-	static Ptr create(const std::string& name)
+	static Ptr create(const std::string& name, Ptr parent)
 	{
-		return std::make_shared<Entity>(name);
+		return std::make_shared<Entity>(name, parent);
 	}
 };
 

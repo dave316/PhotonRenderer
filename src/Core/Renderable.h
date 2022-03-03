@@ -10,7 +10,7 @@
 #include <Graphics/Skin.h>
 #include <Graphics/Shader.h>
 
-struct Primitive
+struct RenderPrimitive
 {
 	Mesh::Ptr mesh;
 	std::vector<Material::Ptr> materials;
@@ -32,7 +32,7 @@ struct Primitive
 
 class Renderable : public Component
 {
-	std::vector<Primitive> primitives;
+	std::vector<RenderPrimitive> primitives;
 	std::vector<float> morphWeights;
 	std::string name;
 	Skin skin;
@@ -42,7 +42,7 @@ class Renderable : public Component
 public:
 	Renderable() {}
 	~Renderable();
-	void addPrimitive(Primitive& primitive);
+	void addPrimitive(RenderPrimitive& primitive);
 	void render(Shader::Ptr shader);
 	void switchMaterial(unsigned int materialIndex);
 	void print();

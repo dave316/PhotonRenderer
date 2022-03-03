@@ -29,7 +29,7 @@ bool Editor::init()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 18); 
+	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -38,7 +38,12 @@ bool Editor::init()
 		return false;
 
 	scene = Scene::create("scene");
-	scene->updateAnimations(0.0f);
+
+	//std::string assetPath = "../../../../assets";
+	//std::string gltfPath = assetPath + "/glTF-Sample-Models_/2.0";
+	//std::string name = "MetalRoughSpheres";
+	//scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	//scene->updateAnimations(0.0f);
 
 	renderer.initEnv(scene);
 	renderer.initLights(scene);
@@ -118,8 +123,11 @@ void Editor::handleDrop(int count, const char** paths)
 		int lastDot = filename.find_last_of('.');
 		std::string name = filename.substr(0, lastDot);
 		scene->loadModel(name, fullPath);
-		//initCamera();
 	}
+
+	renderer.initLights(scene);
+	scene->initShadowMaps();
+	initCamera();
 }
 
 void Editor::selectModel()
@@ -145,24 +153,77 @@ void Editor::selectModel()
 	}
 }
 
-void addNode(Entity::Ptr entity)
+void Editor::addTreeNode(Entity::Ptr entity)
 {
-	if (entity->numChildren() == 0)
-	{
-		ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
-		ImGui::Text(entity->getName().c_str());
-		ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
-	}
-	else
-	{
-		if (ImGui::TreeNode(entity->getName().c_str()))
-		{
-			for (int i = 0; i < entity->numChildren(); i++)
-				addNode(entity->getChild(i));
+	//if (entity->numChildren() == 0)
+	//{
+	//	ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
+	//	ImGui::Text(entity->getName().c_str());
+	//	ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
+	//}
+	//else
+	//{
+	//	if (ImGui::TreeNode(entity->getName().c_str()))
+	//	{
+	//		for (int i = 0; i < entity->numChildren(); i++)
+	//			addNode(entity->getChild(i));
 
-			ImGui::TreePop();
-		}
+	//		ImGui::TreePop();
+	//	}
+	//}
+
+	std::string name = entity->getName();
+
+	bool open = ImGui::TreeNodeEx(name.c_str(), (entity->numChildren() == 0 ? ImGuiTreeNodeFlags_Leaf : 0)
+		//ImGuiTreeNodeFlags_DefaultOpen | 
+		
+	);
+
+	ImGui::PushID(name.c_str());
+	if (ImGui::BeginPopupContextItem()) {
+		// Some processing...
+		ImGui::EndPopup();
 	}
+	ImGui::PopID();
+
+	if (ImGui::BeginDragDropTarget())
+	{
+		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("Entity");
+		if (payload != NULL)
+		{
+			// TODO: this creates alot of unwanted side effects.. use unique ID to identify each entity
+			// TODO: update the local to world transformations accordingly....
+			// TODO: check if target node is a node of the same subtree. If so dont allow droping!
+
+			std::string sourceName((char*)payload->Data);
+			std::cout << "received entity " << sourceName << std::endl;
+
+			if (name.compare(sourceName) != 0)
+			{
+				auto sourceEntity = scene->getNode(std::string(sourceName));
+				auto parent = sourceEntity->getParent();
+				parent->removeChild(sourceName);
+				sourceEntity->setParent(entity);
+				entity->addChild(sourceEntity);
+			}
+		}
+			
+		ImGui::EndDragDropTarget();
+	}
+
+	if (ImGui::BeginDragDropSource())
+	{
+		ImGui::SetDragDropPayload("Entity", entity->getName().c_str(), entity->getName().length());
+		ImGui::EndDragDropSource();
+	}
+
+	if (open)
+	{
+		for (int i = 0; i < entity->numChildren(); i++)
+			addTreeNode(entity->getChild(i));
+
+		ImGui::TreePop();
+	}		
 }
 
 void Editor::gui()
@@ -176,6 +237,24 @@ void Editor::gui()
 			{
 				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Select GLTF file", ".gltf,.glb", "../../../../assets");
 			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Entity"))
+		{
+			if (ImGui::MenuItem("Empty"))
+				scene->addEntity("Empty", Entity::create("Empty", nullptr));
+			if (ImGui::MenuItem("Model"))
+			{
+				// TODO: add primitive geometry
+			}
+			if (ImGui::MenuItem("Light"))
+			{
+				scene->addLight("light_01");
+				renderer.initLights(scene);
+				scene->initShadowMaps();
+			}			
+
 			ImGui::EndMenu();
 		}
 
@@ -244,8 +323,11 @@ void Editor::gui()
 			ImGuizmo::Manipulate(V, P, op, ImGuizmo::LOCAL, M);
 			t->setTransform(modelMatrix);
 			selectedModel->update(glm::mat4(1.0f));
+			renderer.initLights(scene);
+			renderer.updateShadows(scene);
+			//	scene->updateBoxes();
 		}
-
+		
 		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
 		ImVec2 vMax = ImGui::GetWindowContentRegionMax();
 
@@ -264,7 +346,7 @@ void Editor::gui()
 	{
 		auto entities = scene->getEntities();
 		for(auto [name, entity] : entities)
-			addNode(entity);
+			addTreeNode(entity);
 	}
 	ImGui::End();
 
@@ -279,7 +361,8 @@ void Editor::gui()
 			std::string fileName = ImGuiFileDialog::Instance()->GetCurrentFileName();
 			std::string name = fileName.substr(0, fileName.find_last_of("."));
 			scene->loadModel(name, filePathName);
-			//renderer.initLights(scene);
+			renderer.initLights(scene);
+			scene->initShadowMaps();
 			//renderer.updateShadows(scene);
 			initCamera();
 		}

@@ -6,6 +6,9 @@
 #include <Graphics/Mesh.h>
 #include <glm/gtc/constants.hpp>
 
+#include "Component.h"
+#include "Transform.h"
+
 enum LightType
 {
 	DIRECTIONAL,
@@ -13,11 +16,11 @@ enum LightType
 	SPOT,
 };
 
-class Light
+class Light : public Component
 {
 private:
-	glm::vec3 position = glm::vec3(0.0f);
-	glm::vec3 direction = glm::vec3(0,0,-1);
+	//glm::vec3 position = glm::vec3(0.0f);
+	//glm::vec3 direction = glm::vec3(0,0,-1);
 	glm::vec3 color = glm::vec3(1.0f);
 	float intensity = 1.0f;
 	float range = -1.0f;
@@ -44,12 +47,12 @@ public:
 		int type;
 	};
 
-	void writeUniformData(UniformData& uniformData);
-	void draw();
-	void setPostion(glm::vec3 position);
-	void setDirection(glm::vec3 direction);
+	void writeUniformData(UniformData& uniformData, Transform::Ptr transform);
+	//void draw();
+	//void setPostion(glm::vec3 position);
+	//void setDirection(glm::vec3 direction);
 	void setConeAngles(float inner, float outer);
-	glm::vec3 getPosition();
+	//glm::vec3 getPosition();
 	typedef std::shared_ptr<Light> Ptr;
 	static Ptr create(int type, glm::vec3 color, float intensity, float range)
 	{

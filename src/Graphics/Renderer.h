@@ -6,9 +6,9 @@
 #include <Graphics/Camera.h>
 #include <Graphics/Text.h>
 #include <Graphics/Framebuffer.h>
-#include <Graphics/Light.h>
 #include <Graphics/Shader.h>
 
+#include <Core/Light.h>
 #include <Core/Entity.h>
 #include <Core/Renderable.h>
 #include <Core/Transform.h>

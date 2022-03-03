@@ -1,8 +1,8 @@
-#include "Primitives.h"
+#include "MeshPrimitives.h"
 
 #include <glm/gtc/constants.hpp>
 
-namespace Primitives
+namespace MeshPrimitives
 {
 	glm::vec3 calcNormal(glm::vec3& v0, glm::vec3& v1, glm::vec3& v2)
 	{
@@ -93,6 +93,25 @@ namespace Primitives
 
 		//indices.push_back(baseIndex + 3);
 		//indices.push_back(baseIndex);
+	}
+
+	Mesh::Ptr createIcosphere(glm::vec3 position, float radius, unsigned int subdivisions)
+	{
+		constexpr float phi = glm::golden_ratio<float>();
+		constexpr float s = 1.0f;
+
+		glm::vec3 v1(0.0f, -s, -phi);
+		glm::vec3 v2(0.0f, s, -phi);
+		glm::vec3 v3(0.0f, -s, phi);
+		glm::vec3 v4(0.0f, s, phi);
+		glm::vec3 v5(-s, -phi, 0.0f);
+		glm::vec3 v6(s, -phi, 0.0f);
+		glm::vec3 v7(-s, phi, 0.0f);
+		glm::vec3 v8(s, phi, 0.0f);
+		glm::vec3 v9(-phi, 0.0f, -s);
+		glm::vec3 v10(-phi, 0.0f, s);
+		glm::vec3 v11(phi, 0.0f, -s);
+		glm::vec3 v12(phi, 0.0f, s);
 	}
 
 	Mesh::Ptr createSphere(glm::vec3 position, float radius, unsigned int rings, unsigned int sectors)

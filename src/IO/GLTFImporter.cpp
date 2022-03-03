@@ -997,7 +997,7 @@ namespace IO
 				if (mode != 4 && calcNormals) // TODO: check outher triangle topologies
 					defaultMaterial->addProperty("material.unlit", true);
 
-				Primitive primitive;
+				RenderPrimitive primitive;
 				primitive.mesh = Mesh::create(name, surface, mode, 0);
 				primitive.mesh->setBoundingBox(minPoint, maxPoint);
 				primitive.computeFlatNormals = computeFlatNormals;
@@ -1723,13 +1723,13 @@ namespace IO
 		return m;
 	}
 
-	Entity::Ptr GLTFImporter::traverse(int nodeIndex, glm::mat4 parentTransform)
+	Entity::Ptr GLTFImporter::traverse(int nodeIndex, Entity::Ptr parent, glm::mat4 parentTransform)
 	{
 		auto node = nodes[nodeIndex];
 		if (node.name.empty())
 			node.name = "node_" + std::to_string(nodeIndex);
 
-		auto entity = Entity::create(node.name);
+		auto entity = Entity::create(node.name, parent);
 		auto t = entity->getComponent<Transform>();
 		t->setPosition(node.translation);
 		t->setRotation(node.rotation);
@@ -1780,26 +1780,12 @@ namespace IO
 			}
 		}
 
-		if (node.lightIndex >= 0)
-		{
-			if (node.lightIndex < lights.size())
-			{
-				glm::vec3 skew;
-				glm::vec4 persp;
-				glm::vec3 pos;
-				glm::vec3 scale;
-				glm::quat rot;
-				glm::decompose(transform, scale, rot, pos, skew, persp);
-				rot = glm::normalize(rot);
-				glm::vec3 dir = glm::mat3_cast(rot) * glm::vec3(0, 0, -1);
-				lights[node.lightIndex]->setPostion(pos);
-				lights[node.lightIndex]->setDirection(dir);
-			}
-		}
+		if (node.lightIndex >= 0 && node.lightIndex < lights.size())
+			entity->addComponent(lights[node.lightIndex]);
 
 		for (auto& index : node.children)
 		{
-			auto childEntity = traverse(index, transform);
+			auto childEntity = traverse(index, entity, transform);
 			entity->addChild(childEntity);
 		}
 
@@ -1859,7 +1845,7 @@ namespace IO
 		}
 		
 		// TODO: dont add an empty root node! use the one from GLTF instead
-		auto root = Entity::create(name);
+		auto root = Entity::create(name, nullptr);
 		auto rootTransform = root->getComponent<Transform>();
 		auto rootNode = nodes[0];
 
@@ -1870,7 +1856,7 @@ namespace IO
 		{
 			for (auto& nodeIndex : doc["scenes"][0]["nodes"].GetArray())
 			{
-				auto childEntity = traverse(nodeIndex.GetInt(), glm::mat4(1.0f));
+				auto childEntity = traverse(nodeIndex.GetInt(), root, glm::mat4(1.0f));
 				root->addChild(childEntity);
 			}
 		}
@@ -1892,10 +1878,10 @@ namespace IO
 		return entities;
 	}
 
-	std::vector<Light::Ptr> GLTFImporter::getLights()
-	{
-		return lights;
-	}
+	//std::vector<Light::Ptr> GLTFImporter::getLights()
+	//{
+	//	return lights;
+	//}
 
 	std::vector<GLTFCamera> GLTFImporter::getCameras()
 	{

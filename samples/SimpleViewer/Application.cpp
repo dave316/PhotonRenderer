@@ -1,5 +1,5 @@
 #include "Application.h"
-#include <Graphics/Primitives.h>
+#include <Graphics/MeshPrimitives.h>
 #include <algorithm>
 
 using namespace std::placeholders;
@@ -21,18 +21,18 @@ bool Application::init()
 		return false;
 
 	std::string assetPath = "../../../../assets";
-	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "DamagedHelmet";
+	std::string gltfPath = assetPath + "/glTF-Sample-Models_/2.0";
+	std::string name = "Lights";
 
 	scene = Scene::create("scene");
-	scene->loadModel(name, gltfPath + "/" + name + "/glTF-Binary/" + name + ".glb");
+	scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	scene->updateAnimations(0.0f);
 
 	renderer.initEnv(scene);
 	renderer.initLights(scene);
 	renderer.updateShadows(scene);
 
-	initCamera();
+	//initCamera();
 	setupInput();
 	
 	return true;

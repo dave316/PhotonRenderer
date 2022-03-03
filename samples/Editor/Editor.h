@@ -34,6 +34,7 @@ public:
 	Editor(const char* title, unsigned int width, unsigned int height);
 	bool init();
 	void setupInput();
+	void addTreeNode(Entity::Ptr entity);
 	void handleDrop(int count, const char** paths);
 	void selectModel();
 	void initCamera();

@@ -6,10 +6,10 @@
 #include <Core/Entity.h>
 #include <Core/Renderable.h>
 #include <Core/Animator.h>
+#include <Core/Light.h>
 
 #include <Graphics/Skin.h>
 #include <Graphics/Animation.h>
-#include <Graphics/Light.h>
 
 #include <rapidjson/document.h>
 
@@ -118,7 +118,7 @@ namespace IO
 
 		struct GLTFMesh
 		{
-			std::vector<Primitive> primitives;
+			std::vector<RenderPrimitive> primitives;
 			std::vector<float> morphWeights;
 		};
 		std::vector<GLTFMesh> meshes;
@@ -148,7 +148,7 @@ namespace IO
 		void loadTextures(const json::Document& doc, const std::string& path);
 		void loadCameras(const json::Document& doc);
 		Entity::Ptr loadScene(std::string sceneName, const json::Document& doc);
-		Entity::Ptr traverse(int nodeIndex, glm::mat4 parentTransform);
+		Entity::Ptr traverse(int nodeIndex, Entity::Ptr parent, glm::mat4 parentTransform);
 		Texture2D::Ptr loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB);
 		void setTextureInfo(const json::Value& node, const std::string& texNodeName, Material::Ptr material, std::string texInfoStr, std::string path, bool sRGB);
 
@@ -252,7 +252,6 @@ namespace IO
 
 		Entity::Ptr importModel(std::string filename);
 		std::vector<Entity::Ptr> getEntities();
-		std::vector<Light::Ptr> getLights();
 		std::vector<GLTFCamera> getCameras();
 		std::vector<std::string> getVariants();
 		void clear();

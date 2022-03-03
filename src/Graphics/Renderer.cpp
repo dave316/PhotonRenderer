@@ -1,7 +1,7 @@
 #include "Renderer.h"
 
 #include <Graphics/Framebuffer.h>
-#include <Graphics/Primitives.h>
+#include <Graphics/MeshPrimitives.h>
 #include <Graphics/Shader.h>
 
 #include <IO/AssimpImporter.h>
@@ -72,8 +72,8 @@ void Renderer::initLUTs()
 {
 	auto integrateBRDFShader = shaders["IBLIntegrateBRDF"];
 
-	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
-	screenQuad = Primitives::createQuad(glm::vec3(0.0f), 2.0f);
+	unitCube = MeshPrimitives::createCube(glm::vec3(0), 1.0f);
+	screenQuad = MeshPrimitives::createQuad(glm::vec3(0.0f), 2.0f);
 
 	{
 		int size = 512;
@@ -298,8 +298,8 @@ void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr shader, bool transmissi
 			if (r->isSkinnedMesh())
 			{
 				auto nodes = animator->getNodes();
-				Skin skin = r->getSkin();
-				skin.computeJoints(nodes);
+				Skin skin = r->getSkin(); 
+				skin.computeJoints(nodes); // TODO: this should be done on animation update, not each frame...
 				auto boneTransforms = skin.getBoneTransform();
 				auto normalTransforms = skin.getNormalTransform();
 				shader->setUniform("hasAnimations", true);
@@ -329,7 +329,7 @@ void Renderer::renderToScreen(Scene::Ptr scene)
 		ggxLUT->use(19);
 		charlieLUT->use(20);
 	}
-	//scene->useIBL();
+	scene->useIBL();
 
 	//for (int i = 0; i < shadowFBOs.size(); i++)
 	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
@@ -353,6 +353,7 @@ void Renderer::renderToScreen(Scene::Ptr scene)
 	refractionFBO->end();
 	refractionTex->generateMipmaps();
 	refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+	refractionTex->use(14);
 
 	// main render pass
 	glViewport(0, 0, width, height);
@@ -367,8 +368,7 @@ void Renderer::renderToScreen(Scene::Ptr scene)
 		unitCube->draw();
 		glCullFace(GL_BACK);
 	}
-
-	refractionTex->use(14);
+	
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", true);
 	renderScene(scene, defaultShader, true);

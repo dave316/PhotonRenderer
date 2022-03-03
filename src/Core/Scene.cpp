@@ -1,6 +1,6 @@
 #include "Scene.h"
 
-#include <Graphics/Primitives.h>
+#include <Graphics/MeshPrimitives.h>
 #include <IO/ImageLoader.h>
 #include <IO/AssimpImporter.h>
 
@@ -28,7 +28,7 @@ void Scene::initEnvMaps(std::map<std::string, Shader::Ptr>& shaders)
 	auto specularShader = shaders["IBLSpecular"];
 	auto integrateBRDFShader = shaders["IBLIntegrateBRDF"];
 
-	unitCube = Primitives::createCube(glm::vec3(0), 1.0f);
+	unitCube = MeshPrimitives::createCube(glm::vec3(0), 1.0f);
 
 	std::string assetPath = "../../../../assets";
 	auto pano = IO::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
@@ -156,47 +156,65 @@ void Scene::initEnvMaps(std::map<std::string, Shader::Ptr>& shaders)
 
 void Scene::initLights(Shader::Ptr defaultShader)
 {
-	Light::Ptr light = Light::create(LightType::POINT, glm::vec3(1), 10.0f, 10.0f);
-	light->setPostion(glm::vec3(0, 1, 0));
-	lights.insert(std::make_pair("light", light));
+	//auto lightEntity = Entity::create("light");
+	//lightEntity->addComponent(Light::create(LightType::POINT, glm::vec3(1), 10.0f, 10.0f));
+	//lightEntity->getComponent<Transform>()->setPosition(glm::vec3(0, 1, 0));
+	//rootEntities.insert(std::make_pair("light", lightEntity));
 
-	int i = 0;
-	std::vector<Light::UniformData> lightData(lights.size());
-	for (auto it : lights)
+	std::vector<Light::UniformData> lightData;
+	for (auto [name, entity] : rootEntities)
 	{
-		it.second->writeUniformData(lightData[i]);
-		i++;
+		auto lightEntities = entity->getChildrenWithComponent<Light>();
+		for (auto lightEntity : lightEntities)
+		{
+			auto t = lightEntity->getComponent<Transform>();
+			auto l = lightEntity->getComponent<Light>();
+			Light::UniformData data;
+			l->writeUniformData(data, t);
+			lightData.push_back(data);
+		}
 	}
-
 	lightUBO.upload(lightData, GL_DYNAMIC_DRAW);
 	lightUBO.bindBase(1);
 
-	defaultShader->setUniform("numLights", (int)lights.size());
+	defaultShader->setUniform("numLights", (int)lightData.size());
 
-	// TODO: this has to be correctly updated, when lights are added...
-	for (auto it : lights)
+	views.clear();
+	for (auto [name, entity] : rootEntities)
 	{
-		auto light = it.second;
+		auto lightsEntity = entity->getChildrenWithComponent<Light>();
+		for (auto lightEntity : lightsEntity)
+		{
+			glm::vec3 pos = lightEntity->getComponent<Transform>()->getPosition();
+			glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
+			std::vector<glm::mat4> VP;
+			VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+			VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+			VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+			views.push_back(VP);
+		}
+	}
+}
 
-		glm::vec3 pos = light->getPosition();
-		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
-		std::vector<glm::mat4> VP;
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
-		views.push_back(VP);
+void Scene::initShadowMaps()
+{
+	for (auto [name, entity] : rootEntities)
+	{
+		auto lightsEntity = entity->getChildrenWithComponent<Light>();
+		for (auto lightEntity : lightsEntity)
+		{
+			const unsigned int size = 4096;
+			auto shadowMap = TextureCubeMap::create(size, size, GL::DEPTH24);
+			shadowMap->setCompareMode();
 
-		const unsigned int size = 4096;
-		auto shadowMap = TextureCubeMap::create(size, size, GL::DEPTH24);
-		shadowMap->setCompareMode();
-
-		auto shadowFBO = Framebuffer::create(size, size);
-		shadowFBO->addRenderTexture(GL::DEPTH, shadowMap);
-		shadowFBO->checkStatus();
-		shadowFBOs.push_back(shadowFBO);
+			auto shadowFBO = Framebuffer::create(size, size);
+			shadowFBO->addRenderTexture(GL::DEPTH, shadowMap);
+			shadowFBO->checkStatus();
+			shadowFBOs.push_back(shadowFBO);
+		}
 	}
 }
 
@@ -212,12 +230,17 @@ void Scene::loadModel(std::string name, std::string path)
 		currentModel = name;
 	}
 
-	auto modelLights = importer.getLights();
-	for (int i = 0; i < modelLights.size(); i++)
-	{
-		std::string lightName = name + "_light_" + std::to_string(i);
-		lights.insert(std::make_pair(lightName, modelLights[i]));
-	}
+	rootEntity->getAllNodes(allEntities);
+
+	//for (auto it : nodes)
+	//	std::cout << it.first << std::endl;
+
+	//auto modelLights = importer.getLights();
+	//for (int i = 0; i < modelLights.size(); i++)
+	//{
+	//	std::string lightName = name + "_light_" + std::to_string(i);
+	//	lights.insert(std::make_pair(lightName, modelLights[i]));
+	//}
 
 	cameras = importer.getCameras();
 	variants = importer.getVariants();
@@ -232,20 +255,38 @@ void Scene::loadModel(std::string name, std::string path)
 
 		glm::mat4 M = t->getTransform();
 		AABB bbox = r->getBoundingBox();
-		modelBox.expand(glm::vec3(M * glm::vec4(bbox.getMinPoint(), 1.0f)));
-		modelBox.expand(glm::vec3(M * glm::vec4(bbox.getMaxPoint(), 1.0f)));
+		modelBox.expand(bbox.getMinPoint());
+		modelBox.expand(bbox.getMaxPoint());
+
+		boundingBoxes.push_back(MeshPrimitives::createLineBox(modelBox.getCenter(), modelBox.getSize()));
+		boxMat.push_back(M);
 	}
-
-	boundingBoxes.push_back(Primitives::createLineBox(modelBox.getCenter(), modelBox.getSize()));
-
-
-	//for (auto& a : rootEntity->getComponentsInChildren<Animator>())
-	//	a->play();
 }
 
 void Scene::addEntity(std::string name, Entity::Ptr entity)
 {
 	rootEntities.insert(std::make_pair(name, entity));
+}
+
+void Scene::addLight(std::string name)
+{
+	glm::vec3 lightColor = glm::vec3(1.0f);
+
+	auto lightEntity = Entity::create(name, nullptr);
+	lightEntity->addComponent(Light::create(LightType::POINT, lightColor, 10.0f, 10.0f));
+	lightEntity->getComponent<Transform>()->setScale(glm::vec3(0.05f));
+
+	auto r = Renderable::create();
+	RenderPrimitive prim;
+	prim.mesh = MeshPrimitives::createSphere(glm::vec3(0), 1.0f, 32, 32);
+	prim.mesh->setBoundingBox(glm::vec3(-1), glm::vec3(1));
+	prim.materials.push_back(getDefaultMaterial());
+	prim.materials[0]->addProperty("material.baseColorFactor", glm::vec4(lightColor, 1.0));
+	prim.materials[0]->addProperty("material.unlit", true);
+	r->addPrimitive(prim);
+	lightEntity->addComponent(r);
+
+	rootEntities.insert(std::make_pair("light", lightEntity));
 }
 
 void Scene::updateAnimations(float dt)
@@ -301,9 +342,10 @@ void Scene::renderBoxes(Shader::Ptr shader)
 	shader->use();
 	shader->setUniform("useTex", false);
 	shader->setUniform("orthoProjection", false);
-	for (auto boxMesh : boundingBoxes)
+	for (int i = 0; i < boundingBoxes.size(); i++)
 	{
-		boxMesh->draw();
+		shader->setUniform("M", boxMat[i]);
+		boundingBoxes[i]->draw();
 	}
 }
 
@@ -362,10 +404,35 @@ void Scene::clear()
 	}
 	rootEntities.clear();
 
-	lights.clear();
+	//lights.clear();
 	views.clear();
 	variants.clear();
 	cameras.clear();
+}
+
+void Scene::updateBoxes()
+{
+	boundingBoxes.clear();
+	boxMat.clear();
+
+	for (auto [_, rootEntity] : rootEntities)
+	{
+		AABB modelBox;
+		auto renderables = rootEntity->getChildrenWithComponent<Renderable>();
+		for (auto e : renderables)
+		{
+			auto t = e->getComponent<Transform>();
+			auto r = e->getComponent<Renderable>();
+
+			glm::mat4 M = t->getTransform();
+			AABB bbox = r->getBoundingBox();
+			modelBox.expand(bbox.getMinPoint());
+			modelBox.expand(bbox.getMaxPoint());
+
+			boundingBoxes.push_back(MeshPrimitives::createLineBox(modelBox.getCenter(), modelBox.getSize()));
+			boxMat.push_back(M);
+		}
+	}
 }
 
 IO::GLTFCamera Scene::getCamera(int idx)
@@ -434,6 +501,11 @@ Entity::Ptr Scene::getCurrentModel()
 	return rootEntities[currentModel];
 }
 
+Entity::Ptr Scene::getNode(std::string name)
+{
+	return allEntities[name];
+}
+
 Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 {
 	std::string nearestModel = "";
@@ -448,6 +520,7 @@ Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 			auto r = e->getComponent<Renderable>();
 
 			AABB bbox = r->getBoundingBox();
+			glm::mat4 M = t->getTransform();
 			glm::mat4 M_I = glm::inverse(t->getTransform());
 			glm::vec3 startModel = glm::vec3(M_I * glm::vec4(start, 1.0f));
 			glm::vec3 endModel = glm::vec3(M_I * glm::vec4(end, 1.0f));
@@ -460,7 +533,8 @@ Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 			glm::vec3 hitpoint;
 			if (Intersection::rayBoxIntersection(ray, bbox, hitpoint))
 			{
-				float dist = glm::distance(hitpoint, ray.origin);
+				glm::vec3 h = glm::vec3(M * glm::vec4(hitpoint, 1.0f));
+				float dist = glm::distance(h, start);
 				if (dist < minDist)
 				{
 					minDist = dist;
