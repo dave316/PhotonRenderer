@@ -6,6 +6,8 @@
 
 #include <Physics/Intersection.h>
 
+#include <glm/gtx/matrix_decompose.hpp>
+
 Scene::Scene(const std::string& name) :
 	name(name)
 {}
@@ -185,7 +187,14 @@ void Scene::initLights(Shader::Ptr defaultShader)
 		auto lightsEntity = entity->getChildrenWithComponent<Light>();
 		for (auto lightEntity : lightsEntity)
 		{
-			glm::vec3 pos = lightEntity->getComponent<Transform>()->getPosition();
+			glm::mat4 M = lightEntity->getComponent<Transform>()->getTransform();
+			glm::vec3 skew;
+			glm::vec4 persp;
+			glm::vec3 pos;
+			glm::vec3 scale;
+			glm::quat rot;
+			glm::decompose(M, scale, rot, pos, skew, persp);
+
 			glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
 			std::vector<glm::mat4> VP;
 			VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
@@ -246,7 +255,6 @@ void Scene::loadModel(std::string name, std::string path)
 	variants = importer.getVariants();
 	importer.clear();
 
-	AABB modelBox;
 	auto renderables = rootEntity->getChildrenWithComponent<Renderable>();
 	for (auto e : renderables)
 	{
@@ -255,10 +263,8 @@ void Scene::loadModel(std::string name, std::string path)
 
 		glm::mat4 M = t->getTransform();
 		AABB bbox = r->getBoundingBox();
-		modelBox.expand(bbox.getMinPoint());
-		modelBox.expand(bbox.getMaxPoint());
 
-		boundingBoxes.push_back(MeshPrimitives::createLineBox(modelBox.getCenter(), modelBox.getSize()));
+		boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
 		boxMat.push_back(M);
 	}
 }
@@ -274,19 +280,25 @@ void Scene::addLight(std::string name)
 
 	auto lightEntity = Entity::create(name, nullptr);
 	lightEntity->addComponent(Light::create(LightType::POINT, lightColor, 10.0f, 10.0f));
-	lightEntity->getComponent<Transform>()->setScale(glm::vec3(0.05f));
+	//lightEntity->getComponent<Transform>()->setScale(glm::vec3(0.05f));
 
 	auto r = Renderable::create();
 	RenderPrimitive prim;
-	prim.mesh = MeshPrimitives::createSphere(glm::vec3(0), 1.0f, 32, 32);
-	prim.mesh->setBoundingBox(glm::vec3(-1), glm::vec3(1));
+	prim.mesh = MeshPrimitives::createSphere(glm::vec3(0), 0.05f, 32, 32);
+	prim.mesh->setBoundingBox(glm::vec3(-0.05), glm::vec3(0.05));
 	prim.materials.push_back(getDefaultMaterial());
 	prim.materials[0]->addProperty("material.baseColorFactor", glm::vec4(lightColor, 1.0));
 	prim.materials[0]->addProperty("material.unlit", true);
 	r->addPrimitive(prim);
 	lightEntity->addComponent(r);
 
-	rootEntities.insert(std::make_pair("light", lightEntity));
+	rootEntities.insert(std::make_pair(lightEntity->getName(), lightEntity));
+	lightEntity->getAllNodes(allEntities);
+}
+
+void Scene::removeRootEntity(std::string name)
+{
+	rootEntities.erase(name);
 }
 
 void Scene::updateAnimations(float dt)
@@ -417,19 +429,14 @@ void Scene::updateBoxes()
 
 	for (auto [_, rootEntity] : rootEntities)
 	{
-		AABB modelBox;
 		auto renderables = rootEntity->getChildrenWithComponent<Renderable>();
 		for (auto e : renderables)
 		{
 			auto t = e->getComponent<Transform>();
 			auto r = e->getComponent<Renderable>();
-
 			glm::mat4 M = t->getTransform();
 			AABB bbox = r->getBoundingBox();
-			modelBox.expand(bbox.getMinPoint());
-			modelBox.expand(bbox.getMaxPoint());
-
-			boundingBoxes.push_back(MeshPrimitives::createLineBox(modelBox.getCenter(), modelBox.getSize()));
+			boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
 			boxMat.push_back(M);
 		}
 	}
@@ -501,9 +508,9 @@ Entity::Ptr Scene::getCurrentModel()
 	return rootEntities[currentModel];
 }
 
-Entity::Ptr Scene::getNode(std::string name)
+Entity::Ptr Scene::getNode(int id)
 {
-	return allEntities[name];
+	return allEntities[id];
 }
 
 Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)

@@ -15,7 +15,8 @@ class Scene
 private:
 	std::string name;
 	std::map<std::string, Entity::Ptr> rootEntities;
-	std::map<std::string, Entity::Ptr> allEntities;
+	//std::map<std::string, Entity::Ptr> allEntities;
+	std::map<int, Entity::Ptr> allEntities;
 	GL::UniformBuffer<Light::UniformData> lightUBO;
 	std::vector<Framebuffer::Ptr> shadowFBOs;
 	std::vector<std::vector<glm::mat4>> views;
@@ -45,6 +46,7 @@ public:
 	void loadModel(std::string name, std::string path);
 	void addEntity(std::string name, Entity::Ptr entity);
 	void addLight(std::string name);
+	void removeRootEntity(std::string name);
 	void updateAnimations(float dt);
 	void updateAnimationState(float dt);
 	void playAnimations();
@@ -65,7 +67,7 @@ public:
 	std::vector<std::string> getVariantNames();
 	AABB getBoundingBox();
 	Entity::Ptr getCurrentModel();
-	Entity::Ptr getNode(std::string name);
+	Entity::Ptr getNode(int id);
 	Entity::Ptr selectModelRaycast(glm::vec3 start, glm::vec3 end);
 
 	typedef std::shared_ptr<Scene> Ptr;

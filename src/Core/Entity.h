@@ -19,11 +19,17 @@ private:
 	std::map<std::type_index, Component::Ptr> components;
 	std::vector<std::shared_ptr<Entity>> children;
 
+	unsigned int id;
+
+	static unsigned int globalIDCount;
+
 public:
 	Entity(const std::string& name, std::shared_ptr<Entity> parent) : name(name), parent(parent)
 	{
 		auto t = Transform::Ptr(new Transform());
 		addComponent(t);
+		id = globalIDCount;
+		globalIDCount++;
 	}
 
 	~Entity()
@@ -117,9 +123,9 @@ public:
 			children.erase(children.begin() + index);
 	}
 	
-	void getAllNodes(std::map<std::string, std::shared_ptr<Entity>>& nodes)
+	void getAllNodes(std::map<int, std::shared_ptr<Entity>>& nodes)
 	{
-		nodes.insert(std::make_pair(name, shared_from_this()));
+		nodes.insert(std::make_pair(id, shared_from_this()));
 		for (auto child : children)
 			child->getAllNodes(nodes);
 	}
@@ -158,12 +164,31 @@ public:
 		return children[index];
 	}
 
+	std::shared_ptr<Entity> findByID(unsigned int id)
+	{
+		if (this->id == id)
+			return shared_from_this();
+
+		for (auto c : children)
+		{
+			auto childEntity = c->findByID(id);
+			if (childEntity != nullptr)
+				return childEntity;
+		}
+
+		return nullptr;
+	}
+
+	unsigned int getID()
+	{
+		return id;
+	}
+
 	typedef std::shared_ptr<Entity> Ptr;
 	static Ptr create(const std::string& name, Ptr parent)
 	{
 		return std::make_shared<Entity>(name, parent);
 	}
 };
-
 
 #endif // INCLUDED_ENTITY

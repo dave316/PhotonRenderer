@@ -428,7 +428,7 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", true);
 	renderScene(scene, defaultShader, true);
-	//scene->renderBoxes(unlitShader);
+	scene->renderBoxes(unlitShader);
 	screenFBO->end();
 
 	//glViewport(0, 0, width, height);

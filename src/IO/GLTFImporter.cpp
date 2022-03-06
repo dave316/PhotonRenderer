@@ -1730,6 +1730,7 @@ namespace IO
 			node.name = "node_" + std::to_string(nodeIndex);
 
 		auto entity = Entity::create(node.name, parent);
+		std::cout << "ID: " << entity->getID() << std::endl;
 		auto t = entity->getComponent<Transform>();
 		t->setPosition(node.translation);
 		t->setRotation(node.rotation);
@@ -1846,6 +1847,7 @@ namespace IO
 		
 		// TODO: dont add an empty root node! use the one from GLTF instead
 		auto root = Entity::create(name, nullptr);
+		std::cout << "ID: " << root->getID() << std::endl;
 		auto rootTransform = root->getComponent<Transform>();
 		auto rootNode = nodes[0];
 

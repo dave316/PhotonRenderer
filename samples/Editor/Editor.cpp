@@ -4,6 +4,7 @@
 #include <imgui/imgui_impl_opengl3.h>
 #include <imgui/ImGuiFileDialog.h>
 
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <algorithm>
 #include <sstream>
@@ -155,54 +156,51 @@ void Editor::selectModel()
 
 void Editor::addTreeNode(Entity::Ptr entity)
 {
-	//if (entity->numChildren() == 0)
-	//{
-	//	ImGui::Indent(ImGui::GetTreeNodeToLabelSpacing());
-	//	ImGui::Text(entity->getName().c_str());
-	//	ImGui::Unindent(ImGui::GetTreeNodeToLabelSpacing());
-	//}
-	//else
-	//{
-	//	if (ImGui::TreeNode(entity->getName().c_str()))
-	//	{
-	//		for (int i = 0; i < entity->numChildren(); i++)
-	//			addNode(entity->getChild(i));
-
-	//		ImGui::TreePop();
-	//	}
-	//}
-
 	std::string name = entity->getName();
+	unsigned int currentID = entity->getID();
 
-	bool open = ImGui::TreeNodeEx(name.c_str(), (entity->numChildren() == 0 ? ImGuiTreeNodeFlags_Leaf : 0)
-		//ImGuiTreeNodeFlags_DefaultOpen | 
-		
-	);
+	bool open = ImGui::TreeNodeEx(name.c_str(), (entity->numChildren() == 0 ? ImGuiTreeNodeFlags_Leaf : 0));
 
-	ImGui::PushID(name.c_str());
-	if (ImGui::BeginPopupContextItem()) {
-		// Some processing...
-		ImGui::EndPopup();
+	//ImGui::PushID(name.c_str());
+	//if (ImGui::BeginPopupContextItem())
+	//{
+	//	ImGui::Text(name.c_str());
+	//	ImGui::EndPopup();
+	//}
+	//ImGui::PopID();
+
+	if (ImGui::IsItemClicked())
+	{
+		// TODO: select node
+
+		selectedModel = entity;
 	}
-	ImGui::PopID();
 
 	if (ImGui::BeginDragDropTarget())
 	{
 		const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("Entity");
 		if (payload != NULL)
 		{
-			// TODO: this creates alot of unwanted side effects.. use unique ID to identify each entity
-			// TODO: update the local to world transformations accordingly....
-			// TODO: check if target node is a node of the same subtree. If so dont allow droping!
-
-			std::string sourceName((char*)payload->Data);
-			std::cout << "received entity " << sourceName << std::endl;
-
-			if (name.compare(sourceName) != 0)
+			unsigned int id = *(unsigned int*)(payload->Data);
+			auto sourceEntity = scene->getNode(id);
+			if (sourceEntity->findByID(entity->getID()) != nullptr)
 			{
-				auto sourceEntity = scene->getNode(std::string(sourceName));
+				std::cout << "target node is part of source tree!" << std::endl;
+			}
+			else
+			{
+				std::string sourceName = sourceEntity->getName();
 				auto parent = sourceEntity->getParent();
-				parent->removeChild(sourceName);
+				if (parent == nullptr)
+					scene->removeRootEntity(sourceName);
+				else
+					parent->removeChild(sourceName);
+
+				auto sourceTransform = sourceEntity->getComponent<Transform>();
+				glm::mat4 sourceT = sourceTransform->getTransform();
+				glm::mat4 targetT = entity->getComponent<Transform>()->getTransform();
+				glm::mat4 M = glm::inverse(targetT) * sourceT;
+				sourceTransform->setTransform(M);
 				sourceEntity->setParent(entity);
 				entity->addChild(sourceEntity);
 			}
@@ -213,7 +211,9 @@ void Editor::addTreeNode(Entity::Ptr entity)
 
 	if (ImGui::BeginDragDropSource())
 	{
-		ImGui::SetDragDropPayload("Entity", entity->getName().c_str(), entity->getName().length());
+		unsigned int id = entity->getID();
+		ImGui::SetDragDropPayload("Entity", &id, sizeof(unsigned int));
+		ImGui::Text(name.c_str());
 		ImGui::EndDragDropSource();
 	}
 
@@ -221,7 +221,6 @@ void Editor::addTreeNode(Entity::Ptr entity)
 	{
 		for (int i = 0; i < entity->numChildren(); i++)
 			addTreeNode(entity->getChild(i));
-
 		ImGui::TreePop();
 	}		
 }
@@ -316,16 +315,25 @@ void Editor::gui()
 			float* M = glm::value_ptr(modelMatrix);
 			const float* V = glm::value_ptr(camera.getViewMatrix());
 			const float* P = glm::value_ptr(camera.getProjectionMatrix());
+
 			ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowSize.x, windowSize.y);
-
-			//ImGuizmo::DrawCubes(V, P, M, 1);
 			ImGuizmo::Manipulate(V, P, op, ImGuizmo::LOCAL, M);
-			t->setTransform(modelMatrix);
-			selectedModel->update(glm::mat4(1.0f));
+
+			auto parent = selectedModel->getParent();
+			glm::mat4 localTransform = modelMatrix;
+			glm::mat4 parentTransform = glm::mat4(1.0f);
+			if (parent != nullptr)
+			{
+				parentTransform = parent->getComponent<Transform>()->getTransform();
+				localTransform = glm::inverse(parentTransform) * localTransform;
+			}
+			t->setTransform(localTransform);
+
+			selectedModel->update(parentTransform);
 			renderer.initLights(scene);
 			renderer.updateShadows(scene);
-			//	scene->updateBoxes();
+			scene->updateBoxes();
 		}
 		
 		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
@@ -336,9 +344,7 @@ void Editor::gui()
 		vMax.x += ImGui::GetWindowPos().x;
 		vMax.y += ImGui::GetWindowPos().y;
 
-		//ImGuiWindow; //*window = ImGui::GetCurrentWindow();
 		gizmoWindowFlags = ImGui::IsWindowHovered() && ImGui::IsMouseHoveringRect(vMin, vMax) ? ImGuiWindowFlags_NoMove : 0;
-
 	}
 	ImGui::End();
 
@@ -370,7 +376,7 @@ void Editor::gui()
 	}
 
 	bool show_demo_window = true;
-	//ImGui::ShowDemoWindow(&show_demo_window);
+	ImGui::ShowDemoWindow(&show_demo_window);
 }
 
 void Editor::loop()

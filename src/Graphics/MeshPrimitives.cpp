@@ -112,6 +112,8 @@ namespace MeshPrimitives
 		glm::vec3 v10(-phi, 0.0f, s);
 		glm::vec3 v11(phi, 0.0f, -s);
 		glm::vec3 v12(phi, 0.0f, s);
+
+		return nullptr;
 	}
 
 	Mesh::Ptr createSphere(glm::vec3 position, float radius, unsigned int rings, unsigned int sectors)
