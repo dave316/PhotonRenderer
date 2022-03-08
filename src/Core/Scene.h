@@ -33,6 +33,8 @@ private:
 	TextureCubeMap::Ptr irradianceMap;
 	TextureCubeMap::Ptr specularMapGGX;
 	TextureCubeMap::Ptr specularMapCharlie;
+
+	bool useTransmission = false;
 	
 	Scene(const Scene&) = delete;
 	Scene& operator=(const Scene&) = delete;
@@ -59,6 +61,7 @@ public:
 	void useSkybox();
 	void clear();
 	void updateBoxes();
+	bool hasTransmission();
 	IO::GLTFCamera getCamera(int idx);
 	std::map<std::string, Entity::Ptr>& getEntities();
 	std::vector<Framebuffer::Ptr>& getShadwoFBOs();

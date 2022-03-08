@@ -391,25 +391,29 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 	//for (int i = 0; i < shadowFBOs.size(); i++)
 	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
-	// offscreen pass for transmission
-	refractionFBO->begin();
-	if (useSkybox)
+	if (scene->hasTransmission())
 	{
-		glCullFace(GL_FRONT);
-		skyboxShader->use();
-		skyboxShader->setUniform("useGammaEncoding", false);
-		//cubeMap->use(0);
-		scene->useSkybox();
-		unitCube->draw();
-		glCullFace(GL_BACK);
-	}
+		// offscreen pass for transmission
+		refractionFBO->begin();
+		if (useSkybox)
+		{
+			glCullFace(GL_FRONT);
+			skyboxShader->use();
+			skyboxShader->setUniform("useGammaEncoding", false);
+			//cubeMap->use(0);
+			scene->useSkybox();
+			unitCube->draw();
+			glCullFace(GL_BACK);
+		}
 
-	defaultShader->use();
-	defaultShader->setUniform("useGammaEncoding", false);
-	renderScene(scene, defaultShader, false);
-	refractionFBO->end();
-	refractionTex->generateMipmaps();
-	refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+		defaultShader->use();
+		defaultShader->setUniform("useGammaEncoding", false);
+		renderScene(scene, defaultShader, false);
+		refractionFBO->end();
+		refractionTex->generateMipmaps();
+		refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+		refractionTex->use(14);
+	}
 
 	// main render pass
 	screenFBO->begin();
@@ -423,8 +427,7 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 		unitCube->draw();
 		glCullFace(GL_BACK);
 	}
-
-	refractionTex->use(14);
+	
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", true);
 	renderScene(scene, defaultShader, true);

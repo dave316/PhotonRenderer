@@ -26,7 +26,7 @@ float getShadow(vec3 fragPos, unsigned int index)
 	float len = length(f);
 	float shadow = 0.0;
 	float radius = 0.001;
-	float depth = (len / light.range) - 0.0005; // TODO: add to light properties
+	float depth = (len / light.range) - 0.005; // TODO: add to light properties
 
 	for (int x = -1; x <= 1; x++)
 	{

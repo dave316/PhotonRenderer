@@ -215,8 +215,8 @@ void Scene::initShadowMaps()
 		auto lightsEntity = entity->getChildrenWithComponent<Light>();
 		for (auto lightEntity : lightsEntity)
 		{
-			const unsigned int size = 4096;
-			auto shadowMap = TextureCubeMap::create(size, size, GL::DEPTH24);
+			const unsigned int size = 1024;
+			auto shadowMap = TextureCubeMap::create(size, size, GL::DEPTH16);
 			shadowMap->setCompareMode();
 
 			auto shadowFBO = Framebuffer::create(size, size);
@@ -239,17 +239,13 @@ void Scene::loadModel(std::string name, std::string path)
 		currentModel = name;
 	}
 
+	auto models = rootEntity->getComponentsInChildren<Renderable>();
+	for (auto r : models)
+	{
+		if (r->useBlending() || r->isTransmissive())
+			useTransmission = true;
+	}
 	rootEntity->getAllNodes(allEntities);
-
-	//for (auto it : nodes)
-	//	std::cout << it.first << std::endl;
-
-	//auto modelLights = importer.getLights();
-	//for (int i = 0; i < modelLights.size(); i++)
-	//{
-	//	std::string lightName = name + "_light_" + std::to_string(i);
-	//	lights.insert(std::make_pair(lightName, modelLights[i]));
-	//}
 
 	cameras = importer.getCameras();
 	variants = importer.getVariants();
@@ -440,6 +436,11 @@ void Scene::updateBoxes()
 			boxMat.push_back(M);
 		}
 	}
+}
+
+bool Scene::hasTransmission()
+{
+	return useTransmission;
 }
 
 IO::GLTFCamera Scene::getCamera(int idx)

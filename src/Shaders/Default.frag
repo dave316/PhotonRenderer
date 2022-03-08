@@ -5,7 +5,7 @@
 #define CLEARCOAT
 #define TRANSMISSION
 #define SPECULAR
-//#define IRIDESCENCE
+#define IRIDESCENCE
 //#define ANISOTROPY
 
 layout(location = 0) in vec3 wPosition;
@@ -263,7 +263,12 @@ void main()
 		if(light.type == 0)
 			pointToLight = -light.direction;
 		else
+		{
 			pointToLight = light.position - wPosition;
+//			float dist = length(pointToLight);
+//			if(dist > light.range)
+//				continue;
+		}			
 
 		vec3 l = normalize(pointToLight);
 		vec3 h = normalize(l + v);
@@ -358,9 +363,10 @@ void main()
 	vec3 intensity = emission + ambient + lo;
 
 	float EV = 0.0; 
-	//intensity = vec3(1.0) - exp(-intensity * exposure);
-	intensity = intensity * pow(2.0, EV);
-//	intensity = intensity / (1.0 + intensity);			// reinhard
+	float exposure = 1.0f;
+	intensity = vec3(1.0) - exp(-intensity * exposure);
+	//intensity = intensity * pow(2.0, EV);
+	//intensity = intensity / (1.0 + intensity);			// reinhard
 
 	if(useGammaEncoding)
 		intensity = pow(intensity, vec3(1.0 / 2.2));

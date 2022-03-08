@@ -1730,7 +1730,7 @@ namespace IO
 			node.name = "node_" + std::to_string(nodeIndex);
 
 		auto entity = Entity::create(node.name, parent);
-		std::cout << "ID: " << entity->getID() << std::endl;
+		//std::cout << "ID: " << entity->getID() << std::endl;
 		auto t = entity->getComponent<Transform>();
 		t->setPosition(node.translation);
 		t->setRotation(node.rotation);
@@ -1845,24 +1845,36 @@ namespace IO
 			}
 		}
 		
-		// TODO: dont add an empty root node! use the one from GLTF instead
+		// TODO: if one root node is present, use it as root node
+		// TODO: if more than one root node is present, create a empty root node and add all nodes as children
 		auto root = Entity::create(name, nullptr);
-		std::cout << "ID: " << root->getID() << std::endl;
-		auto rootTransform = root->getComponent<Transform>();
-		auto rootNode = nodes[0];
+		////std::cout << "ID: " << root->getID() << std::endl;
+		//auto rootTransform = root->getComponent<Transform>();
+		//auto rootNode = nodes[0];
 
 		entities.resize(nodes.size());
 		entities[0] = root;
 
-		if (doc.HasMember("scenes") && doc["scenes"][0].HasMember("nodes"))
+		int rootNodeIndex = 0;
+
+		if (doc.HasMember("scenes"))
 		{
-			for (auto& nodeIndex : doc["scenes"][0]["nodes"].GetArray())
+			auto& scenesNode = doc["scenes"];
+			if (scenesNode.GetArray().Size() > 1)
+				std::cout << "error more than one GLTF scenes not supported!" << std::endl;
+			if (scenesNode[0].HasMember("nodes"))
 			{
-				auto childEntity = traverse(nodeIndex.GetInt(), root, glm::mat4(1.0f));
-				root->addChild(childEntity);
+				auto& nodesNode = scenesNode[0]["nodes"];
+				for (auto& nodeIndex : nodesNode.GetArray())
+				{
+					rootNodeIndex = nodeIndex.GetInt();
+					auto childEntity = traverse(rootNodeIndex, root, glm::mat4(1.0f));
+					root->addChild(childEntity);
+				}
 			}
 		}
 
+		//auto root = entities[rootNodeIndex];
 		if (!animations.empty())
 		{
 			auto animator = Animator::create(skins.empty());
