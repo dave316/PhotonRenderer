@@ -347,9 +347,13 @@ void Scene::nextMaterial()
 
 void Scene::renderBoxes(Shader::Ptr shader)
 {
+	glEnable(GL_LINE_WIDTH);
+	glLineWidth(10.0f);
+
 	shader->use();
 	shader->setUniform("useTex", false);
 	shader->setUniform("orthoProjection", false);
+	shader->setUniform("solidColor", glm::vec3(1.0f, 0.5f, 0.0f));
 	for (int i = 0; i < boundingBoxes.size(); i++)
 	{
 		shader->setUniform("M", boxMat[i]);
@@ -438,6 +442,22 @@ void Scene::updateBoxes()
 	}
 }
 
+void Scene::selectBox(Entity::Ptr e)
+{
+	boundingBoxes.clear();
+	boxMat.clear();
+
+	auto t = e->getComponent<Transform>();
+	auto r = e->getComponent<Renderable>();
+	if (r != nullptr)
+	{
+		glm::mat4 M = t->getTransform();
+		AABB bbox = r->getBoundingBox();
+		boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
+		boxMat.push_back(M);
+	}
+}
+
 bool Scene::hasTransmission()
 {
 	return useTransmission;
@@ -516,7 +536,7 @@ Entity::Ptr Scene::getNode(int id)
 
 Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 {
-	std::string nearestModel = "";
+	Entity::Ptr nearestEntity = nullptr;
 	float minDist = std::numeric_limits<float>::max();
 	for (auto [name, entity] : rootEntities)
 	{
@@ -546,14 +566,14 @@ Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 				if (dist < minDist)
 				{
 					minDist = dist;
-					nearestModel = name;
+					nearestEntity = e;
 				}
 			}
 		}
 	}
 
-	if (rootEntities.find(nearestModel) != rootEntities.end())
-		return rootEntities[nearestModel];
+	//if (rootEntities.find(nearestModel) != rootEntities.end())
+	//	return rootEntities[nearestModel];
 
-	return nullptr;
+	return nearestEntity;
 }

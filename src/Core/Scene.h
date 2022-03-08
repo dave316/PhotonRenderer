@@ -61,6 +61,7 @@ public:
 	void useSkybox();
 	void clear();
 	void updateBoxes();
+	void selectBox(Entity::Ptr e);
 	bool hasTransmission();
 	IO::GLTFCamera getCamera(int idx);
 	std::map<std::string, Entity::Ptr>& getEntities();

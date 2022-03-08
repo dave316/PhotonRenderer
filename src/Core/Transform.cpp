@@ -97,6 +97,14 @@ void Transform::rotate(float angle, glm::vec3 axis)
 	rotation *= glm::angleAxis(glm::radians(angle), axis);
 }
 
+glm::mat4 Transform::getLocalTransform()
+{
+	glm::mat4 T = glm::translate(glm::mat4(1.0f), position);
+	glm::mat4 R = glm::mat4_cast(rotation);
+	glm::mat4 S = glm::scale(glm::mat4(1.0f), scale);
+	return (T * R * S);
+}
+
 glm::mat4 Transform::getTransform()
 {
 	return transform;

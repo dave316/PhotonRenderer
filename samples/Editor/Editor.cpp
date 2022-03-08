@@ -30,7 +30,7 @@ bool Editor::init()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
+	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 20); 
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -312,13 +312,35 @@ void Editor::gui()
 		{
 			auto t = selectedModel->getComponent<Transform>();
 			glm::mat4 modelMatrix = t->getTransform();
+			//glm::mat4 modelMatrix = t->getLocalTransform();
 			float* M = glm::value_ptr(modelMatrix);
 			const float* V = glm::value_ptr(camera.getViewMatrix());
 			const float* P = glm::value_ptr(camera.getProjectionMatrix());
 
+			glm::vec3 pos, scale, skew;
+			glm::quat rot;
+			glm::vec4 persp;
+			glm::decompose(modelMatrix, scale, rot, pos, skew, persp);
+			glm::vec3 gizmoPos = glm::vec3(0, 2, 0);
+
+			//glm::mat4 T = glm::translate(glm::mat4(1.0f), gizmoPos);
+			//glm::mat4 R = glm::mat4_cast(rot);
+			//glm::mat4 S = glm::scale(glm::mat4(1.0f), scale);
+			//glm::mat4 gizmoM = T * R * S;
+			//float* M = glm::value_ptr(gizmoM);
+
 			ImGuizmo::SetDrawlist();
 			ImGuizmo::SetRect(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y, windowSize.x, windowSize.y);
 			ImGuizmo::Manipulate(V, P, op, ImGuizmo::LOCAL, M);
+
+			//glm::vec3 newGizmoPos;
+			//glm::decompose(modelMatrix, scale, rot, newGizmoPos, skew, persp);
+			//pos += (newGizmoPos - gizmoPos);
+
+			//T = glm::translate(glm::mat4(1.0f), pos);
+			//R = glm::mat4_cast(rot);
+			//S = glm::scale(glm::mat4(1.0f), scale);
+			//glm::mat4 localTransform = T * R * S;
 
 			auto parent = selectedModel->getParent();
 			glm::mat4 localTransform = modelMatrix;
@@ -333,7 +355,8 @@ void Editor::gui()
 			selectedModel->update(parentTransform);
 			renderer.initLights(scene);
 			renderer.updateShadows(scene);
-			scene->updateBoxes();
+			//scene->updateBoxes();
+			scene->selectBox(selectedModel);
 		}
 		
 		ImVec2 vMin = ImGui::GetWindowContentRegionMin();

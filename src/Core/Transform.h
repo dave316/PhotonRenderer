@@ -42,6 +42,7 @@ public:
 	void translate(glm::vec3 t);
 	void rotate(float angle, glm::vec3 axis);
 	void calcNormalMatrix();
+	glm::mat4 getLocalTransform();
 	glm::mat4 getTransform();
 	glm::vec3 getPosition();
 	glm::quat getRotation();
