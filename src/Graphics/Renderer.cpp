@@ -45,6 +45,8 @@ bool Renderer::init()
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_STENCIL_TEST);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	glDepthFunc(GL_LEQUAL);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	//glClearColor(0.8f, 0.77f, 0.54f, 1.0f);
@@ -120,7 +122,7 @@ void Renderer::initFBOs()
 	screenTex = Texture2D::create(w, h, GL::RGBA8);
 	screenFBO = Framebuffer::create(w, h);
 	screenFBO->addRenderTexture(GL::COLOR0, screenTex);
-	screenFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
+	screenFBO->addRenderBuffer(GL::DEPTH_STENCIL, GL::D24_S8);
 }
 
 void Renderer::initShader()
@@ -317,6 +319,41 @@ void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr shader, bool transmissi
 	}
 }
 
+void Renderer::renderOutline(Entity::Ptr entity)
+{
+	// Draw selected model into stencil buffer
+	glEnable(GL_STENCIL_TEST);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilMask(0xFF);
+	defaultShader->use();
+	auto models = entity->getChildrenWithComponent<Renderable>();
+	for (auto m : models)
+	{
+		auto r = m->getComponent<Renderable>();
+		auto t = m->getComponent<Transform>();
+		t->setUniforms(defaultShader);
+		r->render(defaultShader);
+	}
+
+	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+	glStencilMask(0x00);
+	glDisable(GL_DEPTH_TEST);
+	unlitShader->use();
+	unlitShader->setUniform("useTex", false);
+	unlitShader->setUniform("orthoProjection", false);
+	unlitShader->setUniform("solidColor", glm::vec3(1.0f, 0.5f, 0.0f));
+	for (auto m : models)
+	{
+		auto r = m->getComponent<Renderable>();
+		auto t = m->getComponent<Transform>();
+		t->setUniforms(unlitShader);
+		r->render(unlitShader);
+	}
+	glEnable(GL_DEPTH_TEST);
+	//glDisable(GL_STENCIL_TEST);
+}
+
 void Renderer::renderToScreen(Scene::Ptr scene)
 {
 	if (useIBL)
@@ -431,7 +468,10 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", true);
 	renderScene(scene, defaultShader, true);
-	scene->renderBoxes(unlitShader);
+	auto selectedModel = scene->getCurrentModel();
+	if (selectedModel != nullptr)
+		renderOutline(selectedModel);
+	//scene->renderBoxes(unlitShader);
 	screenFBO->end();
 
 	//glViewport(0, 0, width, height);

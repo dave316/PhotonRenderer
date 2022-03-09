@@ -19,6 +19,7 @@ namespace GL
 		DEPTH24,
 		DEPTH32,
 		DEPTH32F,
+		D24_S8,
 		RGB32F,
 		RGBA32F,
 		RGB16F,
@@ -58,21 +59,22 @@ namespace GL
 		GLint internalFormat;
 		switch (format)
 		{
-		case R8: internalFormat = GL_RED; break;
-		case RG8: internalFormat = GL_RG8; break;
-		case RGB8:	internalFormat = GL_RGB8; break;
-		case RGBA8:	internalFormat = GL_RGBA8; break;
-		case SRGB8:	internalFormat = GL_SRGB8; break;
-		case SRGBA8:internalFormat = GL_SRGB8_ALPHA8; break;
+		case R8:		internalFormat = GL_RED; break;
+		case RG8:		internalFormat = GL_RG8; break;
+		case RGB8:		internalFormat = GL_RGB8; break;
+		case RGBA8:		internalFormat = GL_RGBA8; break;
+		case SRGB8:		internalFormat = GL_SRGB8; break;
+		case SRGBA8:	internalFormat = GL_SRGB8_ALPHA8; break;
 		case DEPTH16:	internalFormat = GL_DEPTH_COMPONENT16; break;
 		case DEPTH24:	internalFormat = GL_DEPTH_COMPONENT24; break;
 		case DEPTH32:	internalFormat = GL_DEPTH_COMPONENT32; break;
 		case DEPTH32F:	internalFormat = GL_DEPTH_COMPONENT32F; break;
-		case RGB32F: internalFormat = GL_RGB32F; break;
-		case RGBA32F: internalFormat = GL_RGBA32F; break;
-		case RGB16F: internalFormat = GL_RGB16F; break;
-		case RG16F: internalFormat = GL_RG16F; break;
-		default:	internalFormat = GL_RGBA8; break;
+		case D24_S8:	internalFormat = GL_DEPTH24_STENCIL8; break;
+		case RGB32F:	internalFormat = GL_RGB32F; break;
+		case RGBA32F:	internalFormat = GL_RGBA32F; break;
+		case RGB16F:	internalFormat = GL_RGB16F; break;
+		case RG16F:		internalFormat = GL_RG16F; break;
+		default:		internalFormat = GL_RGBA8; break;
 		}
 		return internalFormat;
 	}
@@ -106,6 +108,9 @@ namespace GL
 		case DEPTH32F:
 			dataFormat = GL_DEPTH_COMPONENT;
 			break;
+		case D24_S8: 
+			dataFormat = GL_DEPTH_STENCIL;
+			break;
 		default:		
 			dataFormat = GL_RGBA; 
 			break;
@@ -138,6 +143,9 @@ namespace GL
 		case DEPTH32:
 		case DEPTH32F:
 			dataType = GL_FLOAT;
+			break;
+		case D24_S8:
+			dataType = GL_FLOAT_32_UNSIGNED_INT_24_8_REV;
 			break;
 		default:
 			dataType = GL_UNSIGNED_BYTE; 

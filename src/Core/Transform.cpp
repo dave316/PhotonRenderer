@@ -120,7 +120,22 @@ glm::quat Transform::getRotation()
 	return rotation;
 }
 
+glm::vec3 Transform::getScale()
+{
+	return scale;
+}
+
 void Transform::calcNormalMatrix()
 {
 	normalTransform = glm::inverseTranspose(glm::mat3(transform));
+}
+
+void Transform::setBounds(AABB& aabb)
+{
+	boundingBox = aabb;
+}
+
+AABB Transform::getBounds()
+{
+	return boundingBox;
 }

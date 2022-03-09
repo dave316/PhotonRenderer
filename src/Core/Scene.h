@@ -26,6 +26,7 @@ private:
 
 	std::vector<Mesh::Ptr> boundingBoxes;
 	std::vector<glm::mat4> boxMat;
+	Entity::Ptr selectedModel;
 
 	Mesh::Ptr screenQuad;
 	Mesh::Ptr unitCube;
@@ -62,6 +63,7 @@ public:
 	void clear();
 	void updateBoxes();
 	void selectBox(Entity::Ptr e);
+	void unselect();
 	bool hasTransmission();
 	IO::GLTFCamera getCamera(int idx);
 	std::map<std::string, Entity::Ptr>& getEntities();
@@ -73,6 +75,7 @@ public:
 	Entity::Ptr getCurrentModel();
 	Entity::Ptr getNode(int id);
 	Entity::Ptr selectModelRaycast(glm::vec3 start, glm::vec3 end);
+	std::vector<Entity::Ptr> selectModelsRaycast(glm::vec3 start, glm::vec3 end); // Returns all hit entities sorted by distance to camera
 
 	typedef std::shared_ptr<Scene> Ptr;
 	static Ptr create(const std::string& name)

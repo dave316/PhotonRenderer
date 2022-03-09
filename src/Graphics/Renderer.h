@@ -59,6 +59,7 @@ public:
 	void updateCamera(glm::mat4 P, glm::mat4 V, glm::vec3 pos);
 	void updateShadows(Scene::Ptr scene);
 	void renderScene(Scene::Ptr scene, Shader::Ptr shader, bool transmission);
+	void renderOutline(Entity::Ptr entity);
 	void renderToScreen(Scene::Ptr scene);
 	Texture2D::Ptr renderToTexture(Scene::Ptr scene);
 	void renderText();

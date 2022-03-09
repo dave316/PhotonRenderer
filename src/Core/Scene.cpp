@@ -251,18 +251,18 @@ void Scene::loadModel(std::string name, std::string path)
 	variants = importer.getVariants();
 	importer.clear();
 
-	auto renderables = rootEntity->getChildrenWithComponent<Renderable>();
-	for (auto e : renderables)
-	{
-		auto t = e->getComponent<Transform>();
-		auto r = e->getComponent<Renderable>();
+	//auto renderables = rootEntity->getChildrenWithComponent<Renderable>();
+	//for (auto e : renderables)
+	//{
+	//	auto t = e->getComponent<Transform>();
+	//	auto r = e->getComponent<Renderable>();
 
-		glm::mat4 M = t->getTransform();
-		AABB bbox = r->getBoundingBox();
+	//	glm::mat4 M = t->getTransform();
+	//	AABB bbox = r->getBoundingBox();
 
-		boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
-		boxMat.push_back(M);
-	}
+	//	boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
+	//	boxMat.push_back(M);
+	//}
 }
 
 void Scene::addEntity(std::string name, Entity::Ptr entity)
@@ -348,7 +348,7 @@ void Scene::nextMaterial()
 void Scene::renderBoxes(Shader::Ptr shader)
 {
 	glEnable(GL_LINE_WIDTH);
-	glLineWidth(10.0f);
+	glLineWidth(1.0f);
 
 	shader->use();
 	shader->setUniform("useTex", false);
@@ -456,6 +456,40 @@ void Scene::selectBox(Entity::Ptr e)
 		boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
 		boxMat.push_back(M);
 	}
+	else
+	{
+		glm::mat4 M = t->getTransform();
+		AABB selectedBox;
+		auto renderEntities = e->getChildrenWithComponent<Renderable>();
+		for (auto e : renderEntities)
+		{
+			auto meshT = e->getComponent<Transform>();
+			auto meshR = e->getComponent<Renderable>();
+			AABB bbox = meshR->getBoundingBox();
+			glm::mat4 local2world = meshT->getTransform();
+
+			auto points = bbox.getPoints();
+			for (auto p : points)
+			{
+				p = glm::vec3(local2world * glm::vec4(p, 1.0f));
+				p = glm::vec3(glm::inverse(M) * glm::vec4(p, 1.0f));
+				selectedBox.expand(p);
+			}
+		}
+
+		boundingBoxes.push_back(MeshPrimitives::createLineBox(selectedBox.getCenter(), selectedBox.getSize()));
+		boxMat.push_back(M);
+	}
+
+	selectedModel = e;
+}
+
+void Scene::unselect()
+{
+	boundingBoxes.clear();
+	boxMat.clear();
+
+	selectedModel = nullptr;
 }
 
 bool Scene::hasTransmission()
@@ -523,10 +557,7 @@ AABB Scene::getBoundingBox()
 
 Entity::Ptr Scene::getCurrentModel()
 {
-	if (currentModel.empty())
-		return nullptr;
-
-	return rootEntities[currentModel];
+	return selectedModel;
 }
 
 Entity::Ptr Scene::getNode(int id)
@@ -538,6 +569,8 @@ Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 {
 	Entity::Ptr nearestEntity = nullptr;
 	float minDist = std::numeric_limits<float>::max();
+	int hitCount = 0;
+
 	for (auto [name, entity] : rootEntities)
 	{
 		//AABB modelBox; // TODO: This could precomputed for root nodes, or select AABB for each submesh
@@ -561,6 +594,7 @@ Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 			glm::vec3 hitpoint;
 			if (Intersection::rayBoxIntersection(ray, bbox, hitpoint))
 			{
+				hitCount++;
 				glm::vec3 h = glm::vec3(M * glm::vec4(hitpoint, 1.0f));
 				float dist = glm::distance(h, start);
 				if (dist < minDist)
@@ -572,8 +606,53 @@ Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
 		}
 	}
 
+	std::cout << "hit " << hitCount << " meshes" << std::endl;
 	//if (rootEntities.find(nearestModel) != rootEntities.end())
 	//	return rootEntities[nearestModel];
 
 	return nearestEntity;
+}
+
+std::vector<Entity::Ptr> Scene::selectModelsRaycast(glm::vec3 start, glm::vec3 end)
+{
+	std::map<float, Entity::Ptr> hitEntities;
+	float minDist = std::numeric_limits<float>::max();
+	int hitCount = 0;
+
+	for (auto [name, entity] : rootEntities)
+	{
+		//AABB modelBox; // TODO: This could precomputed for root nodes, or select AABB for each submesh
+		auto renderables = entity->getChildrenWithComponent<Renderable>();
+		for (auto e : renderables)
+		{
+			auto t = e->getComponent<Transform>();
+			auto r = e->getComponent<Renderable>();
+
+			AABB bbox = r->getBoundingBox();
+			glm::mat4 M = t->getTransform();
+			glm::mat4 M_I = glm::inverse(t->getTransform());
+			glm::vec3 startModel = glm::vec3(M_I * glm::vec4(start, 1.0f));
+			glm::vec3 endModel = glm::vec3(M_I * glm::vec4(end, 1.0f));
+
+			Ray ray;
+			ray.origin = startModel;
+			ray.direction = glm::normalize(endModel - startModel);
+			ray.dirInv = 1.0f / ray.direction;
+
+			glm::vec3 hitpoint;
+			if (Intersection::rayBoxIntersection(ray, bbox, hitpoint))
+			{
+				hitCount++;
+				glm::vec3 h = glm::vec3(M * glm::vec4(hitpoint, 1.0f));
+				float dist = glm::distance(h, start);
+				hitEntities.insert(std::make_pair(dist, e));
+			}
+		}
+	}
+
+	std::vector<Entity::Ptr> entities;
+	for (auto [_, e] : hitEntities)
+		entities.push_back(e);
+
+	return entities;
 }
