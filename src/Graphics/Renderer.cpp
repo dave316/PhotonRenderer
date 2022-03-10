@@ -46,7 +46,7 @@ bool Renderer::init()
 	glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_STENCIL_TEST);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+	glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
 	glDepthFunc(GL_LEQUAL);
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	//glClearColor(0.8f, 0.77f, 0.54f, 1.0f);
@@ -322,8 +322,6 @@ void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr shader, bool transmissi
 void Renderer::renderOutline(Entity::Ptr entity)
 {
 	// Draw selected model into stencil buffer
-	glEnable(GL_STENCIL_TEST);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	glStencilFunc(GL_ALWAYS, 1, 0xFF);
 	glStencilMask(0xFF);
 	defaultShader->use();
@@ -347,11 +345,15 @@ void Renderer::renderOutline(Entity::Ptr entity)
 	{
 		auto r = m->getComponent<Renderable>();
 		auto t = m->getComponent<Transform>();
-		t->setUniforms(unlitShader);
+		auto M = t->getTransform();
+		M = M * glm::scale(glm::mat4(1.0f), glm::vec3(1.1f));
+		//t->setUniforms(unlitShader);
+		unlitShader->setUniform("M", M);
 		r->render(unlitShader);
 	}
+	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	glStencilMask(0xFF);
 	glEnable(GL_DEPTH_TEST);
-	//glDisable(GL_STENCIL_TEST);
 }
 
 void Renderer::renderToScreen(Scene::Ptr scene)
@@ -454,6 +456,7 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 
 	// main render pass
 	screenFBO->begin();
+	glStencilMask(0x00);
 	if (useSkybox)
 	{
 		glCullFace(GL_FRONT);
@@ -467,10 +470,28 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 	
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", true);
-	renderScene(scene, defaultShader, true);
+
 	auto selectedModel = scene->getCurrentModel();
+	//if (selectedModel != nullptr)
+	//{
+	//	glStencilFunc(GL_ALWAYS, 1, 0xFF);
+	//	glStencilMask(0xFF);
+	//	defaultShader->use();
+	//	auto models = selectedModel->getChildrenWithComponent<Renderable>();
+	//	for (auto m : models)
+	//	{
+	//		auto r = m->getComponent<Renderable>();
+	//		auto t = m->getComponent<Transform>();
+	//		t->setUniforms(defaultShader);
+	//		r->render(defaultShader);
+	//	}
+	//}
+	glStencilMask(0x00);
+	renderScene(scene, defaultShader, true);
+	
 	if (selectedModel != nullptr)
 		renderOutline(selectedModel);
+		
 	//scene->renderBoxes(unlitShader);
 	screenFBO->end();
 
