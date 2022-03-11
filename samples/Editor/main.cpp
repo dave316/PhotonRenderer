@@ -2,7 +2,7 @@
 
 int main()
 {
-	Editor editor("Scene Editor", 1600, 900);
+	Editor editor("Scene Editor", 1920, 1080);
 	if (editor.init())
 	{
 		editor.loop();

@@ -123,6 +123,11 @@ void Renderer::initFBOs()
 	screenFBO = Framebuffer::create(w, h);
 	screenFBO->addRenderTexture(GL::COLOR0, screenTex);
 	screenFBO->addRenderBuffer(GL::DEPTH_STENCIL, GL::D24_S8);
+
+	outlineFBO = Framebuffer::create(w, h);
+	outlineFBO->addRenderTexture(GL::COLOR0, GL::RGBA8);
+	outlineFBO->addRenderTexture(GL::COLOR1, GL::RGBA8);
+	outlineFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
 }
 
 void Renderer::initShader()
@@ -160,6 +165,9 @@ void Renderer::initShader()
 	unlitShader->setUniform("orthoProjection", true);
 	unlitShader->setUniform("useTex", true);
 	unlitShader->setUniform("tex", 0);
+
+	outlineShader = shaders["Outline"];
+	outlineShader->setUniform("inputTexture", 0);
 }
 
 void Renderer::initEnv(Scene::Ptr scene)
@@ -324,33 +332,32 @@ void Renderer::renderOutline(Entity::Ptr entity)
 	// Draw selected model into stencil buffer
 	glStencilFunc(GL_ALWAYS, 1, 0xFF);
 	glStencilMask(0xFF);
-	defaultShader->use();
+	glDepthMask(0x00);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	unlitShader->use();
 	auto models = entity->getChildrenWithComponent<Renderable>();
 	for (auto m : models)
 	{
 		auto r = m->getComponent<Renderable>();
 		auto t = m->getComponent<Transform>();
-		t->setUniforms(defaultShader);
-		r->render(defaultShader);
+		t->setUniforms(unlitShader);
+		r->render(unlitShader);
 	}
 
 	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
 	glStencilMask(0x00);
+	glDepthMask(0xFF);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glDisable(GL_DEPTH_TEST);
+
 	unlitShader->use();
-	unlitShader->setUniform("useTex", false);
-	unlitShader->setUniform("orthoProjection", false);
-	unlitShader->setUniform("solidColor", glm::vec3(1.0f, 0.5f, 0.0f));
-	for (auto m : models)
-	{
-		auto r = m->getComponent<Renderable>();
-		auto t = m->getComponent<Transform>();
-		auto M = t->getTransform();
-		M = M * glm::scale(glm::mat4(1.0f), glm::vec3(1.1f));
-		//t->setUniforms(unlitShader);
-		unlitShader->setUniform("M", M);
-		r->render(unlitShader);
-	}
+	unlitShader->setUniform("useTex", true);
+	unlitShader->setUniform("orthoProjection", true);
+	unlitShader->setUniform("skipEmptyFragments", true);
+	unlitShader->setUniform("M", glm::mat4(1.0f));
+	outlineFBO->useTexture(GL::COLOR0, 0);
+	screenQuad->draw();
+
 	glStencilFunc(GL_ALWAYS, 1, 0xFF);
 	glStencilMask(0xFF);
 	glEnable(GL_DEPTH_TEST);
@@ -427,6 +434,43 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 	}
 	scene->useIBL();
 
+	glStencilMask(0x00);
+	auto selectedModel = scene->getCurrentModel();
+	if (selectedModel != nullptr)
+	{
+		outlineFBO->begin();
+
+		unlitShader->use();
+		unlitShader->setUniform("useTex", false);
+		unlitShader->setUniform("orthoProjection", false);
+		unlitShader->setUniform("skipEmptyFragments", false);
+		unlitShader->setUniform("solidColor", glm::vec3(1.0f, 0.5f, 0.0f));
+		auto animator = selectedModel->getComponent<Animator>();
+		auto models = selectedModel->getChildrenWithComponent<Renderable>();
+		for (auto m : models)
+		{
+			auto r = m->getComponent<Renderable>();
+			if (r->isSkinnedMesh() || r->useMorphTargets())
+				continue;
+			auto t = m->getComponent<Transform>();
+			t->setUniforms(unlitShader);
+			r->render(unlitShader);
+		}
+
+		outlineShader->use();
+		outlineFBO->useTexture(GL::COLOR0, 0);
+		glDrawBuffer(GL_COLOR_ATTACHMENT1);
+		outlineShader->setUniform("direction", glm::vec2(1, 0));
+		screenQuad->draw();
+
+		outlineFBO->useTexture(GL::COLOR1, 0);
+		glDrawBuffer(GL_COLOR_ATTACHMENT0);
+		outlineShader->setUniform("direction", glm::vec2(0, 1));
+		screenQuad->draw();
+
+		outlineFBO->end();
+	}
+
 	//for (int i = 0; i < shadowFBOs.size(); i++)
 	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
@@ -455,6 +499,7 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 	}
 
 	// main render pass
+	glStencilMask(0xFF);
 	screenFBO->begin();
 	glStencilMask(0x00);
 	if (useSkybox)
@@ -466,32 +511,14 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 		scene->useSkybox();
 		unitCube->draw();
 		glCullFace(GL_BACK);
-	}
-	
+	}	
 	defaultShader->use();
 	defaultShader->setUniform("useGammaEncoding", true);
-
-	auto selectedModel = scene->getCurrentModel();
-	//if (selectedModel != nullptr)
-	//{
-	//	glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	//	glStencilMask(0xFF);
-	//	defaultShader->use();
-	//	auto models = selectedModel->getChildrenWithComponent<Renderable>();
-	//	for (auto m : models)
-	//	{
-	//		auto r = m->getComponent<Renderable>();
-	//		auto t = m->getComponent<Transform>();
-	//		t->setUniforms(defaultShader);
-	//		r->render(defaultShader);
-	//	}
-	//}
-	glStencilMask(0x00);
 	renderScene(scene, defaultShader, true);
 	
 	if (selectedModel != nullptr)
 		renderOutline(selectedModel);
-		
+
 	//scene->renderBoxes(unlitShader);
 	screenFBO->end();
 

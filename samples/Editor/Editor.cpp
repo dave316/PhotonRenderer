@@ -30,7 +30,7 @@ bool Editor::init()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 20); 
+	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -194,22 +194,42 @@ void Editor::addTreeNode(Entity::Ptr entity)
 {
 	std::string name = entity->getName();
 	unsigned int currentID = entity->getID();
+	int selectedID = (selectedModel != nullptr ? selectedModel->getID() : -1);
 
-	bool open = ImGui::TreeNodeEx(name.c_str(), (entity->numChildren() == 0 ? ImGuiTreeNodeFlags_Leaf : 0));
-
-	//ImGui::PushID(name.c_str());
-	//if (ImGui::BeginPopupContextItem())
-	//{
-	//	ImGui::Text(name.c_str());
-	//	ImGui::EndPopup();
-	//}
-	//ImGui::PopID();
-
-	if (ImGui::IsItemClicked())
+	if (selectedModel != nullptr)
 	{
-		// TODO: select node
+		auto parent = selectedModel->getParent();
+		while(parent != nullptr)
+		{
+			if(parent->getID() == currentID)
+				ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+			parent = parent->getParent();
+		}
+	}
 
-		selectedModel = entity;
+	ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow;
+	flags |= (currentID == selectedID ? ImGuiTreeNodeFlags_Selected : 0);
+	flags |= (entity->numChildren() == 0 ? ImGuiTreeNodeFlags_Leaf : 0);
+
+	bool open = ImGui::TreeNodeEx(name.c_str(), flags);
+
+	ImGui::PushID(name.c_str());
+	if (ImGui::BeginPopupContextItem())
+	{
+		ImGui::Text(name.c_str());
+		ImGui::EndPopup();
+	}
+	ImGui::PopID();
+
+	if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
+	{
+		if (selectedID == currentID)
+		{
+			selectedModel = nullptr;
+			scene->unselect();
+		}			
+		else
+			selectedModel = entity;
 	}
 
 	if (ImGui::BeginDragDropTarget())

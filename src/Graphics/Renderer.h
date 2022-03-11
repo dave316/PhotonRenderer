@@ -22,6 +22,7 @@ class Renderer
 	Shader::Ptr skyboxShader;
 	Shader::Ptr textShader;
 	Shader::Ptr unlitShader;
+	Shader::Ptr outlineShader;
 
 	std::vector<Font::Ptr> fonts;
 	std::vector<Text2D::Ptr> texts; // add component for text objects/renderer
@@ -31,6 +32,7 @@ class Renderer
 
 	Framebuffer::Ptr screenFBO;
 	Framebuffer::Ptr refractionFBO;
+	Framebuffer::Ptr outlineFBO;
 	Texture2D::Ptr screenTex;
 	Texture2D::Ptr refractionTex;
 	Mesh::Ptr screenQuad;
