@@ -72,6 +72,7 @@ public:
 	std::vector<std::string> getCameraNames();
 	std::vector<std::string> getVariantNames();
 	AABB getBoundingBox();
+	Entity::Ptr getRootNode(std::string name);
 	Entity::Ptr getCurrentModel();
 	Entity::Ptr getNode(int id);
 	Entity::Ptr selectModelRaycast(glm::vec3 start, glm::vec3 end);

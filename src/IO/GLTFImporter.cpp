@@ -101,7 +101,7 @@ namespace IO
 
 		json::Document doc;
 		doc.Parse(content.c_str());
-		
+
 		checkExtensions(doc);
 		loadExtensionData(doc);
 		loadBuffers(doc, path);
@@ -1035,56 +1035,64 @@ namespace IO
 
 	Texture2D::Ptr GLTFImporter::loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB)
 	{
-		Texture2D::Ptr tex = nullptr;
 		TextureSampler& sampler = texInfo.sampler;
 		auto idx = texInfo.filename.find_last_of('.') + 1;
 		auto len = texInfo.filename.length();
 		auto fileExt = texInfo.filename.substr(idx, len - idx);
+
+		if (texInfo.texture == nullptr)
+		{
 #if USE_KTXLIB
-		if (fileExt.compare("ktx2") == 0)
-			tex = IO::loadTextureKTX(path + "/" + texInfo.filename);
-		else
+			if (fileExt.compare("ktx2") == 0)
+				texInfo.texture = IO::loadTextureKTX(path + "/" + texInfo.filename);
+			else
 #endif
-		if(texInfo.isExternalFile) // load from file
-		{
-			tex = IO::loadTexture(path + "/" + texInfo.filename, sRGB);	
-			if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
-				tex->generateMipmaps();
+			if (texInfo.isExternalFile) // load from file
+			{
+				std::cout << "loading tex " << texInfo.filename << std::endl;
+
+				Image2D<unsigned char> image(path + "/" + texInfo.filename);
+				//image.loadFromFile(path + "/" + texInfo.filename);
+				texInfo.texture = image.upload(sRGB);
+				//tex = IO::loadTexture(path + "/" + texInfo.filename, sRGB);	
+				if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
+					texInfo.texture->generateMipmaps();
+			}
+			else if (!texInfo.dataURI.empty()) // load from data URI
+			{
+				int sepIndex = texInfo.dataURI.find_last_of(',');
+				int dataStart = sepIndex + 1;
+				int dataLen = texInfo.dataURI.length() - dataStart;
+				std::string dataURI = texInfo.dataURI.substr(0, sepIndex); // TODO: check if media type is correct etc...
+				//std::cout << dataURI << std::endl;
+
+				std::string dataBase64 = texInfo.dataURI.substr(dataStart, dataLen);
+				std::string dataBinary = base64_decode(dataBase64);
+				std::vector<unsigned char> data;
+				data.insert(data.end(), dataBinary.begin(), dataBinary.end());
+
+				texInfo.texture = IO::loadTextureFromMemory(data, sRGB);
+				if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
+					texInfo.texture->generateMipmaps();
+			}
+			else // load texture from binary chunk
+			{
+				std::vector<unsigned char> data;
+				BufferView& bv = bufferViews[texInfo.bufferView];
+				Buffer& buffer = buffers[bv.buffer];
+				int offset = bv.byteOffset;
+				data.resize(bv.byteLength);
+				memcpy(data.data(), &buffer.data[offset], bv.byteLength);
+
+				texInfo.texture = IO::loadTextureFromMemory(data, sRGB);
+				if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
+					texInfo.texture->generateMipmaps();
+			}
 		}
-		else if (!texInfo.dataURI.empty()) // load from data URI
-		{
-			int sepIndex = texInfo.dataURI.find_last_of(',');
-			int dataStart = sepIndex + 1;
-			int dataLen = texInfo.dataURI.length() - dataStart;
-			std::string dataURI = texInfo.dataURI.substr(0, sepIndex); // TODO: check if media type is correct etc...
-			//std::cout << dataURI << std::endl;
 
-			std::string dataBase64 = texInfo.dataURI.substr(dataStart, dataLen);
-			std::string dataBinary = base64_decode(dataBase64);
-			std::vector<unsigned char> data;
-			data.insert(data.end(), dataBinary.begin(), dataBinary.end());
-
-			tex = IO::loadTextureFromMemory(data, sRGB);
-			if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
-				tex->generateMipmaps();
-		}
-		else // load texture from binary chunk
-		{			
-			std::vector<unsigned char> data;
-			BufferView& bv = bufferViews[texInfo.bufferView];
-			Buffer& buffer = buffers[bv.buffer];
-			int offset = bv.byteOffset;
-			data.resize(bv.byteLength);
-			memcpy(data.data(), &buffer.data[offset], bv.byteLength);
-
-			tex = IO::loadTextureFromMemory(data, sRGB);
-			if (sampler.minFilter >= 9984 && texInfo.sampler.minFilter <= 9987)
-				tex->generateMipmaps();
-		}
-
-		tex->setFilter(GL::TextureFilter(sampler.minFilter), GL::TextureFilter(sampler.magFilter));
-		tex->setWrap(GL::TextureWrap(sampler.wrapS), GL::TextureWrap(sampler.wrapT));
-		return tex;
+		texInfo.texture->setFilter(GL::TextureFilter(sampler.minFilter), GL::TextureFilter(sampler.magFilter));
+		texInfo.texture->setWrap(GL::TextureWrap(sampler.wrapS), GL::TextureWrap(sampler.wrapT));
+		return texInfo.texture;
 	}
 
 	void GLTFImporter::loadCameras(const json::Document& doc)
@@ -1273,6 +1281,13 @@ namespace IO
 		return value;
 	}
 
+	void GLTFImporter::encodeNormals(TextureInfo info, std::string path)
+	{
+		Image2D<unsigned char> normalMap(path + "/" + info.filename);
+
+		// TODO: implement :)
+	}
+
 	void GLTFImporter::loadMaterials(const json::Document& doc, const std::string& path)
 	{
 		if (!doc.HasMember("materials"))
@@ -1335,8 +1350,33 @@ namespace IO
 				material->addProperty("material.baseColorFactor", baseColor);
 				material->addProperty("material.roughnessFactor", roughnessFactor);
 				material->addProperty("material.metallicFactor", metallicFactor);
-				
 				setTextureInfo(pbrNode, "baseColorTexture", material, "baseColorTex", path, true);
+
+				if (materialNode.HasMember("occlusionTexture") && pbrNode.HasMember("metallicRoughnessTexture"))
+				{
+					int occTexIndex = materialNode["occlusionTexture"]["index"].GetInt();
+					int pbrTexIndex = pbrNode["metallicRoughnessTexture"]["index"].GetInt();
+
+					if (occTexIndex != pbrTexIndex)
+					{
+						if (textures[pbrTexIndex].isExternalFile)
+						{
+							Image2D<unsigned char> pbrImage(path + "/" + textures[pbrTexIndex].filename);
+							Image2D<unsigned char> occImage(path + "/" + textures[occTexIndex].filename);
+							//pbrImage.loadFromFile(path + "/" + textures[pbrTexIndex].filename);
+							//occImage.loadFromFile(path + "/" + textures[occTexIndex].filename);
+							unsigned char* rawData = occImage.getDataPtr();
+							pbrImage.addChannel(0, 0, rawData, 3);
+
+							Texture2D::Ptr pbrTex = pbrImage.upload(false);
+							textures[pbrTexIndex].texture = pbrTex;
+							textures[occTexIndex].texture = pbrTex;
+
+							if (textures[pbrTexIndex].sampler.minFilter >= 9984 && textures[pbrTexIndex].sampler.minFilter <= 9987)
+								textures[pbrTexIndex].texture->generateMipmaps();
+						}
+					}
+				}
 				setTextureInfo(pbrNode, "metallicRoughnessTexture", material, "pbrTex", path, false);
 			}
 
@@ -1346,6 +1386,9 @@ namespace IO
 				unsigned int texIndex = normalTexNode["index"].GetInt();
 				if (texIndex < textures.size())
 				{
+					encodeNormals(textures[texIndex], path);
+
+					// TODO: add normal encoding
 					auto tex = loadTexture(textures[texIndex], path, false);
 
 					material->addTexture("normalTex.tSampler", tex);
@@ -1378,6 +1421,16 @@ namespace IO
 				material->addProperty("normalTex.use", false);
 			}
 
+			if (materialNode.HasMember("occlusionTexture"))
+			{
+				auto& texNode = materialNode["occlusionTexture"];
+				float occlusionStrength = getFloatFromNode(texNode, "strength");
+				material->addProperty("material.occlusionStrength", occlusionStrength);
+			}
+			else
+			{
+				material->addProperty("material.occlusionStrength", 1.0f);
+			}
 			setTextureInfo(materialNode, "occlusionTexture", material, "occlusionTex", path, false);
 
 			glm::vec3 emissiveFactor = getVec3FromNode(materialNode, "emissiveFactor", glm::vec3(0));
@@ -1488,8 +1541,39 @@ namespace IO
 					float sheenRough = getFloatFromNode(sheenNode, "sheenRoughnessFactor", 0.0);
 					material->addProperty("material.sheenColorFactor", sheenColor);
 					material->addProperty("material.sheenRoughnessFactor", sheenRough);
+
+					if (sheenNode.HasMember("sheenColorTexture") && sheenNode.HasMember("sheenRoughnessTexture"))
+					{
+						int sheenColorTexIndex = sheenNode["sheenColorTexture"]["index"].GetInt();
+						int sheenRoughTexIndex = sheenNode["sheenRoughnessTexture"]["index"].GetInt();
+						if (sheenColorTexIndex != sheenRoughTexIndex)
+						{
+							if (textures[sheenColorTexIndex].isExternalFile)
+							{
+								Image2D<unsigned char> sheenColorImage(path + "/" + textures[sheenColorTexIndex].filename);
+								Image2D<unsigned char> sheenRoughImage(path + "/" + textures[sheenRoughTexIndex].filename);
+								Image2D<unsigned char> sheenImage(sheenColorImage.getWidth(), sheenColorImage.getHeight(), 4);
+								for (int i = 0; i < 3; i++)
+									sheenImage.addChannel(i, i, sheenColorImage.getDataPtr(), sheenColorImage.getChannels());
+								sheenImage.addChannel(3, 0, sheenRoughImage.getDataPtr(), sheenRoughImage.getChannels());
+
+								Texture2D::Ptr sheenTex = sheenImage.upload(true);
+								textures[sheenColorTexIndex].texture = sheenTex;
+								textures[sheenRoughTexIndex].texture = sheenTex;
+
+								if (textures[sheenColorTexIndex].sampler.minFilter >= 9984 && textures[sheenColorTexIndex].sampler.minFilter <= 9987)
+									textures[sheenColorTexIndex].texture->generateMipmaps();
+							}
+						}
+					}
+
 					setTextureInfo(sheenNode, "sheenColorTexture", material, "sheenColortex", path, true);
 					setTextureInfo(sheenNode, "sheenRoughnessTexture", material, "sheenRoughtex", path, false);
+
+					//if (sheenNode.HasMember("sheenColorTexture"))
+					//	std::cout << "model has sheen color texture" << std::endl;
+					//if (sheenNode.HasMember("sheenRoughnessTexture"))
+					//	std::cout << "model has sheen rough texture" << std::endl;
 				}		
 
 				if (extensionNode.HasMember("KHR_materials_clearcoat"))
@@ -1502,6 +1586,14 @@ namespace IO
 					setTextureInfo(clearcoatNode, "clearcoatTexture", material, "clearCoatTex", path, false);
 					setTextureInfo(clearcoatNode, "clearcoatRoughnessTexture", material, "clearCoatRoughTex", path, false);
 					setTextureInfo(clearcoatNode, "clearcoatNormalTexture", material, "clearCoatNormalTex", path, false);
+
+					if (clearcoatNode.HasMember("clearcoatTexture"))
+						std::cout << "material has clearcoat texture" << std::endl;
+					if (clearcoatNode.HasMember("clearcoatRoughnessTexture"))
+						std::cout << "material has clearcoat rough texture" << std::endl;
+					if (clearcoatNode.HasMember("clearcoatNormalTexture"))
+						std::cout << "material has clearcoat normal texture" << std::endl;
+
 				}
 
 				if (extensionNode.HasMember("KHR_materials_transmission"))
@@ -1576,7 +1668,10 @@ namespace IO
 				{
 					material->addProperty("material.unlit", false);
 				}
-			}				
+			}
+
+			//if(material->getUsedTexUnits() > 2)
+			//	std::cout << "material needs " << material->getUsedTexUnits() << " tex units" << std::endl;
 
 			materials.push_back(material);
 		}

@@ -408,7 +408,12 @@ namespace IO
 			{
 				std::string filename = path + "/" + texFilename.C_Str();
 				std::cout << "loading texture " << filename << std::endl;
-				defaultMaterial->addTexture("material.baseColorTex", IO::loadTexture(filename, true));
+
+				Image2D<unsigned char> image(filename);
+				//image.loadFromFile(filename);
+				auto tex = image.upload(true);
+
+				defaultMaterial->addTexture("material.baseColorTex", tex);
 				defaultMaterial->addProperty("material.useBaseColorTex", true);
 			}
 		}

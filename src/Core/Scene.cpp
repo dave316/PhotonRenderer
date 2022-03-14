@@ -555,6 +555,13 @@ AABB Scene::getBoundingBox()
 	return sceneBBox;
 }
 
+Entity::Ptr Scene::getRootNode(std::string name)
+{
+	if (rootEntities.find(name) != rootEntities.end())
+		return rootEntities[name];
+	return nullptr;
+}
+
 Entity::Ptr Scene::getCurrentModel()
 {
 	return selectedModel;

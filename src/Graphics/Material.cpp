@@ -12,6 +12,7 @@ void Material::setUniforms(Shader::Ptr shader)
 	{
 		if (prop.second->isTexture())
 		{
+			//std::cout << "activate tex unit " << numTextures << std::endl;
 			textures[numTextures]->use(numTextures);
 			numTextures++;
 		}
@@ -37,7 +38,7 @@ Material::Ptr getDefaultMaterial()
 	defaultMaterial->addProperty("material.baseColorFactor", glm::vec4(1.0));
 	defaultMaterial->addProperty("material.roughnessFactor", 1.0f);
 	defaultMaterial->addProperty("material.metallicFactor", 1.0f);
-	defaultMaterial->addProperty("material.occlusionFactor", 0.0f);
+	defaultMaterial->addProperty("material.occlusionStrength", 1.0f);
 	defaultMaterial->addProperty("material.emissiveFactor", glm::vec3(0.0));
 	defaultMaterial->addProperty("material.alphaCutOff", 0.0f);
 	defaultMaterial->addProperty("material.alphaMode", 0);

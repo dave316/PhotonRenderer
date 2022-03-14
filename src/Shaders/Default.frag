@@ -5,7 +5,7 @@
 #define CLEARCOAT
 #define TRANSMISSION
 #define SPECULAR
-#define IRIDESCENCE
+//#define IRIDESCENCE
 //#define ANISOTROPY
 
 layout(location = 0) in vec3 wPosition;
@@ -369,7 +369,7 @@ void main()
 	//intensity = intensity / (1.0 + intensity);			// reinhard
 
 	if(useGammaEncoding)
-		intensity = pow(intensity, vec3(1.0 / 2.2));
+		intensity = pow(n, vec3(1.0 / 2.2));
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
 		fragColor = vec4(intensity, 1.0);

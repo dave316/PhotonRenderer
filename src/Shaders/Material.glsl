@@ -1,51 +1,53 @@
 struct PBRMetalRoughMaterial
 {
-	// PBR MetalRough
+	// PBR base material
 	vec4 baseColorFactor;
 	float roughnessFactor;
 	float metallicFactor;
-	float occlusionFactor;
+	float occlusionStrength;
 	vec3 emissiveFactor;
 	int alphaMode;
 	float alphaCutOff;
 
-	// sheen
+#ifdef SHEEN // sheen
 	vec3 sheenColorFactor;
 	float sheenRoughnessFactor;
+#endif
 
-	// cleacoat
+#ifdef CLEARCOAT // clearcoat
 	float clearcoatFactor;
 	float clearcoatRoughnessFactor;
+#endif
 
-	// transmission
+#ifdef TRANSMISSION // transmission + volume
 	float transmissionFactor;
-
-	// volume
 	float thicknessFactor;
 	float attenuationDistance;
 	vec3 attenuationColor;
+#endif	
 
-	// ior
-	float ior;
-
-	// specular
+#ifdef SPECULAR // specular
 	float specularFactor;
 	vec3 specularColorFactor;
+#endif
 
-	// iridescence
+#ifdef IRIDESCENCE // iridescence
 	float iridescenceFactor;
 	float iridescenceIOR;
 	float iridescenceThicknessMin;
 	float iridescenceThicknessMax;
+#endif
 
-	// anisotropy
+#ifdef ANISOTROPY // anisotropy
 	float anisotropyFactor;
 	vec3 anisotropyDirection;
+#endif
 
 	// misc
 	bool unlit;
 	bool computeFlatNormals;
 	float normalScale;
+	float ior;
 };
 uniform PBRMetalRoughMaterial material;
 
@@ -64,24 +66,12 @@ vec4 getTexel(TextureInfo info, vec2 uv0, vec2 uv1)
 	return texture(info.tSampler, uv.xy);
 }
 
+// PBR base material
 uniform TextureInfo baseColorTex;
 uniform TextureInfo normalTex;
 uniform TextureInfo pbrTex;
 uniform TextureInfo emissiveTex;
 uniform TextureInfo occlusionTex;
-uniform TextureInfo sheenColortex;
-uniform TextureInfo sheenRoughtex;
-uniform TextureInfo clearCoatTex;
-uniform TextureInfo clearCoatRoughTex;
-uniform TextureInfo clearCoatNormalTex;
-uniform TextureInfo transmissionTex;
-uniform TextureInfo thicknessTex;
-uniform TextureInfo specularTex;
-uniform TextureInfo specularColorTex;
-uniform TextureInfo iridescenceTex;
-uniform TextureInfo iridescenceThicknessTex;
-uniform TextureInfo anisotropyTex;
-uniform TextureInfo anisotropyDirectionTex;
 
 vec4 getBaseColor(vec2 uv0, vec2 uv1)
 {
@@ -93,9 +83,9 @@ vec4 getBaseColor(vec2 uv0, vec2 uv1)
 
 float getOcclusionFactor(vec2 uv0, vec2 uv1)
 {
-	float ao = 1.0; // TODO: get occlusion factor
+	float ao = material.occlusionStrength;
 	if (occlusionTex.use)
-		ao *= getTexel(occlusionTex, uv0, uv1).r;
+		ao = 1.0 + ao * (getTexel(occlusionTex, uv0, uv1).r - 1.0);
 	return ao;
 }
 
@@ -115,6 +105,11 @@ vec3 getPBRValues(vec2 uv0, vec2 uv1)
 	return pbrValues;
 }
 
+// PBR material extensions
+#ifdef SHEEN
+uniform TextureInfo sheenColortex;
+uniform TextureInfo sheenRoughtex;
+
 vec3 getSheenColor(vec2 uv0, vec2 uv1)
 {
 	vec3 sheenColor = material.sheenColorFactor;
@@ -130,6 +125,12 @@ float getSheenRoughness(vec2 uv0, vec2 uv1)
 		sheenRoughness *= getTexel(sheenRoughtex, uv0, uv1).a;
 	return sheenRoughness;
 }
+#endif
+
+#ifdef CLEARCOAT
+uniform TextureInfo clearCoatTex;
+uniform TextureInfo clearCoatRoughTex;
+uniform TextureInfo clearCoatNormalTex;
 
 float getClearCoat(vec2 uv0, vec2 uv1)
 {
@@ -146,6 +147,11 @@ float getClearCoatRoughness(vec2 uv0, vec2 uv1)
 		clearCoatRoughness *= getTexel(clearCoatRoughTex, uv0, uv1).g;
 	return clearCoatRoughness;
 }
+#endif
+
+#ifdef TRANSMISSION
+uniform TextureInfo transmissionTex;
+uniform TextureInfo thicknessTex;
 
 float getTransmission(vec2 uv0, vec2 uv1)
 {
@@ -162,6 +168,11 @@ float getThickness(vec2 uv0, vec2 uv1)
 		thickness *= getTexel(thicknessTex, uv0, uv1).g;
 	return thickness;
 }
+#endif
+
+#ifdef SPECULAR
+uniform TextureInfo specularTex;
+uniform TextureInfo specularColorTex;
 
 float getSpecular(vec2 uv0, vec2 uv1)
 {
@@ -178,6 +189,11 @@ vec3 getSpecularColor(vec2 uv0, vec2 uv1)
 		specularColor *= getTexel(specularColorTex, uv0, uv1).rgb;
 	return specularColor;
 }
+#endif
+
+#ifdef IRIDESCENCE
+uniform TextureInfo iridescenceTex;
+uniform TextureInfo iridescenceThicknessTex;
 
 float getIridescence(vec2 uv0, vec2 uv1)
 {
@@ -197,6 +213,11 @@ float getIridescenceThickness(vec2 uv0, vec2 uv1)
 	}
 	return thickness;
 }
+#endif
+
+#ifdef ANISOTROPY
+uniform TextureInfo anisotropyTex;
+uniform TextureInfo anisotropyDirectionTex;
 
 float getAnisotropy(vec2 uv0, vec2 uv1)
 {
@@ -213,6 +234,7 @@ vec3 getAnisotropyDirection(vec2 uv0, vec2 uv1)
 		direction = getTexel(anisotropyDirectionTex, uv0, uv1).rgb * 2.0 - 1.0;
 	return direction;
 }
+#endif
 
 struct PBRSpecGlossMaterial
 {

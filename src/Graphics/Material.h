@@ -115,6 +115,11 @@ public:
 		return blending;
 	}
 
+	int getUsedTexUnits()
+	{
+		return textures.size();
+	}
+
 	void setUniforms(Shader::Ptr shader);
 
 	typedef std::shared_ptr<Material> Ptr;

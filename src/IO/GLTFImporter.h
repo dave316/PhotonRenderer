@@ -105,6 +105,7 @@ namespace IO
 			std::string mimeType;
 			std::string dataURI;
 			TextureSampler sampler;
+			Texture2D::Ptr texture = nullptr;
 		};
 		std::vector<TextureInfo> textures;
 
@@ -151,6 +152,7 @@ namespace IO
 		Entity::Ptr traverse(int nodeIndex, Entity::Ptr parent, glm::mat4 parentTransform);
 		Texture2D::Ptr loadTexture(TextureInfo& texInfo, const std::string& path, bool sRGB);
 		void setTextureInfo(const json::Value& node, const std::string& texNodeName, Material::Ptr material, std::string texInfoStr, std::string path, bool sRGB);
+		void encodeNormals(TextureInfo info, std::string path);
 
 		template<typename T>
 		void loadData(int accIndex, std::vector<T>& data)

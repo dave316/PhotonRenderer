@@ -21,18 +21,27 @@ bool Application::init()
 		return false;
 
 	std::string assetPath = "../../../../assets";
-	std::string gltfPath = assetPath + "/glTF-Sample-Models_/2.0";
-	std::string name = "Lights";
+	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
+	std::string name = "DamagedHelmet";
 
 	scene = Scene::create("scene");
 	scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	//for (int i = 0; i < 100; i++)
+	//{
+	//	std::string n = name + std::to_string(i);
+	//	scene->loadModel(n, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	//	auto e = scene->getRootNode(n);
+	//	e->getComponent<Transform>()->setPosition(glm::vec3((i / 10 - 5), (i % 10 - 5), 0) * 0.05f);
+	//}
+		
 	scene->updateAnimations(0.0f);
 
 	renderer.initEnv(scene);
 	renderer.initLights(scene);
+	scene->initShadowMaps();
 	renderer.updateShadows(scene);
 
-	//initCamera();
+	initCamera();
 	setupInput();
 	
 	return true;
@@ -52,7 +61,7 @@ void Application::initCamera()
 	float yZoom = diag.y * 0.5 / glm::tan(fovy / 2.0f);
 	float dist = glm::max(xZoom, yZoom);
 	glm::vec3 center = bbox.getCenter();
-	center.z += dist * 2.0f;
+	center.z += dist;// *2.0f;
 	camera.setPosition(center);
 
 	float longestDistance = glm::distance(minPoint, maxPoint);
