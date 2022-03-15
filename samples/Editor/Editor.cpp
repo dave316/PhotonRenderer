@@ -30,7 +30,7 @@ bool Editor::init()
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
+	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 20); 
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);

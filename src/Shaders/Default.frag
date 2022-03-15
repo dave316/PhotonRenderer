@@ -144,9 +144,18 @@ void main()
 		n = normalize(cross(dFdx(wPosition), dFdy(wPosition)));
 	if(normalTex.use)
 	{
+		// TODO: add flag to toggle normal encoding/decoding
+
 		vec3 tNormal = getTexel(normalTex, texCoord0, texCoord1).rgb * 2.0 - 1.0;
 		tNormal *= vec3(material.normalScale, material.normalScale, 1.0);
 		n = wTBN * normalize(tNormal);
+//
+//		vec2 f = getTexel(normalTex, texCoord0, texCoord1).rg * 2.0 - 1.0;
+//		vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.x));
+//		float t = saturate(-n.z);
+//		n.x += n.x >= 0.0 ? -t : t;
+//		n.y += n.y >= 0.0 ? -t : t;
+//		n = wTBN * normalize(n);
 	}
 
 	if(gl_FrontFacing == false)
@@ -369,10 +378,10 @@ void main()
 	//intensity = intensity / (1.0 + intensity);			// reinhard
 
 	if(useGammaEncoding)
-		intensity = pow(n, vec3(1.0 / 2.2));
+		intensity = pow(intensity, vec3(1.0 / 2.2));
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
-		fragColor = vec4(intensity, 1.0);
+		fragColor = vec4(n * 0.5 + 0.5, 1.0);
 	else 
 		fragColor = vec4(intensity * transparency, transparency);
 }

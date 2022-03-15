@@ -1281,11 +1281,45 @@ namespace IO
 		return value;
 	}
 
-	void GLTFImporter::encodeNormals(TextureInfo info, std::string path)
+	glm::vec2 octWrap(glm::vec2 v)
+	{
+		glm::vec2 w(v.x >= 0 ? 1.0 : -1.0, v.y >= 0 ? 1.0 : -1.0);
+		return (1.0f - glm::abs(glm::vec2(v.y, v.x)) * w);
+	}
+
+	glm::vec2 encodeNormal(glm::vec3 normal)
+	{
+		glm::vec3 n = normal /= (glm::abs(normal).x + glm::abs(normal).y + glm::abs(normal).z);
+		if (n.z >= 0.0)
+			n = glm::vec3(octWrap(glm::vec2(n)), n.z);
+		n.x = n.x * 0.5 + 0.5;
+		n.y = n.y * 0.5 + 0.5;
+		return glm::vec2(n);
+	}
+
+	Texture2D::Ptr GLTFImporter::encodeNormals(TextureInfo info, std::string path)
 	{
 		Image2D<unsigned char> normalMap(path + "/" + info.filename);
+		unsigned char* data = normalMap.getDataPtr();
+		unsigned int w = normalMap.getWidth();
+		unsigned int h = normalMap.getHeight();
+		unsigned int c = normalMap.getChannels();
+		Image2D<unsigned char> encNormalMap(w, h, 2);
+		unsigned char* encData = encNormalMap.getDataPtr();
+		for (int i = 0; i < w * h; i++)
+		{
+			glm::vec3 normal;
+			normal.x = data[i * c];
+			normal.y = data[i * c + 1];
+			normal.z = data[i * c + 2];
+			normal /= 255.0f;
+			normal = normal * 2.0f - 1.0f;
+			glm::vec2 encNormal = encodeNormal(normal);
+			encData[i * 2] = encNormal.x * 255.0f;
+			encData[i * 2 + 1] = encNormal.y * 255.0f;
+		}
 
-		// TODO: implement :)
+		return encNormalMap.upload(false);
 	}
 
 	void GLTFImporter::loadMaterials(const json::Document& doc, const std::string& path)
@@ -1386,9 +1420,9 @@ namespace IO
 				unsigned int texIndex = normalTexNode["index"].GetInt();
 				if (texIndex < textures.size())
 				{
-					encodeNormals(textures[texIndex], path);
-
 					// TODO: add normal encoding
+					//auto tex = encodeNormals(textures[texIndex], path);
+
 					auto tex = loadTexture(textures[texIndex], path, false);
 
 					material->addTexture("normalTex.tSampler", tex);
