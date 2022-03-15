@@ -43,7 +43,7 @@ public:
 	Renderable() {}
 	~Renderable();
 	void addPrimitive(RenderPrimitive& primitive);
-	void render(Shader::Ptr shader);
+	void render(Shader::Ptr shaders);
 	void switchMaterial(unsigned int materialIndex);
 	void print();
 	void flipWindingOrder();
@@ -53,6 +53,7 @@ public:
 	bool useMorphTargets();
 	bool useBlending();
 	bool isTransmissive();
+	std::string getShader();
 	std::string getName();
 	std::vector<float> getWeights();
 	std::vector<Vertex> getVertices();

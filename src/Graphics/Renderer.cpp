@@ -136,6 +136,30 @@ void Renderer::initShader()
 	auto shaderList = IO::loadShadersFromPath(shaderPath);
 	for (auto s : shaderList)
 		shaders.insert(std::pair(s->getName(), s));
+
+	for (auto [name, shader] : shaders)
+	{
+		if (name.substr(0, 7).compare("Default") == 0)
+		{
+			shader->setUniform("screenTex", 14);
+			shader->setUniform("irradianceMap", 15);
+			shader->setUniform("specularMapGGX", 16);
+			shader->setUniform("specularMapCharlie", 17);
+			shader->setUniform("sheenLUTE", 18);
+			shader->setUniform("ggxLUT", 19);
+			shader->setUniform("charlieLUT", 20);
+			shader->setUniform("useIBL", useIBL);
+
+			// TODO: fix shadow maps! Reduce texture unit usage, too many active...
+
+			std::vector<int> units;
+			for (int i = 10; i < 15; i++)
+				units.push_back(i);
+			shader->setUniform("shadowMaps[0]", units);
+			//defaultShader->setUniform("numLights", (int)lights.size());
+		}
+	}
+
 	defaultShader = shaders["Default"];
 	defaultShader->setUniform("screenTex", 14);
 	defaultShader->setUniform("irradianceMap", 15);
@@ -180,7 +204,7 @@ void Renderer::initEnv(Scene::Ptr scene)
 
 void Renderer::initLights(Scene::Ptr scene)
 {
-	scene->initLights(defaultShader);
+	scene->initLights(shaders);
 }
 
 void Renderer::initFonts()
@@ -264,10 +288,10 @@ void Renderer::updateCamera(glm::mat4 P, glm::mat4 V, glm::vec3 pos)
 	cameraUBO.upload(&cameraData, 1);
 }
 
-void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr shader, bool transmission)
+void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr defShader, bool transmission)
 {
 	auto& rootEntitis = scene->getEntities();
-
+	int i = 0;
 	for (auto [name, e] : rootEntitis)
 	{
 		auto models = e->getChildrenWithComponent<Renderable>();
@@ -288,6 +312,17 @@ void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr shader, bool transmissi
 		{
 			auto r = m->getComponent<Renderable>();
 			auto t = m->getComponent<Transform>();
+
+			Shader::Ptr shader;
+			if (defShader)
+				shader = defShader;
+			else
+			{
+				std::string n = r->getShader();
+				shader = shaders[n];
+				shader->use();
+				shader->setUniform("useGammaEncoding", transmission);
+			}
 
 			if (r->useMorphTargets())
 			{
@@ -381,25 +416,29 @@ void Renderer::renderToScreen(Scene::Ptr scene)
 	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 
 	// offscreen pass for transmission
-	refractionFBO->begin();
-	if (useSkybox)
+	if (scene->hasTransmission())
 	{
-		glCullFace(GL_FRONT);
-		skyboxShader->use();
-		skyboxShader->setUniform("useGammaEncoding", false);
-		//cubeMap->use(0);
-		scene->useSkybox();
-		unitCube->draw();
-		glCullFace(GL_BACK);
-	}
+		refractionFBO->begin();
 
-	defaultShader->use();
-	defaultShader->setUniform("useGammaEncoding", false);
-	renderScene(scene, defaultShader, false);
-	refractionFBO->end();
-	refractionTex->generateMipmaps();
-	refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-	refractionTex->use(14);
+		if (useSkybox)
+		{
+			glCullFace(GL_FRONT);
+			skyboxShader->use();
+			skyboxShader->setUniform("useGammaEncoding", false);
+			//cubeMap->use(0);
+			scene->useSkybox();
+			unitCube->draw();
+			glCullFace(GL_BACK);
+		}
+
+		//defaultShader->use();
+		//defaultShader->setUniform("useGammaEncoding", false);
+		renderScene(scene, nullptr, false);
+		refractionFBO->end();
+		refractionTex->generateMipmaps();
+		refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+		refractionTex->use(14);
+	}
 
 	// main render pass
 	glViewport(0, 0, width, height);
@@ -415,9 +454,9 @@ void Renderer::renderToScreen(Scene::Ptr scene)
 		glCullFace(GL_BACK);
 	}
 	
-	defaultShader->use();
-	defaultShader->setUniform("useGammaEncoding", true);
-	renderScene(scene, defaultShader, true);
+	//defaultShader->use();
+	//defaultShader->setUniform("useGammaEncoding", true);
+	renderScene(scene, nullptr, true);
 }
 
 Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
@@ -489,9 +528,9 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 			glCullFace(GL_BACK);
 		}
 
-		defaultShader->use();
-		defaultShader->setUniform("useGammaEncoding", false);
-		renderScene(scene, defaultShader, false);
+		//defaultShader->use();
+		//defaultShader->setUniform("useGammaEncoding", false);
+		renderScene(scene, nullptr, false);
 		refractionFBO->end();
 		refractionTex->generateMipmaps();
 		refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
@@ -512,9 +551,9 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 		unitCube->draw();
 		glCullFace(GL_BACK);
 	}	
-	defaultShader->use();
-	defaultShader->setUniform("useGammaEncoding", true);
-	renderScene(scene, defaultShader, true);
+	//defaultShader->use();
+	//defaultShader->setUniform("useGammaEncoding", true);
+	renderScene(scene, nullptr, true);
 	
 	if (selectedModel != nullptr)
 		renderOutline(selectedModel);

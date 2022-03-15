@@ -59,7 +59,7 @@ public:
 
 class Material
 {
-	//std::string name;
+	std::string shaderName;
 	std::vector<Texture2D::Ptr> textures;
 	std::map<std::string, IProperty::Ptr> properties;
 	bool blending = false;
@@ -121,6 +121,16 @@ public:
 	}
 
 	void setUniforms(Shader::Ptr shader);
+
+	void setShader(std::string name)
+	{
+		this->shaderName = name;
+	}
+
+	std::string getShader()
+	{
+		return shaderName;
+	}
 
 	typedef std::shared_ptr<Material> Ptr;
 	static Ptr create()

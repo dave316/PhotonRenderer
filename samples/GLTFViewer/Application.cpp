@@ -44,6 +44,7 @@ bool Application::init()
 
 	renderer.initEnv(scene);
 	renderer.initLights(scene);
+	scene->initShadowMaps();
 	renderer.updateShadows(scene);
 
 	setupInput();
@@ -236,6 +237,7 @@ void Application::gui()
 					std::string fullPath = samplePath + "/" + info.name + "/" + variant + "/" + fn;
 					scene->loadModel(info.name, fullPath);
 					renderer.initLights(scene);
+					scene->initShadowMaps();
 
 					initCamera();
 

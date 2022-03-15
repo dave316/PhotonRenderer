@@ -1,13 +1,5 @@
 #version 460 core
 
-// defines
-#define SHEEN
-#define CLEARCOAT
-#define TRANSMISSION
-#define SPECULAR
-//#define IRIDESCENCE
-//#define ANISOTROPY
-
 layout(location = 0) in vec3 wPosition;
 layout(location = 1) in vec4 vertexColor;
 layout(location = 2) in vec3 wNormal;
@@ -144,18 +136,16 @@ void main()
 		n = normalize(cross(dFdx(wPosition), dFdy(wPosition)));
 	if(normalTex.use)
 	{
-		// TODO: add flag to toggle normal encoding/decoding
-
 		vec3 tNormal = getTexel(normalTex, texCoord0, texCoord1).rgb * 2.0 - 1.0;
 		tNormal *= vec3(material.normalScale, material.normalScale, 1.0);
 		n = wTBN * normalize(tNormal);
-//
+
 //		vec2 f = getTexel(normalTex, texCoord0, texCoord1).rg * 2.0 - 1.0;
-//		vec3 n = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.x));
-//		float t = saturate(-n.z);
-//		n.x += n.x >= 0.0 ? -t : t;
-//		n.y += n.y >= 0.0 ? -t : t;
-//		n = wTBN * normalize(n);
+//		vec3 tNormal = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.x));
+//		float t = saturate(-tNormal.z);
+//		tNormal.x += tNormal.x >= 0.0 ? -t : t;
+//		tNormal.y += tNormal.y >= 0.0 ? -t : t;
+//		n = wTBN * normalize(tNormal);
 	}
 
 	if(gl_FrontFacing == false)
@@ -243,9 +233,11 @@ void main()
 
 #ifdef SHEEN
 		vec3 sheen = getIBLRadianceCharlie(n, v, sheenRoughness, sheenColor);
-		float albedoScalingIBL = 1.0;// - max3(sheenColor) * E(NdotV, sheenRoughness);
+		float albedoScalingIBL = 1.0 - max3(sheenColor) * E(NdotV, sheenRoughness);
 		ambient = diffuse * albedoScalingIBL + (specular * albedoScalingIBL + sheen) * ao;
 #else
+		float sheen = 0.0;
+		float albedoScalingIBL = 1.0;
 		ambient = diffuse + specular * ao;
 #endif
 
@@ -381,7 +373,8 @@ void main()
 		intensity = pow(intensity, vec3(1.0 / 2.2));
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
-		fragColor = vec4(n * 0.5 + 0.5, 1.0);
+		//fragColor = vec4(n * 0.5 + 0.5, 1.0);
+		fragColor = vec4(intensity, 1.0);
 	else 
 		fragColor = vec4(intensity * transparency, transparency);
 }

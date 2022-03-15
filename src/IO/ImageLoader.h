@@ -24,7 +24,8 @@ public:
 	Image2D(unsigned int width, unsigned int height, unsigned int channels)
 		: width(width), height(height), channels(channels)
 	{
-		data = std::unique_ptr<unsigned char>(new unsigned char[width * height * channels]);
+		if(width > 0 && height > 0 && channels > 0)
+			data = std::unique_ptr<unsigned char>(new unsigned char[width * height * channels]);
 	}
 	Image2D(std::string filename)
 	{

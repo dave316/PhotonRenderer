@@ -1049,7 +1049,7 @@ namespace IO
 #endif
 			if (texInfo.isExternalFile) // load from file
 			{
-				std::cout << "loading tex " << texInfo.filename << std::endl;
+				//std::cout << "loading tex " << texInfo.filename << std::endl;
 
 				Image2D<unsigned char> image(path + "/" + texInfo.filename);
 				//image.loadFromFile(path + "/" + texInfo.filename);
@@ -1289,8 +1289,8 @@ namespace IO
 
 	glm::vec2 encodeNormal(glm::vec3 normal)
 	{
-		glm::vec3 n = normal /= (glm::abs(normal).x + glm::abs(normal).y + glm::abs(normal).z);
-		if (n.z >= 0.0)
+		glm::vec3 n = normal / (glm::abs(normal).x + glm::abs(normal).y + glm::abs(normal).z);
+		if (n.z < 0.0)
 			n = glm::vec3(octWrap(glm::vec2(n)), n.z);
 		n.x = n.x * 0.5 + 0.5;
 		n.y = n.y * 0.5 + 0.5;
@@ -1313,7 +1313,7 @@ namespace IO
 			normal.y = data[i * c + 1];
 			normal.z = data[i * c + 2];
 			normal /= 255.0f;
-			normal = normal * 2.0f - 1.0f;
+			normal = glm::normalize(normal * 2.0f - 1.0f);
 			glm::vec2 encNormal = encodeNormal(normal);
 			encData[i * 2] = encNormal.x * 255.0f;
 			encData[i * 2 + 1] = encNormal.y * 255.0f;
@@ -1329,6 +1329,7 @@ namespace IO
 
 		for (auto& materialNode : doc["materials"].GetArray())
 		{
+			std::string shaderName = "Default";
 			auto material = Material::create();
 			if (materialNode.HasMember("name"))
 			{
@@ -1397,8 +1398,6 @@ namespace IO
 						{
 							Image2D<unsigned char> pbrImage(path + "/" + textures[pbrTexIndex].filename);
 							Image2D<unsigned char> occImage(path + "/" + textures[occTexIndex].filename);
-							//pbrImage.loadFromFile(path + "/" + textures[pbrTexIndex].filename);
-							//occImage.loadFromFile(path + "/" + textures[occTexIndex].filename);
 							unsigned char* rawData = occImage.getDataPtr();
 							pbrImage.addChannel(0, 0, rawData, 3);
 
@@ -1420,9 +1419,7 @@ namespace IO
 				unsigned int texIndex = normalTexNode["index"].GetInt();
 				if (texIndex < textures.size())
 				{
-					// TODO: add normal encoding
 					//auto tex = encodeNormals(textures[texIndex], path);
-
 					auto tex = loadTexture(textures[texIndex], path, false);
 
 					material->addTexture("normalTex.tSampler", tex);
@@ -1472,37 +1469,38 @@ namespace IO
 			setTextureInfo(materialNode, "emissiveTexture", material, "emissiveTex", path, true);
 
 			material->addProperty("useSpecGlossMat", false);
-			material->addProperty("material.sheenColorFactor", glm::vec3(0));
-			material->addProperty("material.sheenRoughnessFactor", 0.0f);
-			material->addProperty("sheenColorTex.use", false);
-			material->addProperty("sheenRoughTex.use", false);
-			material->addProperty("material.clearcoatFactor", 0.0f);
-			material->addProperty("clearCoatTex.use", false);
-			material->addProperty("material.clearcoatRoughnessFactor", 0.0f);
-			material->addProperty("clearCoatRoughTex.use", false);
-			material->addProperty("clearCoatNormalTex.use", false);
-			material->addProperty("material.transmissionFactor", 0.0f);
-			material->addProperty("transmissionTex.use", false);
-			material->addProperty("material.thicknessFactor", 0.0f);
-			material->addProperty("thicknessTex.use", false);
-			material->addProperty("material.attenuationDistance", 0.0f); // TODO: default should be infinity?
-			material->addProperty("material.attenuationColor", glm::vec3(1.0f));
-			material->addProperty("material.ior", 1.5f);
-			material->addProperty("material.specularFactor", 1.0f);
-			material->addProperty("specularTex.use", false);
-			material->addProperty("material.specularColorFactor", glm::vec3(1.0f));
-			material->addProperty("specularColorTex.use", false);
-			material->addProperty("material.iridescenceFactor", 0.0f);
-			material->addProperty("iridescenceTex.use", false);
-			material->addProperty("material.iridescenceIOR", 1.8f);
-			material->addProperty("material.iridescenceThicknessMin", 400.0f);
-			material->addProperty("material.iridescenceThicknessMax", 1200.0f);
-			material->addProperty("iridescenceThicknessTex.use", false);
-			material->addProperty("material.anisotropyFactor", 0.0f);
-			material->addProperty("anisotropyTex.use", false);
-			material->addProperty("material.anisotropyDirection", glm::vec3(1, 0, 0));
-			material->addProperty("anisotropyDirectionTex.use", false);
 			material->addProperty("material.unlit", false);
+			material->addProperty("material.ior", 1.5f);
+
+			//material->addProperty("material.sheenColorFactor", glm::vec3(0));
+			//material->addProperty("material.sheenRoughnessFactor", 0.0f);
+			//material->addProperty("sheenColorTex.use", false);
+			//material->addProperty("sheenRoughTex.use", false);
+			//material->addProperty("material.clearcoatFactor", 0.0f);
+			//material->addProperty("clearCoatTex.use", false);
+			//material->addProperty("material.clearcoatRoughnessFactor", 0.0f);
+			//material->addProperty("clearCoatRoughTex.use", false);
+			//material->addProperty("clearCoatNormalTex.use", false);
+			//material->addProperty("material.transmissionFactor", 0.0f);
+			//material->addProperty("transmissionTex.use", false);
+			//material->addProperty("material.thicknessFactor", 0.0f);
+			//material->addProperty("thicknessTex.use", false);
+			//material->addProperty("material.attenuationDistance", 0.0f); // TODO: default should be infinity?
+			//material->addProperty("material.attenuationColor", glm::vec3(1.0f));
+			//material->addProperty("material.specularFactor", 1.0f);
+			//material->addProperty("specularTex.use", false);
+			//material->addProperty("material.specularColorFactor", glm::vec3(1.0f));
+			//material->addProperty("specularColorTex.use", false);
+			//material->addProperty("material.iridescenceFactor", 0.0f);
+			//material->addProperty("iridescenceTex.use", false);
+			//material->addProperty("material.iridescenceIOR", 1.8f);
+			//material->addProperty("material.iridescenceThicknessMin", 400.0f);
+			//material->addProperty("material.iridescenceThicknessMax", 1200.0f);
+			//material->addProperty("iridescenceThicknessTex.use", false);
+			//material->addProperty("material.anisotropyFactor", 0.0f);
+			//material->addProperty("anisotropyTex.use", false);
+			//material->addProperty("material.anisotropyDirection", glm::vec3(1, 0, 0));
+			//material->addProperty("anisotropyDirectionTex.use", false);
 				
 			if (materialNode.HasMember("extensions"))
 			{
@@ -1575,39 +1573,10 @@ namespace IO
 					float sheenRough = getFloatFromNode(sheenNode, "sheenRoughnessFactor", 0.0);
 					material->addProperty("material.sheenColorFactor", sheenColor);
 					material->addProperty("material.sheenRoughnessFactor", sheenRough);
-
-					if (sheenNode.HasMember("sheenColorTexture") && sheenNode.HasMember("sheenRoughnessTexture"))
-					{
-						int sheenColorTexIndex = sheenNode["sheenColorTexture"]["index"].GetInt();
-						int sheenRoughTexIndex = sheenNode["sheenRoughnessTexture"]["index"].GetInt();
-						if (sheenColorTexIndex != sheenRoughTexIndex)
-						{
-							if (textures[sheenColorTexIndex].isExternalFile)
-							{
-								Image2D<unsigned char> sheenColorImage(path + "/" + textures[sheenColorTexIndex].filename);
-								Image2D<unsigned char> sheenRoughImage(path + "/" + textures[sheenRoughTexIndex].filename);
-								Image2D<unsigned char> sheenImage(sheenColorImage.getWidth(), sheenColorImage.getHeight(), 4);
-								for (int i = 0; i < 3; i++)
-									sheenImage.addChannel(i, i, sheenColorImage.getDataPtr(), sheenColorImage.getChannels());
-								sheenImage.addChannel(3, 0, sheenRoughImage.getDataPtr(), sheenRoughImage.getChannels());
-
-								Texture2D::Ptr sheenTex = sheenImage.upload(true);
-								textures[sheenColorTexIndex].texture = sheenTex;
-								textures[sheenRoughTexIndex].texture = sheenTex;
-
-								if (textures[sheenColorTexIndex].sampler.minFilter >= 9984 && textures[sheenColorTexIndex].sampler.minFilter <= 9987)
-									textures[sheenColorTexIndex].texture->generateMipmaps();
-							}
-						}
-					}
-
 					setTextureInfo(sheenNode, "sheenColorTexture", material, "sheenColortex", path, true);
 					setTextureInfo(sheenNode, "sheenRoughnessTexture", material, "sheenRoughtex", path, false);
 
-					//if (sheenNode.HasMember("sheenColorTexture"))
-					//	std::cout << "model has sheen color texture" << std::endl;
-					//if (sheenNode.HasMember("sheenRoughnessTexture"))
-					//	std::cout << "model has sheen rough texture" << std::endl;
+					shaderName += "_SHEEN";
 				}		
 
 				if (extensionNode.HasMember("KHR_materials_clearcoat"))
@@ -1621,13 +1590,7 @@ namespace IO
 					setTextureInfo(clearcoatNode, "clearcoatRoughnessTexture", material, "clearCoatRoughTex", path, false);
 					setTextureInfo(clearcoatNode, "clearcoatNormalTexture", material, "clearCoatNormalTex", path, false);
 
-					if (clearcoatNode.HasMember("clearcoatTexture"))
-						std::cout << "material has clearcoat texture" << std::endl;
-					if (clearcoatNode.HasMember("clearcoatRoughnessTexture"))
-						std::cout << "material has clearcoat rough texture" << std::endl;
-					if (clearcoatNode.HasMember("clearcoatNormalTexture"))
-						std::cout << "material has clearcoat normal texture" << std::endl;
-
+					shaderName += "_CLEARCOAT";
 				}
 
 				if (extensionNode.HasMember("KHR_materials_transmission"))
@@ -1637,6 +1600,8 @@ namespace IO
 					material->addProperty("material.transmissionFactor", transmissionFactor);
 					material->setTransmissive(true);
 					setTextureInfo(transmissionNode, "transmissionTexture", material, "transmissionTex", path, false);
+
+					shaderName += "_TRANSMISSION";
 				}
 
 				if (extensionNode.HasMember("KHR_materials_volume"))
@@ -1667,6 +1632,8 @@ namespace IO
 					material->addProperty("material.specularColorFactor", specularColor);
 					setTextureInfo(specularNode, "specularTexture", material, "specularTex", path, false);
 					setTextureInfo(specularNode, "specularColorTexture", material, "specularColorTex", path, true);
+
+					shaderName += "_SPECULAR";
 				}
 
 				if (extensionNode.HasMember("KHR_materials_iridescence"))
@@ -1681,6 +1648,8 @@ namespace IO
 					material->addProperty("material.iridescenceThicknessMin", iridescenceThicknessMin);
 					material->addProperty("material.iridescenceThicknessMax", iridescenceThicknessMax);
 					setTextureInfo(iridescenceNode, "iridescenceThicknessTexture", material, "iridescenceThicknessTex", path, false);
+
+					shaderName += "_IRIDESCENCE";
 				}
 
 				if (extensionNode.HasMember("KHR_materials_anisotropy"))
@@ -1692,6 +1661,8 @@ namespace IO
 					material->addProperty("material.anisotropyDirection", anisotropyDirection);
 					setTextureInfo(anisotropyNode, "anisotropyTexture", material, "anisotropyTex", path, false);
 					setTextureInfo(anisotropyNode, "anisotropyDirectionTexture", material, "anisotropyDirectionTex", path, false);
+
+					shaderName += "_ANISOTROPY";
 				}
 
 				if (extensionNode.HasMember("KHR_materials_unlit"))
@@ -1706,6 +1677,9 @@ namespace IO
 
 			//if(material->getUsedTexUnits() > 2)
 			//	std::cout << "material needs " << material->getUsedTexUnits() << " tex units" << std::endl;
+			if(shaderName.length() > 7)
+				std::cout << shaderName << std::endl;
+			material->setShader(shaderName);
 
 			materials.push_back(material);
 		}

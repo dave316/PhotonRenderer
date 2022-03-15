@@ -31,6 +31,8 @@ namespace IO
 		std::stringstream is(code);
 		std::string line;
 		std::string expandedCode = "";
+		std::getline(is, line);
+
 		while (std::getline(is, line))
 		{
 			if (!line.empty() && line.at(0) == '#')
@@ -129,12 +131,29 @@ namespace IO
 				shaderFiles[name] = std::vector<std::string>();
 			shaderFiles[name].push_back(fn);
 		}
+
+		// TODO: where to put this? config file? data driven? 
+		std::vector<std::vector<std::string>> shaderVariants =
+		{	{ "SHEEN" }, 
+			{ "CLEARCOAT" }, 
+			{ "TRANSMISSION" }, 
+			{ "SPECULAR" }, 
+			{ "IRIDESCENCE" },
+			{ "SHEEN", "SPECULAR" },
+			{ "CLEARCOAT", "SPECULAR" },
+			{ "CLEARCOAT", "TRANSMISSION" },
+			{ "TRANSMISSION", "IRIDESCENCE" },
+			{ "TRANSMISSION", "SPECULAR" } 
+		};
+
 		for (auto shaderName : shaderFiles)
 		{
 			auto name = shaderName.first;
 			auto stageList = shaderName.second;
 			if (stageList.size() > 1)
 			{
+				std::cout << "compiling shader " << name << std::endl;
+
 				bool success = true;
 				auto shader = Shader::create(name);
 				for (auto shaderFile : shaderName.second)
@@ -143,12 +162,15 @@ namespace IO
 					int len = shaderFile.length() - index;
 
 					std::string stage = shaderFile.substr(index, len);
+					std::string code = loadExpanded(path + "/" + shaderFile);
+					code = "#version 460 core\n" + code;
+
 					if (stage.compare("vert") == 0)
-						success = shader->compile<GL::VertexShader>(loadExpanded(path + "/" + shaderFile));
+						success = shader->compile<GL::VertexShader>(code);
 					else if (stage.compare("geom") == 0)
-						success = shader->compile<GL::GeometryShader>(loadExpanded(path + "/" + shaderFile));
+						success = shader->compile<GL::GeometryShader>(code);
 					else if (stage.compare("frag") == 0)
-						success = shader->compile<GL::FragmentShader>(loadExpanded(path + "/" + shaderFile));
+						success = shader->compile<GL::FragmentShader>(code);
 
 					if (!success)
 						break;
@@ -162,6 +184,56 @@ namespace IO
 				else
 				{
 					std::cout << "error loading shader " << name << std::endl;
+				}
+
+				if (name.compare("Default") == 0)
+				{
+					std::string vsCode = "#version 460 core\n";
+					vsCode += loadExpanded(path + "/" + shaderName.second[1]);
+
+					GL::VertexShader vs;
+					if (!vs.compile(vsCode.c_str()))
+					{
+						std::cout << "error compiling shader " << name << std::endl;
+						std::cout << vs.getErrorLog() << std::endl;
+						continue;
+					}
+
+					std::string fsCode = loadExpanded(path + "/" + shaderName.second[0]);
+
+					for (auto variants : shaderVariants)
+					{
+						std::string expandedCode = "#version 460 core\n";
+						for(auto v : variants)
+							expandedCode += "#define " + v + "\n";
+						expandedCode += fsCode;
+
+						GL::FragmentShader fs;
+						if (!fs.compile(expandedCode.c_str()))
+						{
+							std::cout << "error compiling shader " << name << std::endl;
+							std::cout << fs.getErrorLog() << std::endl;
+							continue;
+						}
+
+						std::string variantName = name;
+						for (auto v : variants) 
+							variantName += '_' + v;
+
+						std::cout << "compiling shader " << variantName << std::endl;
+
+						auto shader = Shader::create(variantName);
+						shader->attach(vs);
+						shader->attach(fs);
+						if (shader->link())
+						{
+							shaderList.push_back(shader);
+						}
+						else
+						{
+							std::cout << "error loading shader " << name << std::endl;
+						}
+					}
 				}
 			}
 		}

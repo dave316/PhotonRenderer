@@ -18,6 +18,12 @@ public:
 	Shader(const std::string& name);
 
 	template<typename ShaderType>
+	void attach(ShaderType& shader)
+	{
+		program.attachShader(shader);
+	}
+
+	template<typename ShaderType>
 	bool compile(const std::string& code)
 	{
 		ShaderType shader;

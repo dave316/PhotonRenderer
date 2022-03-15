@@ -156,7 +156,7 @@ void Scene::initEnvMaps(std::map<std::string, Shader::Ptr>& shaders)
 	glEnable(GL_DEPTH_TEST);
 }
 
-void Scene::initLights(Shader::Ptr defaultShader)
+void Scene::initLights(std::map<std::string, Shader::Ptr>& shaders)
 {
 	//auto lightEntity = Entity::create("light");
 	//lightEntity->addComponent(Light::create(LightType::POINT, glm::vec3(1), 10.0f, 10.0f));
@@ -179,7 +179,8 @@ void Scene::initLights(Shader::Ptr defaultShader)
 	lightUBO.upload(lightData, GL_DYNAMIC_DRAW);
 	lightUBO.bindBase(1);
 
-	defaultShader->setUniform("numLights", (int)lightData.size());
+	for(auto [_,s] : shaders)
+		s->setUniform("numLights", (int)lightData.size());
 
 	views.clear();
 	for (auto [name, entity] : rootEntities)

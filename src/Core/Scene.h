@@ -44,7 +44,7 @@ public:
 	~Scene();
 
 	void initEnvMaps(std::map<std::string, Shader::Ptr>& shaders);
-	void initLights(Shader::Ptr defaultShader);
+	void initLights(std::map<std::string, Shader::Ptr>& shaders);
 	void initShadowMaps();
 	void loadModel(std::string name, std::string path);
 	void addEntity(std::string name, Entity::Ptr entity);

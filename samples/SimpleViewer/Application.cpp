@@ -22,18 +22,45 @@ bool Application::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::string name = "DamagedHelmet";
+	std::vector<std::string> names;
+	names.push_back("DamagedHelmet");
+	names.push_back("SheenCloth");
+	names.push_back("ClearCoatTest");
+	names.push_back("TransmissionTest");
+	names.push_back("SpecularTest");
 
 	scene = Scene::create("scene");
-	scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//for (int i = 0; i < 100; i++)
-	//{
-	//	std::string n = name + std::to_string(i);
-	//	scene->loadModel(n, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//	auto e = scene->getRootNode(n);
-	//	e->getComponent<Transform>()->setPosition(glm::vec3((i / 10 - 5), (i % 10 - 5), 0) * 0.05f);
-	//}
-		
+	//scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+	int numRenderables = 0;
+	for (int i = 0; i < names.size(); i++)
+	{
+		std::string name = names[i];
+		scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
+		auto e = scene->getRootNode(name);
+		auto renderables = e->getChildrenWithComponent<Renderable>();
+		numRenderables += renderables.size();
+		AABB worldBox;
+		for (auto e : renderables)
+		{
+			auto t = e->getComponent<Transform>();
+			auto r = e->getComponent<Renderable>();
+			glm::mat4 M = t->getTransform();
+			AABB bbox = r->getBoundingBox();
+			glm::vec3 minPoint = M * glm::vec4(bbox.getMinPoint(), 1.0f);
+			glm::vec4 maxPoint = M * glm::vec4(bbox.getMaxPoint(), 1.0f);
+			worldBox.expand(minPoint);
+			worldBox.expand(maxPoint);
+		}
+		glm::vec3 center = worldBox.getCenter();
+		glm::vec3 size = worldBox.getSize();
+
+		auto t = e->getComponent<Transform>();
+		t->setScale(glm::vec3(1.0f / size.y));
+		t->setPosition(glm::vec3((i - 2) * 1.5f, -center.y / size.y, 0));		
+	}
+	
+	std::cout << "renderables: " << numRenderables << std::endl;
+
 	scene->updateAnimations(0.0f);
 
 	renderer.initEnv(scene);
@@ -61,7 +88,7 @@ void Application::initCamera()
 	float yZoom = diag.y * 0.5 / glm::tan(fovy / 2.0f);
 	float dist = glm::max(xZoom, yZoom);
 	glm::vec3 center = bbox.getCenter();
-	center.z += dist;// *2.0f;
+	center.z += dist * 1.5f;
 	camera.setPosition(center);
 
 	float longestDistance = glm::distance(minPoint, maxPoint);

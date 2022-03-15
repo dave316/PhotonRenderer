@@ -32,8 +32,13 @@ void Renderable::render(Shader::Ptr shader)
 {
 	for (auto& p : primitives)
 	{
-		shader->setUniform("material.computeFlatNormals", p.computeFlatNormals);
 		auto mat = p.getMaterial();
+		//std::string name = mat->getShader();
+		//Shader::Ptr shader = shaders[name];
+
+		//shader->use();
+		shader->setUniform("material.computeFlatNormals", p.computeFlatNormals);
+		
 		if (mat->isDoubleSided())
 			glDisable(GL_CULL_FACE);
 
@@ -110,6 +115,11 @@ bool Renderable::useMorphTargets()
 	return morphTagets;
 }
 
+std::string Renderable::getShader()
+{
+	return primitives[0].getMaterial()->getShader();
+}
+
 std::string Renderable::getName()
 {
 	return name;
@@ -128,7 +138,7 @@ std::vector<Vertex> Renderable::getVertices()
 
 void Renderable::print()
 {
-	//std::cout << "meshes: " << meshes.size() << std::endl;
+	std::cout << "primitives: " << primitives.size() << std::endl;
 }
 
 void Renderable::flipWindingOrder()
