@@ -257,6 +257,7 @@ namespace IO
 		std::vector<GLTFCamera> getCameras();
 		std::vector<std::string> getVariants();
 		void clear();
+		bool needsPQ = false;
 	};	
 }
 

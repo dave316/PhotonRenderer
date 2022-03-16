@@ -21,6 +21,8 @@ uniform bool useIBL = false;
 uniform bool useGammaEncoding = false;
 uniform bool useSpecGlossMat = false;
 uniform int numLights;
+uniform float apertureFactor;
+uniform bool pq = false;
 
 vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness,
     vec3 f0, vec3 f90, vec3 baseColor, float ior)
@@ -52,6 +54,23 @@ float E_compute(float cos_theta, float alpha)
 	float c = 1.0 - cos_theta;
 	float c3 = c * c * c;
 	return 0.65584461 * c3 + 1.0 / (4.16526551 + exp(-7.97291361 * sqrt(alpha) + 6.33516894));
+}
+
+vec3 BT_2100_OOTF(vec3 color, float rangeExp, float gamma)
+{
+	vec3 nonLinear = 1.099 * pow(rangeExp * color, vec3(0.45)) - 0.099;
+	return 100.0 * pow(nonLinear, vec3(gamma));
+}
+
+vec3 BT_2100_OETF(vec3 color)
+{
+	float m1 = 2610.0 / 16384.0;
+    float m2 = 2523.0 / 4096.0 * 128.0;
+    float c1 = 3424.0 / 4096.0;
+    float c2 = 2413.0 / 4096.0 * 32.0;
+    float c3 = 2392.0 / 4096.0 * 32.0;
+	vec3 Ypow = pow(color / 10000.0, vec3(m1));
+	return pow((c1 + c2 * Ypow) / (1.0 + c3 * Ypow), vec3(m2));
 }
 
 void main()
@@ -185,13 +204,15 @@ void main()
 #ifdef IRIDESCENCE
 	float iridescenceFactor = getIridescence(texCoord0, texCoord1);
 	vec3 iridescenceFresnel = vec3(0.0);
+	vec3 iridescenceF0 = F0;
 	if (iridescenceFactor > 0.0)
 	{
 		float topIOR = 1.0; // TODO: add clearcoat factor
 		float iridescenceIOR = material.iridescenceIOR;
 		float iridescenceThickness = getIridescenceThickness(texCoord0, texCoord1);
-		float viewAngle = sqrt(1.0 + (sq(NdotV) - 1.0) / sq(topIOR));
-		iridescenceFresnel = evalIridescence(topIOR, iridescenceIOR, viewAngle, iridescenceThickness, F0, metallic);
+		//float viewAngle = sqrt(1.0 + (sq(NdotV) - 1.0) / sq(topIOR));
+		iridescenceFresnel = evalIridescence(topIOR, iridescenceIOR, NdotV, iridescenceThickness, F0);
+		iridescenceF0 = Schlick2F0(iridescenceFresnel, vec3(1.0), NdotV);
 	}
 #endif
 
@@ -204,13 +225,20 @@ void main()
 
 	vec3 ambient = vec3(0);
 	vec3 F_ambient;
+	vec3 irradiance;
 	if(useIBL)
 	{
 		// ambient light
 		// TODO: add multiple scattering
+#ifdef IRIDESCENCE
+		vec3 iridescenceF0Max = vec3(max3(iridescenceF0));
+		vec3 mixedF0 = mix(F0, iridescenceF0Max, iridescenceFactor);
+		F_ambient = F_Schlick_Rough(NdotV, mixedF0, roughness);
+#else
 		F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
+#endif
 		vec3 kD = (vec3(1.0) - specularWeight * F_ambient);
-		vec3 irradiance = texture(irradianceMap, n).rgb;
+		irradiance = texture(irradianceMap, n).rgb;
 		vec3 diffuse = kD * irradiance * c_diff; 
 		vec3 specular = vec3(0.0);
 
@@ -363,14 +391,27 @@ void main()
 
 	vec3 intensity = emission + ambient + lo;
 
+	// TODO: this should be moved to the post processing stage
 	float EV = 0.0; 
 	float exposure = 1.0f;
-	intensity = vec3(1.0) - exp(-intensity * exposure);
+	//intensity = vec3(1.0) - exp(-intensity * exposure);
 	//intensity = intensity * pow(2.0, EV);
 	//intensity = intensity / (1.0 + intensity);			// reinhard
 
-	if(useGammaEncoding)
+	if(pq)
+	{
+		float rangeExponentSDR = 46.42;
+		vec3 colorScaled = intensity / 10000.0;
+		vec3 apertureAdjustedColor = colorScaled * apertureFactor;
+		vec3 ootf = BT_2100_OOTF(apertureAdjustedColor, rangeExponentSDR, 2.4);
+		vec3 oetf = BT_2100_OETF(ootf);
+		intensity = max(oetf, 0.0);
+	}
+	else if(useGammaEncoding)
 		intensity = pow(intensity, vec3(1.0 / 2.2));
+
+	vec3 rgbToGray = vec3(0.2126, 0.7152, 0.0722);
+	float brightness = dot(intensity, rgbToGray);
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
 		//fragColor = vec4(n * 0.5 + 0.5, 1.0);

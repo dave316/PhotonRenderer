@@ -164,6 +164,7 @@ void Scene::initLights(std::map<std::string, Shader::Ptr>& shaders)
 	//rootEntities.insert(std::make_pair("light", lightEntity));
 
 	std::vector<Light::UniformData> lightData;
+	float maxIntensity = 0.0;
 	for (auto [name, entity] : rootEntities)
 	{
 		auto lightEntities = entity->getChildrenWithComponent<Light>();
@@ -171,16 +172,29 @@ void Scene::initLights(std::map<std::string, Shader::Ptr>& shaders)
 		{
 			auto t = lightEntity->getComponent<Transform>();
 			auto l = lightEntity->getComponent<Light>();
+			glm::vec3 color = l->getColor();
+			float intensity = l->getIntensity();
+			float maxComponent = intensity * glm::max(glm::max(color.r, color.g), color.b);
+			maxIntensity = glm::max(maxIntensity, maxComponent);
+
 			Light::UniformData data;
 			l->writeUniformData(data, t);
 			lightData.push_back(data);
 		}
 	}
+
+	float value = glm::min(maxIntensity, 10000.0f);
+	float factor = value / maxIntensity;
+
 	lightUBO.upload(lightData, GL_DYNAMIC_DRAW);
 	lightUBO.bindBase(1);
 
-	for(auto [_,s] : shaders)
+	for (auto [_, s] : shaders)
+	{
 		s->setUniform("numLights", (int)lightData.size());
+		s->setUniform("apertureFactor", factor);
+		s->setUniform("pq", usePerceptualQuantization);
+	}		
 
 	views.clear();
 	for (auto [name, entity] : rootEntities)
@@ -239,6 +253,8 @@ void Scene::loadModel(std::string name, std::string path)
 		rootEntities.insert(std::make_pair(name, rootEntity));
 		currentModel = name;
 	}
+
+	usePerceptualQuantization |= importer.needsPQ;
 
 	auto models = rootEntity->getComponentsInChildren<Renderable>();
 	for (auto r : models)

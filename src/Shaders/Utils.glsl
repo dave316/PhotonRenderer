@@ -1,3 +1,23 @@
+mat3 generateTBN(vec3 normal)
+{
+	vec3 bitangent = vec3(0.0, 1.0, 0.0);
+
+	float NdotUp = dot(normal, vec3(0.0, 1.0, 0.0));
+	float epsilon = 0.0000001;
+	if (1.0 - abs(NdotUp) <= epsilon)
+	{
+		if (NdotUp > 0.0)
+			bitangent = vec3(0.0, 0.0, 1.0);
+		else
+			bitangent = vec3(0.0, 0.0, -1.0);
+	}
+
+	vec3 tangent = normalize(cross(bitangent, normal));
+	bitangent = cross(normal, tangent);
+
+	return mat3(tangent, bitangent, normal);
+}
+
 float radicalInverse(uint bits)
 {
 	bits = (bits << 16u) | (bits >> 16u);
@@ -52,26 +72,4 @@ vec4 sq(vec4 t)
 float applyIorToRoughness(float roughness, float ior)
 {
 	return roughness * saturate(ior * 2.0 - 2.0);
-}
-
-void artisticIor(float reflectivity, float edgeColor, out float ior, out float extinction)
-{
-	float r = clamp(reflectivity, 0.0, 0.99);
-	float r_sqrt = sqrt(r);
-	float n_min = (1.0 - r) / (1.0 + r);
-	float n_max = (1.0 + r_sqrt) / (1.0 - r_sqrt);
-	ior = mix(n_max, n_min, edgeColor);
-
-	float np1 = ior + 1.0;
-	float nm1 = ior - 1.0;
-	float k2 = (np1 * np1 * r - nm1 * nm1) / (1.0 - r);
-	k2 = max(k2, 0.0);
-	extinction = sqrt(k2);
-}
-
-void artisticIor(vec3 reflectivity, vec3 edgeColor, out vec3 ior, out vec3 extinction)
-{
-	artisticIor(reflectivity.x, edgeColor.x, ior.x, extinction.x);
-	artisticIor(reflectivity.y, edgeColor.y, ior.y, extinction.y);
-	artisticIor(reflectivity.z, edgeColor.z, ior.z, extinction.z);
 }

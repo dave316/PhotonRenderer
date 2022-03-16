@@ -29,7 +29,7 @@ vec3 getIBLRadiance(vec3 n, vec3 v, float roughness, vec3 F0)
 	vec3 F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
 	vec3 kD = (vec3(1.0) - F_ambient);
 
-	const float MAX_REFLECTION_LOD = 6.0;
+	const float MAX_REFLECTION_LOD = 7.0;
 	vec3 specularColor = textureLod(specularMapGGX, r, roughness * MAX_REFLECTION_LOD).rgb;
 	vec2 brdf = texture(ggxLUT, vec2(NdotV, roughness)).rg;
 	vec3 specular = specularColor * (F_ambient * brdf.x + brdf.y);
@@ -62,7 +62,7 @@ vec3 getIBLRadianceAnisotropy(vec3 n, vec3 v, vec3 t, vec3 b, float anisotropy, 
 vec3 getIBLRadianceGGXIridescence(vec3 n, vec3 v, float roughness, vec3 F0, vec3 iridescenceFresnel, float iridescenceFactor, float specularWeight)
 {
 	float NdotV = max(dot(n, v), 0.0);
-	float lod = roughness * float(6);
+	float lod = roughness * float(7);
 	vec3 reflection = normalize(reflect(-v, n));
 
 	vec2 brdfSamplePoint = clamp(vec2(NdotV, roughness), vec2(0.0, 0.0), vec2(1.0, 1.0));

@@ -56,6 +56,16 @@ void Light::setConeAngles(float inner, float outer)
 	this->outerConeAngle = outer;
 }
 
+glm::vec3 Light::getColor()
+{
+	return color;
+}
+
+float Light::getIntensity()
+{
+	return intensity;
+}
+
 //glm::vec3 Light::getPosition()
 //{
 //	return position;

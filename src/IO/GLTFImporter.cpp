@@ -47,6 +47,7 @@ namespace IO
 		supportedExtensions.insert("KHR_draco_mesh_compression");
 		supportedExtensions.insert("KHR_lights_punctual");
 		supportedExtensions.insert("KHR_materials_clearcoat");
+		supportedExtensions.insert("KHR_materials_emissive_strength");
 		supportedExtensions.insert("KHR_materials_ior");
 		supportedExtensions.insert("KHR_materials_iridescence");
 		supportedExtensions.insert("KHR_materials_pbrSpecularGlossiness");
@@ -179,6 +180,17 @@ namespace IO
 					std::cout << "extension " << extension << " not supported" << std::endl;
 			}
 		}
+
+		if (doc.HasMember("extensionsRequired"))
+		{
+			auto extensionsNode = doc.FindMember("extensionsRequired");
+			for (auto& extNode : extensionsNode->value.GetArray())
+			{
+				std::string extension(extNode.GetString());
+				if (supportedExtensions.find(extension) == supportedExtensions.end())
+					std::cout << "extension " << extension << " not supported" << std::endl;
+			}
+		}
 	}
 
 	void GLTFImporter::loadExtensionData(const json::Document& doc)
@@ -256,6 +268,11 @@ namespace IO
 					}
 					index++;
 				}
+			}
+
+			if (extensionsNode.HasMember("KHR_displaymapping_pq"))
+			{
+				needsPQ = true;
 			}
 		}
 	}
@@ -1399,7 +1416,7 @@ namespace IO
 							Image2D<unsigned char> pbrImage(path + "/" + textures[pbrTexIndex].filename);
 							Image2D<unsigned char> occImage(path + "/" + textures[occTexIndex].filename);
 							unsigned char* rawData = occImage.getDataPtr();
-							pbrImage.addChannel(0, 0, rawData, 3);
+							pbrImage.addChannel(0, 0, rawData, occImage.getChannels());
 
 							Texture2D::Ptr pbrTex = pbrImage.upload(false);
 							textures[pbrTexIndex].texture = pbrTex;
@@ -1466,42 +1483,13 @@ namespace IO
 
 			glm::vec3 emissiveFactor = getVec3FromNode(materialNode, "emissiveFactor", glm::vec3(0));
 			material->addProperty("material.emissiveFactor", emissiveFactor);
+			material->addProperty("material.emissiveStrength", 1.0f);
 			setTextureInfo(materialNode, "emissiveTexture", material, "emissiveTex", path, true);
 
 			material->addProperty("useSpecGlossMat", false);
 			material->addProperty("material.unlit", false);
 			material->addProperty("material.ior", 1.5f);
 
-			//material->addProperty("material.sheenColorFactor", glm::vec3(0));
-			//material->addProperty("material.sheenRoughnessFactor", 0.0f);
-			//material->addProperty("sheenColorTex.use", false);
-			//material->addProperty("sheenRoughTex.use", false);
-			//material->addProperty("material.clearcoatFactor", 0.0f);
-			//material->addProperty("clearCoatTex.use", false);
-			//material->addProperty("material.clearcoatRoughnessFactor", 0.0f);
-			//material->addProperty("clearCoatRoughTex.use", false);
-			//material->addProperty("clearCoatNormalTex.use", false);
-			//material->addProperty("material.transmissionFactor", 0.0f);
-			//material->addProperty("transmissionTex.use", false);
-			//material->addProperty("material.thicknessFactor", 0.0f);
-			//material->addProperty("thicknessTex.use", false);
-			//material->addProperty("material.attenuationDistance", 0.0f); // TODO: default should be infinity?
-			//material->addProperty("material.attenuationColor", glm::vec3(1.0f));
-			//material->addProperty("material.specularFactor", 1.0f);
-			//material->addProperty("specularTex.use", false);
-			//material->addProperty("material.specularColorFactor", glm::vec3(1.0f));
-			//material->addProperty("specularColorTex.use", false);
-			//material->addProperty("material.iridescenceFactor", 0.0f);
-			//material->addProperty("iridescenceTex.use", false);
-			//material->addProperty("material.iridescenceIOR", 1.8f);
-			//material->addProperty("material.iridescenceThicknessMin", 400.0f);
-			//material->addProperty("material.iridescenceThicknessMax", 1200.0f);
-			//material->addProperty("iridescenceThicknessTex.use", false);
-			//material->addProperty("material.anisotropyFactor", 0.0f);
-			//material->addProperty("anisotropyTex.use", false);
-			//material->addProperty("material.anisotropyDirection", glm::vec3(1, 0, 0));
-			//material->addProperty("anisotropyDirectionTex.use", false);
-				
 			if (materialNode.HasMember("extensions"))
 			{
 				const auto& extensionNode = materialNode["extensions"];
@@ -1672,6 +1660,13 @@ namespace IO
 				else
 				{
 					material->addProperty("material.unlit", false);
+				}
+
+				if (extensionNode.HasMember("KHR_materials_emissive_strength"))
+				{
+					const auto& emissiveNode = extensionNode["KHR_materials_emissive_strength"];
+					float emissiveStrength = getFloatFromNode(emissiveNode, "emissiveStrength");
+					material->addProperty("material.emissiveStrength", emissiveStrength);
 				}
 			}
 

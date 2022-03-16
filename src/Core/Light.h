@@ -52,7 +52,8 @@ public:
 	//void setPostion(glm::vec3 position);
 	//void setDirection(glm::vec3 direction);
 	void setConeAngles(float inner, float outer);
-	//glm::vec3 getPosition();
+	glm::vec3 getColor();
+	float getIntensity();
 	typedef std::shared_ptr<Light> Ptr;
 	static Ptr create(int type, glm::vec3 color, float intensity, float range)
 	{

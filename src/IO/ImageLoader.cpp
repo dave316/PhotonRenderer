@@ -179,6 +179,12 @@ namespace IO
 		stbi_set_flip_vertically_on_load(true);
 		std::unique_ptr<float> data(stbi_loadf(filename.c_str(), &w, &h, &c, 0));
 
+		//float maxValue = 0.0f;
+		//for (int i = 0; i < w * h * c; i++)
+		//	maxValue = std::max(data.get()[i], maxValue);
+
+		//std::cout << "max hdr value: " << maxValue << std::endl;
+
 		//std::cout << "loaded HDR texture: " << w << "x" << h << "x" << c << std::endl;
 		if (data)
 		{

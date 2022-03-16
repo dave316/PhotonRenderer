@@ -36,6 +36,7 @@ private:
 	TextureCubeMap::Ptr specularMapCharlie;
 
 	bool useTransmission = false;
+	bool usePerceptualQuantization = false;
 	
 	Scene(const Scene&) = delete;
 	Scene& operator=(const Scene&) = delete;

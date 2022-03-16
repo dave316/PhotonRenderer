@@ -60,6 +60,18 @@ float V_GGX_Anisotropic(float NdotL, float NdotV, float BdotV, float TdotV, floa
 	return clamp(V, 0.0, 1.0);
 }
 
+vec3 Schlick2F0(vec3 f, vec3 F90, float VdotH)
+{
+	float x = clamp(1.0 - VdotH, 0.0, 1.0);
+	float x5 = clamp(pow(x, 5.0), 0.0, 0.9999);
+	return (f - F90 * x5) / 1.0 - x5;
+}
+
+float F_Schlick(float HdotV, float F0)
+{
+	return max(F0 + (1.0 - F0) * pow(1.0 - HdotV, 5.0), F0);
+}
+
 vec3 F_Schlick(float HdotV, vec3 F0)
 {
 	return max(F0 + (vec3(1.0) - F0) * pow(1.0 - HdotV, 5.0), F0);

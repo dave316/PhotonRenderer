@@ -26,25 +26,25 @@ float D_Charlie_IBL(float sheenRoughness, float NdotH)
 	return (2.0 + invR) * pow(sin2h, invR * 0.5) / (2.0 * PI);
 }
 
-mat3 generateTBN(vec3 normal)
-{
-    vec3 bitangent = vec3(0.0, 1.0, 0.0);
-
-    float NdotUp = dot(normal, vec3(0.0, 1.0, 0.0));
-    float epsilon = 0.0000001;
-    if (1.0 - abs(NdotUp) <= epsilon)
-    {
-        if (NdotUp > 0.0)
-            bitangent = vec3(0.0, 0.0, 1.0);
-        else
-            bitangent = vec3(0.0, 0.0, -1.0);
-    }
-
-    vec3 tangent = normalize(cross(bitangent, normal));
-    bitangent = cross(normal, tangent);
-
-    return mat3(tangent, bitangent, normal);
-}
+//mat3 generateTBN(vec3 normal)
+//{
+//    vec3 bitangent = vec3(0.0, 1.0, 0.0);
+//
+//    float NdotUp = dot(normal, vec3(0.0, 1.0, 0.0));
+//    float epsilon = 0.0000001;
+//    if (1.0 - abs(NdotUp) <= epsilon)
+//    {
+//        if (NdotUp > 0.0)
+//            bitangent = vec3(0.0, 0.0, 1.0);
+//        else
+//            bitangent = vec3(0.0, 0.0, -1.0);
+//    }
+//
+//    vec3 tangent = normalize(cross(bitangent, normal));
+//    bitangent = cross(normal, tangent);
+//
+//    return mat3(tangent, bitangent, normal);
+//}
 
 float computeCharlieLuT(float NdotV, float roughness)
 {

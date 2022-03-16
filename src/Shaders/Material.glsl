@@ -6,6 +6,7 @@ struct PBRMetalRoughMaterial
 	float metallicFactor;
 	float occlusionStrength;
 	vec3 emissiveFactor;
+	float emissiveStrength;
 	int alphaMode;
 	float alphaCutOff;
 
@@ -94,7 +95,7 @@ vec3 getEmission(vec2 uv0, vec2 uv1)
 	vec3 emission = material.emissiveFactor;
 	if (emissiveTex.use)
 		emission *= getTexel(emissiveTex, uv0, uv1).rgb;
-	return emission;
+	return emission * material.emissiveStrength;
 }
 
 vec3 getPBRValues(vec2 uv0, vec2 uv1)

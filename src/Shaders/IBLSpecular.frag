@@ -30,7 +30,7 @@ vec3 prefilterGGX(vec3 uvw)
 			float NdotH = max(dot(n, h), 0.0);
 			float D = D_GGX(NdotH, roughness);
 			float pdf = D * NdotH / (4.0 * NdotH);
-			float resolution = 256.0;
+			float resolution = 1024.0;
 			float saTexel = 4.0 * PI / (6.0 * resolution * resolution);
 			float saSample = 1.0 / (float(numSamples) * pdf);
 			float mipBias = 1.0;
@@ -56,29 +56,9 @@ float D_Charlie_IBL(float sheenRoughness, float NdotH)
 	return (2.0 + invR) * pow(sin2h, invR * 0.5) / (2.0 * PI);
 }
 
-mat3 generateTBN(vec3 normal)
-{
-    vec3 bitangent = vec3(0.0, 1.0, 0.0);
-
-    float NdotUp = dot(normal, vec3(0.0, 1.0, 0.0));
-    float epsilon = 0.0000001;
-    if (1.0 - abs(NdotUp) <= epsilon)
-    {
-        if (NdotUp > 0.0)
-            bitangent = vec3(0.0, 0.0, 1.0);
-        else
-            bitangent = vec3(0.0, 0.0, -1.0);
-    }
-
-    vec3 tangent = normalize(cross(bitangent, normal));
-    bitangent = cross(normal, tangent);
-
-    return mat3(tangent, bitangent, normal);
-}
-
 float computeLod(float pdf, int sampleCount)
 {
-	int texSize = 256; // TODO: update with uniform
+	int texSize = 1024; // TODO: update with uniform
     float lod = 0.5 * log2(6.0 * float(texSize) * float(texSize) / (float(sampleCount) * pdf));
     return lod;
 }
