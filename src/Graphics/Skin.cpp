@@ -2,8 +2,8 @@
 #include <glm/gtc/matrix_inverse.hpp>
 
 
-Skin::Skin() :
-	skeleton(0)
+Skin::Skin(const std::string& name) :
+	name(name), skeleton(0)
 {
 
 }

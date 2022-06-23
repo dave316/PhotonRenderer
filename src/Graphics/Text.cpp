@@ -1,3 +1,5 @@
+#ifdef WITH_FREETYPE
+
 #include <iostream>
 
 #include "Text.h"
@@ -88,3 +90,5 @@ void Text2D::draw(Shader::Ptr shader)
 
 	mesh->draw();
 }
+
+#endif

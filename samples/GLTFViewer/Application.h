@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <Graphics/Camera.h>
+#include <Graphics/FPSCamera.h>
 #include <Graphics/Renderer.h>
 #include <Platform/GLWindow.h>
 #include <Platform/InputHandler.h>
@@ -17,7 +17,7 @@ struct GLTFSampleInfo
 
 class Application
 {
-	Camera camera;
+	FPSCamera camera;
 	GLWindow window;
 	InputHandler input;
 	Renderer renderer;
@@ -25,10 +25,18 @@ class Application
 
 	std::string samplePath;
 	std::vector<GLTFSampleInfo> samplesInfo;
+	std::vector<std::string> debugChannels;
+	std::map<std::string, int> modelInfo;
+	std::map<std::string, int> renderInfo;
+	std::string currentCamera;
 
-	bool animate = true;
+	bool animate = false;
+	bool useIBL = true;
+	bool useLights = true;
 	int cameraIndex = 0;
 	int materialIndex = 0;
+	int animIndex = 0;
+	int debugIndex = 0;
 	
 	Application(const Application&) = delete;
 	Application& operator=(const Application&) = delete;

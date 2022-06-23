@@ -9,7 +9,7 @@ uniform sampler2D panorama;
 void main()
 {
 	vec3 v = normalize(uvw);
-	vec2 uv = vec2(atan(v.z, v.x), asin(v.y));
+	vec2 uv = vec2(atan(-v.x, v.z), asin(v.y));
 	uv *= vec2(0.1591, 0.3183);
 	uv += 0.5;
 	vec3 color = texture2D(panorama, uv).rgb;

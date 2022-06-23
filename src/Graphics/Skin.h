@@ -8,6 +8,7 @@
 class Skin
 {
 private:
+	std::string name;
 	std::vector<glm::mat4> inverseBindMatrices;
 	std::vector<int> joints;
 	std::vector<glm::mat4> jointMatrices;
@@ -15,7 +16,7 @@ private:
 	unsigned int skeleton;
 
 public:
-	Skin();
+	Skin(const std::string& name);
 	void setSkeleton(unsigned int index);
 	void addJoint(int index, glm::mat4 ibm);
 	void computeJoints(std::vector<Entity::Ptr>& nodes);
@@ -23,6 +24,12 @@ public:
 	std::vector<int> getJoints();
 	std::vector<glm::mat4> getBoneTransform();
 	std::vector<glm::mat3> getNormalTransform();
+
+	typedef std::shared_ptr<Skin> Ptr;
+	static Ptr create(const std::string& name)
+	{
+		return std::make_shared<Skin>(name);
+	}
 };
 
 #endif // INCLUDED_SKIN

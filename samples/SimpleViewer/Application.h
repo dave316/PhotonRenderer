@@ -3,14 +3,14 @@
 
 #pragma once
 
-#include <Graphics/Camera.h>
+#include <Graphics/FPSCamera.h>
 #include <Graphics/Renderer.h>
 #include <Platform/GLWindow.h>
 #include <Platform/InputHandler.h>
 
 class Application
 {
-	Camera camera;
+	FPSCamera camera;
 	GLWindow window;
 	InputHandler input;
 	Renderer renderer;
@@ -22,8 +22,11 @@ class Application
 public:
 	Application(const char* title, unsigned int width, unsigned int height);
 	bool init();
+	void initScene();
+	void initShadowScene();
 	void initCamera();
 	void setupInput();
+	void saveReflectionProbe();
 	void handleDrop(int count, const char** paths);
 	void loop();
 	void shutdown();

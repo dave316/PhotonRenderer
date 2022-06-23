@@ -1,12 +1,17 @@
 #include "Application.h"
 
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_opengl3.h>
-#include <imgui/ImGuiFileDialog.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+
+#include <ImGuiFileDialog/ImGuiFileDialog.h>
+
+#include <rapidjson/document.h>
 
 #include <algorithm>
+#include <fstream>
 #include <sstream>
 
+namespace json = rapidjson;
 using namespace std::placeholders;
 
 Application::Application(const char* title, unsigned int width, unsigned int height) :
@@ -24,16 +29,19 @@ bool Application::init()
 
 	const char* glsl_version = "#version 460";
 
+	std::string assetPath = "../../../../assets";
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
+	std::string fontPath = assetPath + "/Fonts/arial.ttf";
+	io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 28);
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
-	samplePath = "../../../../assets/glTF-Sample-Models/2.0";
+	samplePath = assetPath + "/glTF-Sample-Models/2.0";
 	initGLTFSamples(samplePath);
 
 	if (!renderer.init())
@@ -42,13 +50,49 @@ bool Application::init()
 	scene = Scene::create("scene");
 	scene->updateAnimations(0.0f);
 
-	renderer.initEnv(scene);
+	std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
+	renderer.initEnv(envFn, scene);
 	renderer.initLights(scene);
 	scene->initShadowMaps();
 	renderer.updateShadows(scene);
 
 	setupInput();
 
+	debugChannels.push_back("None");
+	debugChannels.push_back("Texture Coords 0");
+	debugChannels.push_back("Texture Coords 1");
+	debugChannels.push_back("Geometry Normal");
+	debugChannels.push_back("Shading Normal");
+	debugChannels.push_back("Ambient Occlusion");
+	debugChannels.push_back("Emission");
+
+	debugChannels.push_back("Metallic Roughness");
+	debugChannels.push_back("Base Color");
+	debugChannels.push_back("Roughness");
+	debugChannels.push_back("Metallic");
+
+	debugChannels.push_back("Sheen");
+	debugChannels.push_back("Sheen Color");
+	debugChannels.push_back("Sheen Roughness");
+
+	debugChannels.push_back("Clearcoat");
+	debugChannels.push_back("Clearcoat Factor");
+	debugChannels.push_back("Clearcoat Roughness");
+	debugChannels.push_back("Clearcoat Normal");
+
+	debugChannels.push_back("Transmission");
+	debugChannels.push_back("Transmission Factor");
+	debugChannels.push_back("Thickness");
+	debugChannels.push_back("Attenuation Color");
+
+	debugChannels.push_back("Specular");
+	debugChannels.push_back("Specular Factor");
+	debugChannels.push_back("Specular Color");
+
+	debugChannels.push_back("Iridescence");
+	debugChannels.push_back("Iridescence Factor");
+	debugChannels.push_back("Iridescence Thickness");
+	
 	return true;
 }
 
@@ -58,6 +102,7 @@ void Application::initCamera()
 	glm::vec3 minPoint = bbox.getMinPoint();
 	glm::vec3 maxPoint = bbox.getMaxPoint();
 	glm::vec3 diag = maxPoint - minPoint;
+	//std::cout << diag.x << " " << diag.y << " " << diag.z << " " << std::endl;
 	//float maxAxisLength = glm::max(diag.x, diag.y);
 	float aspect = camera.getAspect();
 	float fovy = camera.getFov();
@@ -128,16 +173,16 @@ void Application::initGLTFSamples(const std::string& samplesPath)
 void Application::setupInput()
 {
 	input.addKeyCallback(GLFW_KEY_ESCAPE, GLFW_PRESS, std::bind(&GLWindow::close, &window));
-	input.addKeyCallback(GLFW_KEY_W, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::FORWARD));
-	input.addKeyCallback(GLFW_KEY_S, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::BACK));
-	input.addKeyCallback(GLFW_KEY_A, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::LEFT));
-	input.addKeyCallback(GLFW_KEY_D, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::RIGHT));
-	input.addKeyCallback(GLFW_KEY_W, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::FORWARD));
-	input.addKeyCallback(GLFW_KEY_S, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::BACK));
-	input.addKeyCallback(GLFW_KEY_A, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::LEFT));
-	input.addKeyCallback(GLFW_KEY_D, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::RIGHT));
-	input.setMouseMoveCallback(std::bind(&Camera::updateRotation, &camera, _1, _2));
-	input.setMouseWheelCallback(std::bind(&Camera::updateSpeed, &camera, _1, _2));
+	input.addKeyCallback(GLFW_KEY_W, GLFW_PRESS, std::bind(&FPSCamera::setDirection, &camera, FPSCamera::Direction::FORWARD));
+	input.addKeyCallback(GLFW_KEY_S, GLFW_PRESS, std::bind(&FPSCamera::setDirection, &camera, FPSCamera::Direction::BACK));
+	input.addKeyCallback(GLFW_KEY_A, GLFW_PRESS, std::bind(&FPSCamera::setDirection, &camera, FPSCamera::Direction::LEFT));
+	input.addKeyCallback(GLFW_KEY_D, GLFW_PRESS, std::bind(&FPSCamera::setDirection, &camera, FPSCamera::Direction::RIGHT));
+	input.addKeyCallback(GLFW_KEY_W, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::FORWARD));
+	input.addKeyCallback(GLFW_KEY_S, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::BACK));
+	input.addKeyCallback(GLFW_KEY_A, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::LEFT));
+	input.addKeyCallback(GLFW_KEY_D, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::RIGHT));
+	input.setMouseMoveCallback(std::bind(&FPSCamera::updateRotation, &camera, _1, _2));
+	input.setMouseWheelCallback(std::bind(&FPSCamera::updateSpeed, &camera, _1, _2));
 
 	//input.addKeyCallback(GLFW_KEY_M, GLFW_PRESS, std::bind(&Renderer::nextMaterial, &renderer));
 	input.addKeyCallback(GLFW_KEY_SPACE, GLFW_PRESS, [&] {animate = !animate; });
@@ -151,16 +196,44 @@ void Application::handleDrop(int count, const char** paths)
 	{
 		std::cout << "only one file allowed!" << std::endl;
 		return;
-	}		
+	}
 
-	std::string path(paths[0]);
-	std::replace(path.begin(), path.end(), '\\', '/');
+	//cameraIndex = 0;
+	//materialIndex = 0;
+	//animIndex = 0;
+	//debugIndex = 0;
 
-	std::cout << "loading model " << path << std::endl;
-	//renderer.loadModel("model", path);
+	scene->clear();
+
+	for (int i = 0; i < count; i++)
+	{
+		std::string fullPath(paths[i]);
+		std::replace(fullPath.begin(), fullPath.end(), '\\', '/');
+		int fnIndex = fullPath.find_last_of('/') + 1;
+		std::string filename = fullPath.substr(fnIndex, fullPath.length() - fnIndex);
+		int lastDot = filename.find_last_of('.');
+		std::string name = filename.substr(0, lastDot);
+
+		int extIndex = lastDot + 1;
+		std::string ext = filename.substr(extIndex, filename.length() - extIndex);
+
+		if (ext.compare("gltf") == 0 || ext.compare("glb") == 0)
+			scene->loadModelGLTF(name, fullPath);
+		else
+			scene->loadModelASSIMP(name, fullPath);
+		modelInfo = scene->getModelInfo();
+		renderInfo = scene->getRenderInfo();
+	}
+
+	renderer.initLights(scene);
+	renderer.setLights(scene->numLights());
+	scene->initShadowMaps();
+	if (animate)
+		scene->playAnimations();
+	else
+		scene->stopAnimations();
+	initCamera();
 }
-
-
 
 void Application::gui()
 {
@@ -169,21 +242,10 @@ void Application::gui()
 		if (ImGui::BeginMenu("File"))
 		{
 			ImGui::MenuItem("New");
-			if (ImGui::MenuItem("Open"))
-			{
-				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Select GLTF file", ".gltf,.glb", "../../../../assets");
-			}
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu("Animation"))
-		{
-			if (ImGui::MenuItem("Play"))
-				scene->playAnimations();
-
-			if (ImGui::MenuItem("Stop"))
-				scene->stopAnimations();
-
+			if (ImGui::MenuItem("Open GLTF"))
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseGLTF", "Select GLTF file", ".gltf,.glb", "../../../../assets");
+			if (ImGui::MenuItem("Open HDR"))
+				ImGuiFileDialog::Instance()->OpenDialog("ChooseHDR", "Select GLTF file", ".hdr", "../../../../assets");
 			ImGui::EndMenu();
 		}
 
@@ -228,6 +290,7 @@ void Application::gui()
 					scene->clear();
 					cameraIndex = 0;
 					materialIndex = 0;
+					animIndex = 0;
 
 					variantIndex = 0;
 					prevVariantIndex = 0;
@@ -235,15 +298,24 @@ void Application::gui()
 					std::string variant = info.variants[variantIndex].first;
 					std::string fn = info.variants[variantIndex].second;
 					std::string fullPath = samplePath + "/" + info.name + "/" + variant + "/" + fn;
-					scene->loadModel(info.name, fullPath);
-					renderer.initLights(scene);
-					scene->initShadowMaps();
+					if (scene->loadModelGLTF(info.name, fullPath))
+					{
+						modelInfo = scene->getModelInfo();
+						renderInfo = scene->getRenderInfo();
+						renderer.initLights(scene);
+						renderer.setLights(scene->numLights());
+						scene->initShadowMaps();
+						//renderer.updateShadows(scene);
+						if (animate)
+							scene->playAnimations();
+						else
+							scene->stopAnimations();
 
-					initCamera();
+						initCamera();
 
-					prevSampleIndex = sampleIndex;
-					std::cout << "loading " << fn << std::endl;
-					//std::cout << "selected " << samplesInfo[sampleIndex].name << std::endl;
+						prevSampleIndex = sampleIndex;
+						std::cout << "loaded " << fn << std::endl;
+					}
 				}
 
 				ImGui::EndCombo();
@@ -269,18 +341,29 @@ void Application::gui()
 					scene->clear();
 					cameraIndex = 0;
 					materialIndex = 0;
+					animIndex = 0;
 
 					std::string variant = info.variants[variantIndex].first;
 					std::string fn = info.variants[variantIndex].second;
 					std::string fullPath = samplePath + "/" + info.name + "/" + variant + "/" + fn;
-					scene->loadModel(info.name, fullPath);
-					renderer.initLights(scene);
+					if (scene->loadModelGLTF(info.name, fullPath))
+					{
+						modelInfo = scene->getModelInfo();
+						renderInfo = scene->getRenderInfo();
+						renderer.initLights(scene);
+						renderer.setLights(scene->numLights());
+						scene->initShadowMaps();
+						if (animate)
+							scene->playAnimations();
+						else
+							scene->stopAnimations();
 
-					initCamera();
+						initCamera();
 
-					prevVariantIndex = variantIndex;
-					std::cout << "loading " << fn << std::endl;
-					//std::cout << "selected " << variants[variantIndex].first << std::endl;
+						prevVariantIndex = variantIndex;
+						std::cout << "loaded " << fn << std::endl;
+						//std::cout << "selected " << variants[variantIndex].first << std::endl;
+					}
 				}
 
 				ImGui::EndCombo();
@@ -291,11 +374,22 @@ void Application::gui()
 
 	if (ImGui::Begin("Control"))
 	{
+		if (ImGui::Checkbox("IBL", &useIBL))
+		{
+			//useIBL = !useIBL;
+			renderer.setIBL(useIBL);
+		}
+		ImGui::SameLine();
+		if (ImGui::Checkbox("Lights", &useLights))
+		{
+			//useLights = !useLights;
+			renderer.setLights(useLights ? scene->numLights() : 0);
+		}
 		auto cameras = scene->getCameraNames();
 		if (!cameras.empty())
 		{
 			ImGui::Text("Camera");
-			ImGui::SameLine();
+			ImGui::SameLine(120);
 			if (ImGui::BeginCombo("##camera", cameras[cameraIndex].c_str()))
 			{
 				for (int i = 0; i < cameras.size(); i++)
@@ -308,12 +402,41 @@ void Application::gui()
 				}
 
 				if (cameraIndex > 0)
-				{
-					auto cam = scene->getCamera(cameraIndex - 1);
-					renderer.updateCamera(cam.P, cam.V, cam.pos);
-				}
+					currentCamera = cameras[cameraIndex];
 
 				ImGui::EndCombo();
+			}
+		}
+
+		auto animations = scene->getAnimations();
+		if (!animations.empty())
+		{
+			ImGui::Text("Animation");
+			ImGui::SameLine(120);
+			if (ImGui::BeginCombo("##animation", animations[animIndex].c_str()))
+			{
+				for (int i = 0; i < animations.size(); i++)
+				{
+					const bool isSelected = (animIndex == i);
+					if (ImGui::Selectable(animations[i].c_str(), isSelected))
+						animIndex = i;
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+
+				scene->switchAnimations(animIndex);
+
+				ImGui::EndCombo();
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Play"))
+			{
+				animate = !animate;
+				if (animate)
+					scene->playAnimations();
+				else
+					scene->stopAnimations();
 			}
 		}
 
@@ -321,7 +444,7 @@ void Application::gui()
 		if (!materials.empty())
 		{
 			ImGui::Text("Material");
-			ImGui::SameLine();
+			ImGui::SameLine(120);
 			if (ImGui::BeginCombo("##material", materials[materialIndex].c_str()))
 			{
 				for (int i = 0; i < materials.size(); i++)
@@ -338,46 +461,90 @@ void Application::gui()
 				ImGui::EndCombo();
 			}
 		}
+
+		if (!debugChannels.empty())
+		{
+			ImGui::Text("Debug");
+			ImGui::SameLine(120);
+			if (ImGui::BeginCombo("##debug", debugChannels[debugIndex].c_str()))
+			{
+				for (int i = 0; i < debugChannels.size(); i++)
+				{
+					const bool isSelected = (debugIndex == i);
+					if (ImGui::Selectable(debugChannels[i].c_str(), isSelected))
+						debugIndex = i;
+					if (isSelected)
+						ImGui::SetItemDefaultFocus();
+				}
+				renderer.setDebugChannel(debugIndex);
+
+				ImGui::EndCombo();
+			}
+		}
 	}
 	ImGui::End();
 
 	if (ImGui::Begin("Information"))
 	{
-		if (ImGui::TreeNode("Scene"))
+		if(ImGui::CollapsingHeader("Model info", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			if (ImGui::TreeNode("Node1"))
+			for (auto [name, count] : modelInfo)
 			{
-				ImGui::TreePop();
-
+				std::string text = name + ": " + std::to_string(count);
+				ImGui::Text(text.c_str());
 			}
-			if (ImGui::TreeNode("Node2"))
+		}
+
+		if (ImGui::CollapsingHeader("Rendering info", ImGuiTreeNodeFlags_DefaultOpen))
+		{
+			for (auto [name, count] : renderInfo)
 			{
-				ImGui::TreePop();
+				std::string text = name + ": " + std::to_string(count);
+				ImGui::Text(text.c_str());
 			}
-
-			ImGui::TreePop();
 		}
 	}
 	ImGui::End();
 
-	if (ImGuiFileDialog::Instance()->Display("ChooseFileDlgKey"))
+	if (ImGuiFileDialog::Instance()->Display("ChooseGLTF"))
 	{
 		if (ImGuiFileDialog::Instance()->IsOk())
 		{
 			scene->clear();
 			cameraIndex = 0;
 			materialIndex = 0;
+			animIndex = 0;
 
 			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 			std::string fileName = ImGuiFileDialog::Instance()->GetCurrentFileName();
 			std::string name = fileName.substr(0, fileName.find_last_of("."));
-			scene->loadModel(name, filePathName);
+			scene->loadModelGLTF(name, filePathName);
+			modelInfo = scene->getModelInfo();
+			renderInfo = scene->getRenderInfo();
+			renderer.initLights(scene);
+			renderer.setLights(scene->numLights());
+			scene->initShadowMaps();
+			if (animate)
+				scene->playAnimations();
+			else
+				scene->stopAnimations();
+			initCamera();
 		}
 		ImGuiFileDialog::Instance()->Close();
 	}
 
-	//bool show_demo_window = true;
-	//ImGui::ShowDemoWindow(&show_demo_window);
+	if (ImGuiFileDialog::Instance()->Display("ChooseHDR"))
+	{
+		if (ImGuiFileDialog::Instance()->IsOk())
+		{
+			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+			renderer.initEnv(filePathName, scene);
+		}
+		ImGuiFileDialog::Instance()->Close();
+	}
+
+	bool show_demo_window = true;
+	ImGui::ShowDemoWindow(&show_demo_window);
 }
 
 void Application::loop()
@@ -407,11 +574,17 @@ void Application::loop()
 				camera.rotate(animTime);
 				renderer.updateCamera(camera);
 			}
+			else
+			{
+				auto cam = scene->getCameraInfo(currentCamera);
+				renderer.updateCamera(cam.P, cam.V, cam.pos);
+			}
 
 			if (animate)
 			{
 				scene->updateAnimations(animTime);
 				scene->updateAnimationState(animTime);
+				renderer.initLights(scene);
 				renderer.updateShadows(scene);
 
 				//renderer.updateAnimations(animTime);

@@ -1,3 +1,5 @@
+#ifdef WITH_FREETYPE
+
 #include "Font.h"
 
 #include <algorithm>
@@ -220,3 +222,5 @@ bool Font::isLoaded()
 {
 	return loaded;
 }
+
+#endif

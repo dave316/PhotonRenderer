@@ -11,9 +11,9 @@
 
 enum LightType
 {
-	DIRECTIONAL,
+	DIRECTIONAL = 0,
 	POINT,
-	SPOT,
+	SPOT
 };
 
 class Light : public Component
@@ -27,6 +27,7 @@ private:
 	float innerConeAngle = 0.0f;
 	float outerConeAngle = glm::quarter_pi<float>();
 	int type;
+	bool on = true;
 
 	Light(const Light&) = delete;
 	Light& operator=(const Light&) = delete;
@@ -51,7 +52,13 @@ public:
 	//void draw();
 	//void setPostion(glm::vec3 position);
 	//void setDirection(glm::vec3 direction);
+	void setColor(glm::vec3 color);
+	void setIntensity(float intensity);
+	void setRange(float range);
 	void setConeAngles(float inner, float outer);
+	void setInnerAngle(float inner);
+	void setOuterAngle(float outer);
+	int getType();
 	glm::vec3 getColor();
 	float getIntensity();
 	typedef std::shared_ptr<Light> Ptr;

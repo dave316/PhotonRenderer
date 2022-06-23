@@ -5,8 +5,8 @@
 #include <Graphics/Shader.h>
 
 #include <IO/AssimpImporter.h>
-#include <IO/ImageLoader.h>
 #include <IO/ShaderLoader.h>
+#include <IO/Image/ImageDecoder.h>
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -19,14 +19,19 @@
 #include <rapidjson/document.h>
 #include <rapidjson/filereadstream.h>
 
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
 namespace json = rapidjson;
 
 void extern debugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* param)
 {
 	if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
 	{
-		std::cout << std::hex << std::endl;
+		std::cout << std::hex;
 		std::cout << "OpenGL error: type=" << type << " severity: " << severity << " message: " << message << std::endl;
+		std::cout << std::dec;
 	}
 }
 
@@ -55,12 +60,15 @@ bool Renderer::init()
 	//glEnable(GL_DEBUG_OUTPUT);
 	//glDebugMessageCallback(debugCallback, 0);
 
+	unitCube = MeshPrimitives::createCube(glm::vec3(0), 1.0f);
+	screenQuad = MeshPrimitives::createQuad(glm::vec3(0.0f), 2.0f);
+
 	initShader();
 	initLUTs();
 
 	//std::string assetPath = "../../../../assets";
 	std::string assetPath = "../../../../assets";
-	lutSheenE = IO::loadTexture16(assetPath + "/lut_sheen_E.png", false);	
+	//lutSheenE = IO::loadTexture16(assetPath + "/lut_sheen_E.png", false);	
 
 	cameraUBO.bindBase(0);
 
@@ -72,57 +80,53 @@ bool Renderer::init()
 
 void Renderer::initLUTs()
 {
-	auto integrateBRDFShader = shaders["IBLIntegrateBRDF"];
-
-	unitCube = MeshPrimitives::createCube(glm::vec3(0), 1.0f);
-	screenQuad = MeshPrimitives::createQuad(glm::vec3(0.0f), 2.0f);
-
+	//if (fs::exists("brdf_lut.ktx2"))
+	//{
+	//	brdfLUT = IO::loadTextureKTX("brdf_lut.ktx2");
+	//	brdfLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
+	//}
+	//else
 	{
-		int size = 512;
-		ggxLUT = Texture2D::create(size, size, GL::RGB16F);
-		ggxLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
+		auto integrateBRDFShader = shaders["IBLIntegrateBRDF"];
 
-		integrateBRDFShader->use();
-		integrateBRDFShader->setUniform("filterIndex", 0);
+		int size = 512;
 		auto brdfFBO = Framebuffer::create(size, size);
-		brdfFBO->addRenderTexture(GL::COLOR0, ggxLUT);
+		brdfLUT = Texture2D::create(size, size, GL::RGBA16F);
+		brdfLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
+		brdfFBO->addRenderTexture(GL::COLOR0, brdfLUT);
 		brdfFBO->begin();
+		integrateBRDFShader->use();
 		screenQuad->draw();
 		brdfFBO->end();
+
+		//IO::saveTextureKTX("brdf_lut.ktx2", brdfLUT);
 	}
-
-	{
-		int size = 512;
-		charlieLUT = Texture2D::create(size, size, GL::RGB16F);
-		charlieLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-
-		integrateBRDFShader->use();
-		integrateBRDFShader->setUniform("filterIndex", 1);
-		auto brdfFBO = Framebuffer::create(size, size);
-		brdfFBO->addRenderTexture(GL::COLOR0, charlieLUT);
-		brdfFBO->begin();
-		screenQuad->draw();
-		brdfFBO->end();
-	}
-
-	glViewport(0, 0, width, height);
 }
 
 void Renderer::initFBOs()
 {
 	int w = width;
 	int h = height;
-	refractionTex = Texture2D::create(w, h, GL::RGBA8);
-	refractionTex->generateMipmaps();
-	refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-	refractionFBO = Framebuffer::create(w, h);
-	refractionFBO->addRenderTexture(GL::COLOR0, refractionTex);
-	refractionFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
+	//refractionTex = Texture2D::create(w, h, GL::RGBA8);
+	//refractionTex->generateMipmaps();
+	//refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+	//refractionFBO = Framebuffer::create(w, h);
+	//refractionFBO->addRenderTexture(GL::COLOR0, refractionTex);
+	//refractionFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
 
 	screenTex = Texture2D::create(w, h, GL::RGBA8);
+	refrTex = Texture2D::create(w, h, GL::RGBA8);
+	refrTex->generateMipmaps();
+	refrTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+
 	screenFBO = Framebuffer::create(w, h);
 	screenFBO->addRenderTexture(GL::COLOR0, screenTex);
+	screenFBO->addRenderTexture(GL::COLOR1, refrTex);
 	screenFBO->addRenderBuffer(GL::DEPTH_STENCIL, GL::D24_S8);
+
+	postTex = Texture2D::create(w, h, GL::RGBA8);
+	postFBO = Framebuffer::create(w, h);
+	postFBO->addRenderTexture(GL::COLOR0, postTex);
 
 	outlineFBO = Framebuffer::create(w, h);
 	outlineFBO->addRenderTexture(GL::COLOR0, GL::RGBA8);
@@ -145,41 +149,31 @@ void Renderer::initShader()
 			shader->setUniform("irradianceMap", 15);
 			shader->setUniform("specularMapGGX", 16);
 			shader->setUniform("specularMapCharlie", 17);
-			shader->setUniform("sheenLUTE", 18);
-			shader->setUniform("ggxLUT", 19);
-			shader->setUniform("charlieLUT", 20);
+			shader->setUniform("brdfLUT", 18);
 			shader->setUniform("useIBL", useIBL);
 
 			// TODO: fix shadow maps! Reduce texture unit usage, too many active...
 
 			std::vector<int> units;
-			for (int i = 10; i < 15; i++)
+			for (int i = 8; i <= 12; i++)
 				units.push_back(i);
 			shader->setUniform("shadowMaps[0]", units);
-			//defaultShader->setUniform("numLights", (int)lights.size());
+			shader->setUniform("shadowMap", 19);
+			shader->setUniform("morphTargets", 20);
 		}
 	}
 
-	defaultShader = shaders["Default"];
-	defaultShader->setUniform("screenTex", 14);
-	defaultShader->setUniform("irradianceMap", 15);
-	defaultShader->setUniform("specularMapGGX", 16);
-	defaultShader->setUniform("specularMapCharlie", 17);
-	defaultShader->setUniform("sheenLUTE", 18);
-	defaultShader->setUniform("ggxLUT", 19);
-	defaultShader->setUniform("charlieLUT", 20);
-	defaultShader->setUniform("useIBL", useIBL);
+	auto depthShader = shaders["Depth"];
+	depthShader->setUniform("morphTargets", 20);
 
-	// TODO: fix shadow maps! Reduce texture unit usage, too many active...
-
-	std::vector<int> units;
-	for (int i = 10; i < 15; i++)
-		units.push_back(i);
-	defaultShader->setUniform("shadowMaps[0]", units);
-	//defaultShader->setUniform("numLights", (int)lights.size());
+	auto depthCMShader = shaders["DepthCubemap"];
+	depthCMShader->setUniform("morphTargets", 20);
 
 	skyboxShader = shaders["Skybox"];
 	skyboxShader->setUniform("envMap", 0);
+
+	auto skyboxCMShader = shaders["SkyboxCubemap"];
+	skyboxCMShader->setUniform("envMap", 0);
 
 	textShader = shaders["Text"];
 	textShader->setUniform("P", glm::ortho(0.0f, (float)width, 0.0f, (float)height));
@@ -187,17 +181,31 @@ void Renderer::initShader()
 
 	unlitShader = shaders["Unlit"];
 	unlitShader->setUniform("orthoProjection", true);
+	unlitShader->setUniform("morphTargets", 20);
+	unlitShader->setUniform("useGammaEncoding", true);
 	unlitShader->setUniform("useTex", true);
 	unlitShader->setUniform("tex", 0);
-
+	
 	outlineShader = shaders["Outline"];
 	outlineShader->setUniform("inputTexture", 0);
 }
 
-void Renderer::initEnv(Scene::Ptr scene)
+void Renderer::initEnv(std::string fn, Scene::Ptr scene)
 {
-	scene->initEnvMaps(shaders);
+	glDisable(GL_CULL_FACE);
+
+	scene->initEnvMaps(fn, shaders);
 	
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+}
+
+void Renderer::initLightProbe(EnvironmentMap::Ptr lightProbe, Scene::Ptr scene)
+{
+	glDisable(GL_CULL_FACE);
+
+	scene->initLightProbe(lightProbe, shaders);
+
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 }
@@ -207,41 +215,41 @@ void Renderer::initLights(Scene::Ptr scene)
 	scene->initLights(shaders);
 }
 
-void Renderer::initFonts()
-{
-	// TODO: better error handling...
-
-	FT_Library ft;
-	FT_Init_FreeType(&ft);
-
-	std::vector<std::string> fileNames;
-	fileNames.push_back("../../../../assets/fonts/arial.ttf");
-	fileNames.push_back("../../../../assets/fonts/arialbd.ttf");
-	fileNames.push_back("../../../../assets/fonts/ariali.ttf");
-	fileNames.push_back("../../../../assets/fonts/arialbi.ttf");
-	auto font = Font::Ptr(new Font(ft, fileNames, 11, 60));
-	if (font->isLoaded())
-	{
-		std::string resStr = "Resolution: " + std::to_string(width) + "x" + std::to_string(height);
-		std::string nameStr = "Animation index: 0";
-		//std::string lightStr = "Lights: " + std::to_string(lights.size());
-
-		glm::vec3 textColor(0.2f, 0.5f, 0.9f);
-		int fontSize = 20;
-
-		Text2D::Ptr text1(new Text2D(font, resStr, textColor, glm::vec2(20.0f, 80.0f), fontSize));
-		Text2D::Ptr text2(new Text2D(font, nameStr, textColor, glm::vec2(20.0f, 60.0f), fontSize));
-		//Text2D::Ptr text3(new Text2D(font, lightStr, textColor, glm::vec2(20.0f, 40.0f), fontSize));
-		Text2D::Ptr text4(new Text2D(font, "Font: Arial, Size " + std::to_string(fontSize), textColor, glm::vec2(20.0f), fontSize));
-		texts.push_back(text1);
-		texts.push_back(text2);
-		//texts.push_back(text3);
-		texts.push_back(text4);
-	}
-	fonts.push_back(font);
-
-	FT_Done_FreeType(ft);
-}
+//void Renderer::initFonts()
+//{
+//	// TODO: better error handling...
+//
+//	FT_Library ft;
+//	FT_Init_FreeType(&ft);
+//
+//	std::vector<std::string> fileNames;
+//	fileNames.push_back("../../../../assets/fonts/arial.ttf");
+//	fileNames.push_back("../../../../assets/fonts/arialbd.ttf");
+//	fileNames.push_back("../../../../assets/fonts/ariali.ttf");
+//	fileNames.push_back("../../../../assets/fonts/arialbi.ttf");
+//	auto font = Font::Ptr(new Font(ft, fileNames, 11, 60));
+//	if (font->isLoaded())
+//	{
+//		std::string resStr = "Resolution: " + std::to_string(width) + "x" + std::to_string(height);
+//		std::string nameStr = "Animation index: 0";
+//		//std::string lightStr = "Lights: " + std::to_string(lights.size());
+//
+//		glm::vec3 textColor(0.2f, 0.5f, 0.9f);
+//		int fontSize = 20;
+//
+//		Text2D::Ptr text1(new Text2D(font, resStr, textColor, glm::vec2(20.0f, 80.0f), fontSize));
+//		Text2D::Ptr text2(new Text2D(font, nameStr, textColor, glm::vec2(20.0f, 60.0f), fontSize));
+//		//Text2D::Ptr text3(new Text2D(font, lightStr, textColor, glm::vec2(20.0f, 40.0f), fontSize));
+//		Text2D::Ptr text4(new Text2D(font, "Font: Arial, Size " + std::to_string(fontSize), textColor, glm::vec2(20.0f), fontSize));
+//		texts.push_back(text1);
+//		texts.push_back(text2);
+//		//texts.push_back(text3);
+//		texts.push_back(text4);
+//	}
+//	fonts.push_back(font);
+//
+//	FT_Done_FreeType(ft);
+//}
 
 void Renderer::resize(unsigned int width, unsigned int height)
 {
@@ -253,34 +261,79 @@ void Renderer::resize(unsigned int width, unsigned int height)
 
 void Renderer::updateShadows(Scene::Ptr scene)
 {
-	auto depthShader = shaders["DepthCubemap"];
+	auto depthShader = shaders["Depth"];
+	auto depthCMShader = shaders["DepthCubemap"];
 	auto shadowFBOs = scene->getShadwoFBOs();
 	auto views = scene->getViews();
 
 	// should be put in light class together with the updating
 	for (int i = 0; i < views.size(); i++)
 	{
-		shadowFBOs[i]->begin();
-		glCullFace(GL_FRONT);
-		depthShader->use();
-		depthShader->setUniform("lightIndex", i);
-		depthShader->setUniform("VP[0]", views[i]);
-		renderScene(scene, depthShader, true);
-		shadowFBOs[i]->end();
-		glCullFace(GL_BACK);
+		if (views[i].size() == 1)
+		{
+			// TODO: single depth shader
+			shadowFBOs[i]->begin();
+			glCullFace(GL_FRONT);
+			depthShader->use();
+			depthShader->setUniform("VP", views[i][0]);
+			renderScene(scene, depthShader, false);
+			shadowFBOs[i]->end();
+			glCullFace(GL_BACK);
+
+			for (auto [name, shader] : shaders)
+			{
+				shader->setUniform("VP", views[i][0]);
+			}
+		}
+		else
+		{
+			shadowFBOs[i]->begin();
+			glCullFace(GL_FRONT);
+			depthCMShader->use();
+			depthCMShader->setUniform("lightIndex", i);
+			depthCMShader->setUniform("VP[0]", views[i]);
+			renderScene(scene, depthCMShader, false);
+			shadowFBOs[i]->end();
+			glCullFace(GL_BACK);
+		}
 	}
 }
 
-void Renderer::updateCamera(Camera& camera)
+void Renderer::setIBL(bool useIBL)
 {
-	Camera::UniformData cameraData;
+	this->useIBL = useIBL;
+	for (auto [_, shader] : shaders)
+		shader->setUniform("useIBL", useIBL);
+}
+
+void Renderer::setLights(int numLights)
+{
+	for (auto& [_, s] : shaders)
+		s->setUniform("numLights", numLights);
+}
+
+void Renderer::setDebugChannel(int channel)
+{
+	for (auto& [_, s] : shaders)
+		s->setUniform("debugChannel", channel);
+}
+
+//void Renderer::updateSHEnv(IO::SphericalLightingProbe shProbe)
+//{
+//	for (auto [_, shader] : shaders)
+//		shader->setUniform("SHEnv[0]", shProbe.coeffs);
+//}
+
+void Renderer::updateCamera(FPSCamera& camera)
+{
+	FPSCamera::UniformData cameraData;
 	camera.writeUniformData(cameraData);
 	cameraUBO.upload(&cameraData, 1);
 }
 
 void Renderer::updateCamera(glm::mat4 P, glm::mat4 V, glm::vec3 pos)
 {
-	Camera::UniformData cameraData;
+	FPSCamera::UniformData cameraData;
 	cameraData.VP = P * V;
 	cameraData.V = V;
 	cameraData.P = P;
@@ -290,87 +343,195 @@ void Renderer::updateCamera(glm::mat4 P, glm::mat4 V, glm::vec3 pos)
 
 void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr defShader, bool transmission)
 {
-	auto& rootEntitis = scene->getEntities();
-	int i = 0;
-	for (auto [name, e] : rootEntitis)
+	if (transmission)
 	{
-		auto models = e->getChildrenWithComponent<Renderable>();
-		auto animator = e->getComponent<Animator>();
-		std::vector<Entity::Ptr> renderEntities;
-		for (auto m : models)
-			if(!m->getComponent<Renderable>()->useBlending() && !m->getComponent<Renderable>()->isTransmissive())
-				renderEntities.push_back(m);
-		if (transmission)
-			for (auto m : models)
-				if (m->getComponent<Renderable>()->isTransmissive())
-					renderEntities.push_back(m);
-		for (auto m : models)
-			if (m->getComponent<Renderable>()->useBlending())
-				renderEntities.push_back(m);
+		auto transparent = scene->getTransparentEntities();
 
-		for (auto m : renderEntities)
+		for (auto [name, models] : transparent)
 		{
-			auto r = m->getComponent<Renderable>();
-			auto t = m->getComponent<Transform>();
-
 			Shader::Ptr shader;
 			if (defShader)
 				shader = defShader;
 			else
-			{
-				std::string n = r->getShader();
-				shader = shaders[n];
-				shader->use();
-				shader->setUniform("useGammaEncoding", transmission);
-			}
+				shader = shaders[name];
 
-			if (r->useMorphTargets())
+			shader->use();
+			for (auto m : models)
 			{
-				std::vector<float> weights;
-				if (animator)
-					weights = animator->getWeights();
+				auto r = m->getComponent<Renderable>();
+				auto t = m->getComponent<Transform>();
+				Entity::Ptr p = m;
+				while (p->getParent() != nullptr)
+					p = p->getParent();
+
+				auto animator = p->getComponent<Animator>();
+
+				if (r->useMorphTargets())
+				{
+					std::vector<float> weights;
+					if (animator)
+						weights = animator->getWeights();
+					else
+						weights = r->getWeights();
+					shader->setUniform("numMorphTargets", (int)weights.size());
+					if (!weights.empty())
+						shader->setUniform("morphWeights[0]", weights);
+				}
 				else
-					weights = r->getWeights();
-				shader->setUniform("numMorphTargets", (int)weights.size());
-				if(!weights.empty())
-					shader->setUniform("morphWeights[0]", weights);
-			}
-			else
-			{
-				shader->setUniform("numMorphTargets", 0);
-			}
+				{
+					shader->setUniform("numMorphTargets", 0);
+				}
 
-			if (r->isSkinnedMesh())
-			{
-				auto nodes = animator->getNodes();
-				Skin skin = r->getSkin(); 
-				skin.computeJoints(nodes); // TODO: this should be done on animation update, not each frame...
-				auto boneTransforms = skin.getBoneTransform();
-				auto normalTransforms = skin.getNormalTransform();
-				shader->setUniform("hasAnimations", true);
-				shader->setUniform("bones[0]", boneTransforms);
-				shader->setUniform("normals[0]", normalTransforms);
-			}
-			else
-			{
-				shader->setUniform("hasAnimations", false);
-			}
+				if (r->isSkinnedMesh())
+				{
+					auto nodes = animator->getNodes();
+					auto skin = r->getSkin();
+					skin->computeJoints(nodes); // TODO: this should be done on animation update, not each frame...
+					auto boneTransforms = skin->getBoneTransform();
+					auto normalTransforms = skin->getNormalTransform();
+					shader->setUniform("hasAnimations", true);
+					shader->setUniform("bones[0]", boneTransforms);
+					shader->setUniform("normals[0]", normalTransforms);
+				}
+				else
+				{
+					shader->setUniform("hasAnimations", false);
+				}
 
-			t->setUniforms(shader);
-			r->render(shader);
+				t->setUniforms(shader);
+				r->render(shader);
+			}
+		}
+	}
+	else
+	{
+		auto opaque = scene->getOpaqueEntities();
+		for (auto [name, models] : opaque)
+		{
+			Shader::Ptr shader;
+			if (defShader)
+				shader = defShader;
+			else
+				shader = shaders[name];
+
+			shader->use();
+			for (auto m : models)
+			{
+				auto r = m->getComponent<Renderable>();
+				auto t = m->getComponent<Transform>();
+				Entity::Ptr p = m;
+				while (p->getParent() != nullptr)
+					p = p->getParent();
+
+				auto animator = p->getComponent<Animator>();
+
+				if (r->useMorphTargets())
+				{
+					std::vector<float> weights;
+					if (animator)
+						weights = animator->getWeights();
+					else
+						weights = r->getWeights();
+					shader->setUniform("numMorphTargets", (int)weights.size());
+					if (!weights.empty())
+						shader->setUniform("morphWeights[0]", weights);
+				}
+				else
+				{
+					shader->setUniform("numMorphTargets", 0);
+				}
+
+				if (r->isSkinnedMesh())
+				{
+					auto nodes = animator->getNodes();
+					auto skin = r->getSkin();
+					skin->computeJoints(nodes); // TODO: this should be done on animation update, not each frame...
+					auto boneTransforms = skin->getBoneTransform();
+					auto normalTransforms = skin->getNormalTransform();
+					shader->setUniform("hasAnimations", true);
+					shader->setUniform("bones[0]", boneTransforms);
+					shader->setUniform("normals[0]", normalTransforms);
+				}
+				else
+				{
+					shader->setUniform("hasAnimations", false);
+				}
+
+				t->setUniforms(shader);
+				r->render(shader);
+			}
 		}
 	}
 }
 
 void Renderer::renderOutline(Entity::Ptr entity)
 {
+	glStencilMask(0x00);
+
+	glm::vec3 color = glm::vec3(1.0f, 0.533f, 0.0f);
+	
+	outlineFBO->begin();
+	unlitShader->use();
+	unlitShader->setUniform("useTex", false);
+	unlitShader->setUniform("orthoProjection", false);
+	unlitShader->setUniform("skipEmptyFragments", false);
+	unlitShader->setUniform("solidColor", glm::pow(color, glm::vec3(2.2)));
+
+	Entity::Ptr p = entity;
+	while (p->getParent() != nullptr)
+		p = p->getParent();
+
+	auto animator = p->getComponent<Animator>();
+	auto models = entity->getChildrenWithComponent<Renderable>();
+	for (auto m : models)
+	{
+		auto r = m->getComponent<Renderable>();
+		auto t = m->getComponent<Transform>();
+
+		if (r->useMorphTargets())
+		{
+			std::vector<float> weights;
+			if (animator)
+				weights = animator->getWeights();
+			else
+				weights = r->getWeights();
+			unlitShader->setUniform("numMorphTargets", (int)weights.size());
+			if (!weights.empty())
+				unlitShader->setUniform("morphWeights[0]", weights);
+		}
+		else
+		{
+			unlitShader->setUniform("numMorphTargets", 0);
+		}
+
+		if (r->isSkinnedMesh())
+		{
+			auto nodes = animator->getNodes();
+			auto skin = r->getSkin();
+			skin->computeJoints(nodes); // TODO: this should be done on animation update, not each frame...
+			auto boneTransforms = skin->getBoneTransform();
+			auto normalTransforms = skin->getNormalTransform();
+			unlitShader->setUniform("hasAnimations", true);
+			unlitShader->setUniform("bones[0]", boneTransforms);
+			unlitShader->setUniform("normals[0]", normalTransforms);
+		}
+		else
+		{
+			unlitShader->setUniform("hasAnimations", false);
+		}
+
+		t->setUniforms(unlitShader);
+		r->render(unlitShader);
+	}
+	outlineFBO->end();
+
+	screenFBO->bindDraw();
+
 	// Draw selected model into stencil buffer
 	glStencilFunc(GL_ALWAYS, 1, 0xFF);
 	glStencilMask(0xFF);
 	glDepthMask(0x00);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	unlitShader->use();
-	auto models = entity->getChildrenWithComponent<Renderable>();
 	for (auto m : models)
 	{
 		auto r = m->getComponent<Renderable>();
@@ -385,11 +546,7 @@ void Renderer::renderOutline(Entity::Ptr entity)
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glDisable(GL_DEPTH_TEST);
 
-	unlitShader->use();
-	unlitShader->setUniform("useTex", true);
-	unlitShader->setUniform("orthoProjection", true);
-	unlitShader->setUniform("skipEmptyFragments", true);
-	unlitShader->setUniform("M", glm::mat4(1.0f));
+	outlineShader->use();
 	outlineFBO->useTexture(GL::COLOR0, 0);
 	screenQuad->draw();
 
@@ -400,144 +557,24 @@ void Renderer::renderOutline(Entity::Ptr entity)
 
 void Renderer::renderToScreen(Scene::Ptr scene)
 {
-	if (useIBL)
-	{
-		//irradianceMap->use(15);
-		//specularMapGGX->use(16);
-		//specularMapCharlie->use(17);
-		scene->useIBL();
-		lutSheenE->use(18);
-		ggxLUT->use(19);
-		charlieLUT->use(20);
-	}
-	scene->useIBL();
+	auto screenTex = renderForward(scene);
 
-	//for (int i = 0; i < shadowFBOs.size(); i++)
-	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
-
-	// offscreen pass for transmission
-	if (scene->hasTransmission())
-	{
-		refractionFBO->begin();
-
-		if (useSkybox)
-		{
-			glCullFace(GL_FRONT);
-			skyboxShader->use();
-			skyboxShader->setUniform("useGammaEncoding", false);
-			//cubeMap->use(0);
-			scene->useSkybox();
-			unitCube->draw();
-			glCullFace(GL_BACK);
-		}
-
-		//defaultShader->use();
-		//defaultShader->setUniform("useGammaEncoding", false);
-		renderScene(scene, nullptr, false);
-		refractionFBO->end();
-		refractionTex->generateMipmaps();
-		refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-		refractionTex->use(14);
-	}
-
-	// main render pass
 	glViewport(0, 0, width, height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	if (useSkybox)
-	{
-		glCullFace(GL_FRONT);
-		skyboxShader->use();
-		skyboxShader->setUniform("useGammaEncoding", true);
-		//cubeMap->use(0);
-		scene->useSkybox();
-		unitCube->draw();
-		glCullFace(GL_BACK);
-	}
-	
-	//defaultShader->use();
-	//defaultShader->setUniform("useGammaEncoding", true);
-	renderScene(scene, nullptr, true);
+	screenTex->use(0);
+	unlitShader->use();
+	screenQuad->draw();
 }
 
-Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
+Texture2D::Ptr Renderer::renderForward(Scene::Ptr scene)
 {
 	if (useIBL)
 	{
-		//irradianceMap->use(15);
-		//specularMapGGX->use(16);
-		//specularMapCharlie->use(17);
 		scene->useIBL();
-		lutSheenE->use(18);
-		ggxLUT->use(19);
-		charlieLUT->use(20);
+		brdfLUT->use(18);
 	}
 	scene->useIBL();
 
-	glStencilMask(0x00);
-	auto selectedModel = scene->getCurrentModel();
-	if (selectedModel != nullptr)
-	{
-		outlineFBO->begin();
-
-		unlitShader->use();
-		unlitShader->setUniform("useTex", false);
-		unlitShader->setUniform("orthoProjection", false);
-		unlitShader->setUniform("skipEmptyFragments", false);
-		unlitShader->setUniform("solidColor", glm::vec3(1.0f, 0.5f, 0.0f));
-		auto animator = selectedModel->getComponent<Animator>();
-		auto models = selectedModel->getChildrenWithComponent<Renderable>();
-		for (auto m : models)
-		{
-			auto r = m->getComponent<Renderable>();
-			if (r->isSkinnedMesh() || r->useMorphTargets())
-				continue;
-			auto t = m->getComponent<Transform>();
-			t->setUniforms(unlitShader);
-			r->render(unlitShader);
-		}
-
-		outlineShader->use();
-		outlineFBO->useTexture(GL::COLOR0, 0);
-		glDrawBuffer(GL_COLOR_ATTACHMENT1);
-		outlineShader->setUniform("direction", glm::vec2(1, 0));
-		screenQuad->draw();
-
-		outlineFBO->useTexture(GL::COLOR1, 0);
-		glDrawBuffer(GL_COLOR_ATTACHMENT0);
-		outlineShader->setUniform("direction", glm::vec2(0, 1));
-		screenQuad->draw();
-
-		outlineFBO->end();
-	}
-
-	//for (int i = 0; i < shadowFBOs.size(); i++)
-	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
-
-	if (scene->hasTransmission())
-	{
-		// offscreen pass for transmission
-		refractionFBO->begin();
-		if (useSkybox)
-		{
-			glCullFace(GL_FRONT);
-			skyboxShader->use();
-			skyboxShader->setUniform("useGammaEncoding", false);
-			//cubeMap->use(0);
-			scene->useSkybox();
-			unitCube->draw();
-			glCullFace(GL_BACK);
-		}
-
-		//defaultShader->use();
-		//defaultShader->setUniform("useGammaEncoding", false);
-		renderScene(scene, nullptr, false);
-		refractionFBO->end();
-		refractionTex->generateMipmaps();
-		refractionTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-		refractionTex->use(14);
-	}
-
-	// main render pass
 	glStencilMask(0xFF);
 	screenFBO->begin();
 	glStencilMask(0x00);
@@ -545,39 +582,120 @@ Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 	{
 		glCullFace(GL_FRONT);
 		skyboxShader->use();
-		skyboxShader->setUniform("useGammaEncoding", true);
-		//cubeMap->use(0);
 		scene->useSkybox();
 		unitCube->draw();
 		glCullFace(GL_BACK);
-	}	
-	//defaultShader->use();
-	//defaultShader->setUniform("useGammaEncoding", true);
+	}
+
+	renderScene(scene, nullptr, false);
+
+	if (scene->hasTransmission())
+	{
+		// This is quite expensive... find a better way to do this!
+		refrTex->generateMipmaps();
+		refrTex->use(14);
+	}
+
+	glDrawBuffer(GL_COLOR_ATTACHMENT0);
 	renderScene(scene, nullptr, true);
-	
-	if (selectedModel != nullptr)
-		renderOutline(selectedModel);
 
-	//scene->renderBoxes(unlitShader);
 	screenFBO->end();
-
-	//glViewport(0, 0, width, height);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	//screenTex->use(0);
-	//unlitShader->use();
-	//screenQuad->draw();
 
 	return screenTex;
 }
 
-void Renderer::renderText()
+Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
 {
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	textShader->use();
-	for (auto& textMesh : texts)
-		textMesh->draw(textShader);
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
+	auto mainTex = renderForward(scene);
+
+	screenFBO->bind();
+	auto selectedModel = scene->getCurrentModel();
+	if (selectedModel != nullptr)
+		renderOutline(selectedModel);
+	screenFBO->end();
+
+	postFBO->begin();
+	screenTex->use(0);
+	unlitShader->setUniform("M", glm::mat4(1.0f));
+	unlitShader->setUniform("orthoProjection", true);
+	unlitShader->setUniform("useGammaEncoding", true);
+	unlitShader->setUniform("useTex", true);
+	unlitShader->setUniform("numMorphTargets", 0);
+	unlitShader->setUniform("hasAnimations", false);
+	unlitShader->use();
+	screenQuad->draw();
+	postFBO->end();
+
+	return postTex;
 }
+
+EnvironmentMap::Ptr Renderer::renderToCubemap(Scene::Ptr scene)
+{
+	if (useIBL)
+	{
+		scene->useIBL();
+		brdfLUT->use(18);
+	}
+	scene->useIBL();
+
+	int faceSize = 1024;
+	auto lightProbeEnv = EnvironmentMap::create(faceSize);
+	auto cm = lightProbeEnv->getCubeMap();
+	cm->generateMipmaps();
+
+	auto lightProbeFBO = Framebuffer::create(faceSize, faceSize);
+	lightProbeFBO->addRenderTexture(GL::COLOR0, cm);
+	lightProbeFBO->addRenderTexture(GL::DEPTH, GL::DEPTH24, true);
+
+	glm::vec3 pos = glm::vec3(0, 5, 0);
+	lightProbeEnv->setViews(pos);
+
+	glm::vec3 skyPos = glm::vec3(0);
+	glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
+	std::vector<glm::mat4> VP;
+	VP.push_back(P * glm::lookAt(skyPos, skyPos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+	VP.push_back(P * glm::lookAt(skyPos, skyPos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+	VP.push_back(P * glm::lookAt(skyPos, skyPos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+	VP.push_back(P * glm::lookAt(skyPos, skyPos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+	VP.push_back(P * glm::lookAt(skyPos, skyPos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+	VP.push_back(P * glm::lookAt(skyPos, skyPos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+
+	updateCamera(glm::mat4(1.0f), glm::mat4(1.0f), pos);
+
+	lightProbeFBO->begin();
+
+	auto skyboxCMShader = shaders["SkyboxCubemap"];
+	
+	glDepthMask(0x00);
+	glCullFace(GL_FRONT);
+	skyboxCMShader->use();
+	skyboxCMShader->setUniform("VP[0]", VP);
+	scene->useSkybox();
+	unitCube->draw();
+	glDepthMask(0xFF);
+	glCullFace(GL_BACK);
+
+	auto defaultCMShader = shaders["DefaultCubemap"];
+	defaultCMShader->setUniform("VP[0]", lightProbeEnv->views);
+	defaultCMShader->use();
+	renderScene(scene, defaultCMShader, false);
+
+	lightProbeFBO->end();
+
+	cm->generateMipmaps();
+	cm->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
+	
+	return lightProbeEnv;
+}
+
+//void Renderer::renderText()
+//{
+//	glDisable(GL_DEPTH_TEST);
+//	glEnable(GL_BLEND);
+//	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+//	textShader->use();
+//	for (auto& textMesh : texts)
+//		textMesh->draw(textShader);
+//	glDisable(GL_BLEND);
+//	glEnable(GL_DEPTH_TEST);
+//}

@@ -1,4 +1,4 @@
-#version 450 core
+#version 460 core
 
 #define NUM_FACES 6
 
@@ -7,11 +7,12 @@ layout (triangle_strip, max_vertices = 18) out;
 
 uniform mat4 VP[NUM_FACES];
 
-in vec2 texCoord0[3];
-in vec2 texCoord1[3];
-out vec3 wPosition;
-out vec2 fTexCoord0;
-out vec2 fTexCoord1;
+layout(location = 0) in vec2 texCoord0[3];
+layout(location = 1) in vec2 texCoord1[3];
+
+layout(location = 0) out vec3 wPosition;
+layout(location = 1) out vec2 fTexCoord0;
+layout(location = 2) out vec2 fTexCoord1;
 
 void main()
 {

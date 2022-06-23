@@ -3,63 +3,51 @@
 
 #pragma once
 
-#include <GL/GLBuffer.h>
-#include <GL/GLVertexArray.h>
-
-#include "Geometry.h"
-
-#include <memory>
-#include <string>
-#include <map>
+#include "Primitive.h"
+#include "Material.h"
 
 class Mesh
 {
-public:
-	enum Attribute
-	{
-		POSITION,
-		COLOR,
-		NORMAL,
-		TANGENT,
-		TEXCOORD,
-		JOINTS,
-		WEIGHTS
-	};
 private:
-
 	std::string name;
-	GL::VertexBuffer<Vertex> vertexBuffer;
-	GL::IndexBuffer<GLuint> indexBuffer;
-	GL::VertexArray vao;
-	GLenum topology;
-
+	std::vector<Primitive::Ptr> primitives;
+	std::vector<std::string> variants;
+	std::vector<float> morphWeights;
 	AABB boundingBox;
-	TriangleSurface surface;
-
-	unsigned int materialIndex;
+	int numVertices = 0;
+	int numTrianlges = 0;
 
 	Mesh(const Mesh&) = delete;
 	Mesh& operator=(const Mesh&) = delete;
 public:
 
-	Mesh(const std::string& name, TriangleSurface& surface, GLenum topology, unsigned int index);
+	Mesh(const std::string& name);
 	~Mesh();
+	void addPrimitive(Primitive::Ptr primitive);
+	void addVariant(std::string name);
+	void switchVariant(int index);
+	void setMorphWeights(std::vector<float>& weights);
+	void draw(Shader::Ptr shader);
 	void flipWindingOrder();
-	void updatGeometry(TriangleSurface& surface);
-	void setBoundingBox(glm::vec3& minPoint, glm::vec3& maxPoint);
-	unsigned int getMaterialIndex() { return materialIndex; }
-	void draw();
-	void drawPoints();
+	bool useMorphTargets();
+	bool useBlending();
+	bool isTransmissive();
+	int getNumVertices();
+	int getNumTriangles();
+	int getNumPrimitives();
 	AABB getBoundingBox();
-	std::vector<Vertex> getVertices();
+	std::vector<Primitive::Ptr> getPrimitives();
+	std::vector<float> getWeights();
+	std::vector<std::string> getVariants();
+	std::string getShader();
 	std::string getName()
 	{
 		return name;
 	}
 	typedef std::shared_ptr<Mesh> Ptr;
-	static Ptr create(const std::string& name, TriangleSurface& surface, GLenum topology, unsigned int materialIndex)
+	static Ptr create(const std::string& name)
 	{
-		return std::make_shared<Mesh>(name, surface, topology, materialIndex);
+		return std::make_shared<Mesh>(name);
 	}
 };
 

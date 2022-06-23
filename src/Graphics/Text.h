@@ -1,6 +1,8 @@
 #ifndef INCLUDED_TEXT
 #define INCLUDED_TEXT
 
+#ifdef WITH_FREETYPE
+
 #pragma once
 
 #include <glm/glm.hpp>
@@ -56,5 +58,7 @@ public:
 
 	typedef std::shared_ptr<Text2D> Ptr;
 };
+
+#endif
 
 #endif // INCLUDED_TEXT

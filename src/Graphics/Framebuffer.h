@@ -41,6 +41,7 @@ public:
 	void addRenderTexture(GL::Attachment attachment, GL::TextureFormat format, bool useCubeMap = false);
 	void addRenderBuffer(GL::Attachment attachment, GL::TextureFormat format, int numSamples = 0);
 	void resize(int width, int height);
+	void bind();
 	void bindRead();
 	void bindDraw();
 	void begin();

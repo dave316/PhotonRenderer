@@ -1,3 +1,19 @@
+struct TextureInfo
+{
+	sampler2D tSampler;
+	bool use;
+	int uvIndex;
+	mat3 uvTransform;
+};
+
+vec4 getTexel(in TextureInfo info, vec2 uv0, vec2 uv1)
+{
+	vec3 uv = vec3(info.uvIndex == 0 ? uv0 : uv1, 1.0);
+	uv = info.uvTransform * uv;
+	return texture2D(info.tSampler, uv.xy);
+}
+
+#ifdef METAL_ROUGH_MATERIAL
 struct PBRMetalRoughMaterial
 {
 	// PBR base material
@@ -25,7 +41,12 @@ struct PBRMetalRoughMaterial
 	float thicknessFactor;
 	float attenuationDistance;
 	vec3 attenuationColor;
-#endif	
+#endif
+
+#ifdef TRANSLUCENCY
+	float translucencyFactor;
+	vec3 translucencyColorFactor;
+#endif
 
 #ifdef SPECULAR // specular
 	float specularFactor;
@@ -34,7 +55,7 @@ struct PBRMetalRoughMaterial
 
 #ifdef IRIDESCENCE // iridescence
 	float iridescenceFactor;
-	float iridescenceIOR;
+	float iridescenceIor;
 	float iridescenceThicknessMin;
 	float iridescenceThicknessMax;
 #endif
@@ -46,31 +67,15 @@ struct PBRMetalRoughMaterial
 
 	// misc
 	bool unlit;
-	bool computeFlatNormals;
 	float normalScale;
 	float ior;
 };
 uniform PBRMetalRoughMaterial material;
 
-struct TextureInfo
-{
-	sampler2D tSampler;
-	bool use;
-	int uvIndex;
-	mat3 uvTransform;
-};
-
-vec4 getTexel(TextureInfo info, vec2 uv0, vec2 uv1)
-{
-	vec3 uv = vec3(info.uvIndex == 0 ? uv0 : uv1, 1.0);
-	uv = info.uvTransform * uv;
-	return texture(info.tSampler, uv.xy);
-}
-
-// PBR base material
+// PBR base material textures
 uniform TextureInfo baseColorTex;
 uniform TextureInfo normalTex;
-uniform TextureInfo pbrTex;
+uniform TextureInfo metalRoughTex;
 uniform TextureInfo emissiveTex;
 uniform TextureInfo occlusionTex;
 
@@ -82,12 +87,21 @@ vec4 getBaseColor(vec2 uv0, vec2 uv1)
 	return baseColor;
 }
 
-float getOcclusionFactor(vec2 uv0, vec2 uv1)
+vec3 getNormal(vec2 uv0, vec2 uv1)
 {
-	float ao = material.occlusionStrength;
-	if (occlusionTex.use)
-		ao = 1.0 + ao * (getTexel(occlusionTex, uv0, uv1).r - 1.0);
-	return ao;
+	vec3 normal = getTexel(normalTex, uv0, uv1).rgb * 2.0 - 1.0;
+	normal *= vec3(material.normalScale, material.normalScale, 1.0);
+	return normalize(normal);
+}
+
+vec3 decodeNormal(vec2 uv0, vec2 uv1)
+{
+	vec2 f = getTexel(normalTex, uv0, uv1).rg * 2.0 - 1.0;
+	vec3 normal = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.x));
+	float t = saturate(-normal.z);
+	normal.x += normal.x >= 0.0 ? -t : t;
+	normal.y += normal.y >= 0.0 ? -t : t;
+	return normalize(normal);
 }
 
 vec3 getEmission(vec2 uv0, vec2 uv1)
@@ -100,13 +114,15 @@ vec3 getEmission(vec2 uv0, vec2 uv1)
 
 vec3 getPBRValues(vec2 uv0, vec2 uv1)
 {
-	vec3 pbrValues = vec3(1.0, material.roughnessFactor, material.metallicFactor);
-	if (pbrTex.use)
-		pbrValues *= getTexel(pbrTex, uv0, uv1).rgb;
-	return pbrValues;
+	vec3 orm = vec3(material.occlusionStrength, material.roughnessFactor, material.metallicFactor);
+	if (metalRoughTex.use)
+		orm *= vec3(1.0, getTexel(metalRoughTex, uv0, uv1).gb);
+	if (occlusionTex.use)
+		orm.r = 1.0 + orm.r * (getTexel(occlusionTex, uv0, uv1).r - 1.0);
+	return orm;
 }
 
-// PBR material extensions
+// PBR extensions material textures
 #ifdef SHEEN
 uniform TextureInfo sheenColortex;
 uniform TextureInfo sheenRoughtex;
@@ -237,36 +253,66 @@ vec3 getAnisotropyDirection(vec2 uv0, vec2 uv1)
 }
 #endif
 
+#else // SPEC_GLOSS_MATERIAL
 struct PBRSpecGlossMaterial
 {
 	vec4 diffuseFactor;
 	vec3 specularFactor;
 	float glossFactor;
+	float occlusionStrength;
+	vec3 emissiveFactor;
+	float emissiveStrength;
 	int alphaMode;
 	float alphaCutOff;
 
-	sampler2D diffuseTex;
-	sampler2D specGlossTex;
-
-	bool useDiffuseTex;
-	bool useSpecularTex;
+	float normalScale;
+	bool unlit;
 };
-uniform PBRSpecGlossMaterial material2;
+uniform PBRSpecGlossMaterial material;
 
-vec4 getDiffuseColor(vec2 uv)
+uniform TextureInfo diffuseTex;
+uniform TextureInfo specGlossTex;
+uniform TextureInfo normalTex;
+uniform TextureInfo emissiveTex;
+uniform TextureInfo occlusionTex;
+
+vec4 getDiffuseColor(vec2 uv0, vec2 uv1)
 {
-	vec4 diffuseColor = material2.diffuseFactor;
-	if (material2.useDiffuseTex)
-		diffuseColor = texture2D(material2.diffuseTex, uv);
+	vec4 diffuseColor = material.diffuseFactor;
+	if (diffuseTex.use)
+		diffuseColor *= getTexel(diffuseTex, uv0, uv1);
 	return diffuseColor;
 }
 
-vec4 getSpecularColor(vec2 uv)
+vec4 getSpecGloss(vec2 uv0, vec2 uv1)
 {
-	vec4 specGlossColor = vec4(material2.specularFactor, material2.glossFactor);
-	if (material2.useSpecularTex)
-		specGlossColor = texture2D(material2.specGlossTex, uv);
+	vec4 specGlossColor = vec4(material.specularFactor, material.glossFactor);
+	if (specGlossTex.use)
+		specGlossColor *= getTexel(specGlossTex, uv0, uv1);
 	return specGlossColor;
 }
 
+vec3 getNormal(vec2 uv0, vec2 uv1)
+{
+	vec3 normal = getTexel(normalTex, uv0, uv1).rgb * 2.0 - 1.0;
+	normal *= vec3(material.normalScale, material.normalScale, 1.0);
+	return normalize(normal);
+}
+
+vec3 getEmission(vec2 uv0, vec2 uv1)
+{
+	vec3 emission = material.emissiveFactor;
+	if (emissiveTex.use)
+		emission *= getTexel(emissiveTex, uv0, uv1).rgb;
+	return emission * material.emissiveStrength;
+}
+
+vec3 getPBRValues(vec2 uv0, vec2 uv1)
+{
+	vec3 orm = vec3(material.occlusionStrength, 0.0, 0.0);
+	if (occlusionTex.use)
+		orm.r = 1.0 + orm.r * (getTexel(occlusionTex, uv0, uv1).r - 1.0);
+	return orm;
+}
+#endif
 

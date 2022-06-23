@@ -16,9 +16,12 @@ foreach(SRC IN ITEMS ${SRC_LIST})
 endforeach()
 
 include_directories("../../src")
+include_directories("../../src/3rdParty")
+
 add_executable(SimpleViewer ${SRC_LIST})
 target_link_libraries(SimpleViewer PRIVATE libphoton)
 
 if(WIN32)
-	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT SimpleViewer)
+	set_target_properties(SimpleViewer PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 endif()
+

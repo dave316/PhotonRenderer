@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <Graphics/Camera.h>
+#include <Graphics/FPSCamera.h>
 #include <Graphics/Renderer.h>
 #include <Platform/GLWindow.h>
 #include <Platform/InputHandler.h>
@@ -13,7 +13,7 @@
 
 class Editor
 {
-	Camera camera;
+	FPSCamera camera;
 	GLWindow window;
 	InputHandler input;
 	Renderer renderer;

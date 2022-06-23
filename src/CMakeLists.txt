@@ -2,25 +2,38 @@ project(PhotonRenderer)
 
 cmake_minimum_required(VERSION 3.0)
 
-find_package(assimp REQUIRED)
-find_package(freetype CONFIG REQUIRED)
-find_package(glfw3 REQUIRED)
+# required dependencies
+find_package(OpenGL REQUIRED)
 find_package(glew REQUIRED)
+find_package(glfw3 REQUIRED)
 find_package(glm REQUIRED)
-find_package(imgui REQUIRED)
-find_package(imguizmo CONFIG REQUIRED)
-find_package(opengl REQUIRED)
 find_package(rapidjson REQUIRED)
-find_package(stb REQUIRED)
+find_package(Stb REQUIRED)
 
-find_package(draco REQUIRED)
-find_package(Ktx CONFIG REQUIRED)
+# optional dependencies
+if (WITH_ASSIMP_IMPORTER)
+	find_package(assimp REQUIRED)
+endif()
+if (WITH_FREETYPE_FONTS)
+	find_package(freetype CONFIG REQUIRED)
+endif()
+if (WITH_DRACO_COMPRESSION)
+	find_package(draco REQUIRED)
+endif()
+if (WITH_IMGUI_SUPPORT)
+	find_package(imgui REQUIRED)
+	find_package(imguizmo CONFIG REQUIRED)
+endif()
+if (WITH_KTX_TEXTURES)
+	find_package(Ktx CONFIG REQUIRED)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(BUILD_TARGET "PhotonRenderer")
 set(SRC_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(SRC_3RDPARTY_DIR "3rdParty")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-include_directories("3rdParty")
+include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${SRC_3RDPARTY_DIR})
 
 file(GLOB_RECURSE SRC_LIST LIST_DIRECTORIES false "${SRC_ROOT_DIR}/*.cpp" "${SRC_ROOT_DIR}/*.h")
 file(GLOB SHADER_LIST 
@@ -38,15 +51,36 @@ foreach(SRC IN ITEMS ${SRC_LIST})
 endforeach()
 source_group("Shaders" FILES ${SHADER_LIST})
 
-add_library(libphoton STATIC ${SRC_LIST} ${SHADER_LIST})
+add_library(libphoton STATIC ${SRC_LIST} ${SHADER_LIST}) # TODO: better handling of 3rdParty libs
 if (WIN32)
     set_target_properties(libphoton PROPERTIES OUTPUT_NAME "libphoton")
 endif()
-target_link_libraries(libphoton PRIVATE glfw draco freetype GLEW::GLEW assimp::assimp imgui::imgui imguizmo::imguizmo KTX::ktx ${OPENGL_gl_LIBRARY})
+target_link_libraries(libphoton PRIVATE glfw GLEW::GLEW rapidjson ${OPENGL_gl_LIBRARY})
 
-#add_executable(PhotonRenderer ${SRC_LIST} ${SHADER_LIST})
-#target_link_libraries(PhotonRenderer PRIVATE glfw freetype GLEW::GLEW assimp::assimp imgui::imgui ${OPENGL_gl_LIBRARY})
+if (WITH_ASSIMP_IMPORTER)
+	target_link_libraries(libphoton PRIVATE assimp::assimp)
+	target_compile_definitions(libphoton PUBLIC WITH_ASSIMP)
+endif()
 
-#if(WIN32)
-	#set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT PhotonRenderer)
-#endif()
+if (WITH_FREETYPE_FONTS)
+	target_link_libraries(libphoton PRIVATE freetype)
+	target_compile_definitions(libphoton PUBLIC WITH_FREETYPE)
+endif()
+
+if (WITH_DRACO_COMPRESSION)
+	target_link_libraries(libphoton PRIVATE draco)
+	target_compile_definitions(libphoton PUBLIC WITH_DRACO)
+endif()
+
+if (WITH_IMGUI_SUPPORT)
+	target_link_libraries(libphoton PRIVATE imgui::imgui imguizmo::imguizmo)
+	target_compile_definitions(libphoton PUBLIC WITH_IMGUI)
+endif()
+
+if (WITH_KTX_TEXTURES)
+	target_link_libraries(libphoton PRIVATE KTX::ktx)
+	target_compile_definitions(libphoton PUBLIC WITH_KTX)
+endif()
+
+
+

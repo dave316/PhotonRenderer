@@ -5,6 +5,7 @@
 
 #include <GL/GLTexture.h>
 #include <memory>
+#include <glm/glm.hpp>
 
 class Texture
 {
@@ -20,6 +21,12 @@ class Texture2D : public Texture
 	GL::TextureFormat format;
 	unsigned int width;
 	unsigned int height;
+
+	// uv transform
+	glm::mat3 uvTransform;
+	glm::vec2 offset;
+	glm::vec2 scale;
+	float rotation;
 	
 public:
 	Texture2D(unsigned int width, unsigned int height, GL::TextureFormat format);
@@ -31,6 +38,11 @@ public:
 	void bind();
 	void use(GLuint unit);
 	GLuint getID();
+
+	void setOffset(glm::vec2 offset);
+	void setRotation(float rotation);
+	void setScale(glm::vec2 scale);
+	glm::mat3 getUVTransform();
 
 	typedef std::shared_ptr<Texture2D> Ptr;
 	static Ptr create(unsigned int width, unsigned int height, GL::TextureFormat format)
@@ -45,21 +57,52 @@ class TextureCubeMap : public Texture
 	GL::TextureFormat format;
 	unsigned int width;
 	unsigned int height;
+	unsigned int levels;
 
 public:
 	TextureCubeMap(unsigned int width, unsigned int height, GL::TextureFormat format);
-	void upload(void** data);
+	void uploadFace(int face, void* data);
 	void setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter);
 	void setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR);
 	void setCompareMode();
 	void generateMipmaps();
+	void bind();
 	void use(GLuint unit);
+	void setLevels(int levels);
+	unsigned int getFaceSize();
+	unsigned int getLevels();
 	GLuint getID();
+	std::shared_ptr<TextureCubeMap> copy();
 
 	typedef std::shared_ptr<TextureCubeMap> Ptr;
 	static Ptr create(unsigned int width, unsigned int height, GL::TextureFormat format)
 	{
 		return std::make_shared<TextureCubeMap>(width, height, format);
+	}
+};
+
+class Texture2DArray : public Texture
+{
+	GL::Texture2DArray texture;
+	GL::TextureFormat format;
+	unsigned int width;
+	unsigned int height;
+	unsigned int layers;
+
+public:
+	Texture2DArray(unsigned int width, unsigned int height, unsigned int layers, GL::TextureFormat format);
+	void upload(void* data);
+	void setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter);
+	void setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT);
+	void generateMipmaps();
+	void bind();
+	void use(GLuint unit);
+	GLuint getID();
+
+	typedef std::shared_ptr<Texture2DArray> Ptr;
+	static Ptr create(unsigned int width, unsigned int height, unsigned int layers, GL::TextureFormat format)
+	{
+		return std::make_shared<Texture2DArray>(width, height, layers, format);
 	}
 };
 

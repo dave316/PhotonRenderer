@@ -1,16 +1,16 @@
-#include "Camera.h"
+#include "FPSCamera.h"
 
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 #include <iostream>
 
-Camera::Camera()
+FPSCamera::FPSCamera()
 {
 	init();
 }
 
-void Camera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov, float aspect, float zNear, float zFar)
+void FPSCamera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov, float aspect, float zNear, float zFar)
 {
 	this->position = pos;
 	this->direction = direction;
@@ -34,37 +34,37 @@ void Camera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov, f
 	velocity = movementSpeed * 0.1f;
 }
 
-glm::mat4 Camera::getViewMatrix() const
+glm::mat4 FPSCamera::getViewMatrix() const
 {
 	return glm::lookAt(position, position + direction, up);
 }
 
-glm::mat4 Camera::getProjectionMatrix() const
+glm::mat4 FPSCamera::getProjectionMatrix() const
 {
 	return glm::perspective(fov, aspect, zNear, zFar);
 }
 
-glm::mat4 Camera::getViewProjectionMatrix() const
+glm::mat4 FPSCamera::getViewProjectionMatrix() const
 {
 	return getProjectionMatrix() * getViewMatrix();
 }
 
-void Camera::setPosition(glm::vec3 pos)
+void FPSCamera::setPosition(glm::vec3 pos)
 {
 	this->position = pos;
 }
 
-void Camera::setDirection(Direction dir)
+void FPSCamera::setDirection(Direction dir)
 {
 	directions[dir] = true;
 }
 
-void Camera::releaseDirection(Direction dir)
+void FPSCamera::releaseDirection(Direction dir)
 {
 	directions[dir] = false;
 }
 
-void Camera::move(float deltaTime)
+void FPSCamera::move(float deltaTime)
 {
 	for (int i = 0; i < 4; i++)
 	{
@@ -89,55 +89,55 @@ void Camera::move(float deltaTime)
 	}
 }
 
-void Camera::setAspect(float aspect)
+void FPSCamera::setAspect(float aspect)
 {
 	this->aspect = aspect;
 }
 
-void Camera::setFov(float fov)
+void FPSCamera::setFov(float fov)
 {
 	this->fov = glm::radians(fov);
 }
 
-void Camera::setPlanes(float zNear, float zFar)
+void FPSCamera::setPlanes(float zNear, float zFar)
 {
 	this->zNear = zNear;
 	this->zFar = zFar;
 }
 
-void Camera::setSpeed(float speed)
+void FPSCamera::setSpeed(float speed)
 {
 	this->movementSpeed = speed;
 }
 
-void Camera::setVelocity(float velocity)
+void FPSCamera::setVelocity(float velocity)
 {
 	this->velocity = velocity;
 }
 
-float Camera::getFov()
+float FPSCamera::getFov()
 {
 	return fov;
 }
 
-float Camera::getAspect() 
+float FPSCamera::getAspect() 
 {
 	return aspect;
 }
 
-void Camera::updateRotation(float dx, float dy)
+void FPSCamera::updateRotation(float dx, float dy)
 {
 	yaw += dx * rotationSpeed;
 	pitch += dy * rotationSpeed;
 }
 
-void Camera::updateSpeed(float dx, float dy)
+void FPSCamera::updateSpeed(float dx, float dy)
 {
 	movementSpeed += dy * velocity;
 	movementSpeed = std::max(velocity, movementSpeed);
 }
 
-void Camera::rotate(float deltaTime)
+void FPSCamera::rotate(float deltaTime)
 {
 	if (pitch > 89.0f)
 		pitch = 89.0f;
@@ -155,7 +155,7 @@ void Camera::rotate(float deltaTime)
 	right = glm::normalize(glm::cross(direction, up));
 }
 
-void Camera::writeUniformData(UniformData& data)
+void FPSCamera::writeUniformData(UniformData& data)
 {
 	data.V = getViewMatrix();
 	data.V_I = glm::inverse(data.V);

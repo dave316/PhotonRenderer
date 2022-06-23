@@ -44,6 +44,11 @@ void Framebuffer::resize(int width, int height)
 	this->height = height;
 }
 
+void Framebuffer::bind()
+{
+	fbo.bind();
+}
+
 void Framebuffer::bindRead()
 {
 	fbo.bindRead();

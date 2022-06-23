@@ -1,7 +1,10 @@
 #version 460 core
 
-#define MORPH_TARGETS_2
-//#define MORPH_TARGETS_8
+#define MAX_JOINTS 128
+#define MAX_MORPH_TARGETS 8
+#define MORPH_TARGET_POSITION_OFFSET 0
+#define MORPH_TARGET_NORMAL_OFFSET 1
+#define MORPH_TARGET_TANGENT_OFFSET 2
 
 layout(location = 0) in vec3 vPosition;
 layout(location = 1) in vec4 vColor;
@@ -12,83 +15,56 @@ layout(location = 5) in vec4 vTangent;
 layout(location = 6) in vec4 boneIDs;
 layout(location = 7) in vec4 boneWeights;
 
-#ifdef MORPH_TARGETS_2
-layout(location = 8) in vec3 vTargetPosition0;
-layout(location = 9) in vec3 vTargetNormal0;
-layout(location = 10) in vec3 vTargetTangent0;
-layout(location = 11) in vec3 vTargetPosition1;
-layout(location = 12) in vec3 vTargetNormal1;
-layout(location = 13) in vec3 vTargetTangent1;
-#endif
-
-#ifdef MORPH_TARGETS_8
-layout(location = 8) in vec3 vTargetPosition0;
-layout(location = 9) in vec3 vTargetPosition1;
-layout(location = 10) in vec3 vTargetPosition2;
-layout(location = 11) in vec3 vTargetPosition3;
-layout(location = 12) in vec3 vTargetPosition4;
-layout(location = 13) in vec3 vTargetPosition5;
-layout(location = 14) in vec3 vTargetPosition6;
-layout(location = 15) in vec3 vTargetPosition7;
-#endif
-
 layout(location = 0) out vec3 wPosition;
 layout(location = 1) out vec4 vertexColor;
 layout(location = 2) out vec3 wNormal;
 layout(location = 3) out vec2 texCoord0;
 layout(location = 4) out vec2 texCoord1;
-layout(location = 5) out mat3 wTBN;
+layout(location = 5) out vec4 lightPosition;
+layout(location = 6) out mat3 wTBN;
 
 #include "Camera.glsl"
 
+uniform mat4 VP;
 uniform mat4 M;
 uniform mat3 N;
-uniform mat4 bones[64];
-uniform mat3 normals[64];
+uniform mat4 bones[MAX_JOINTS];
+uniform mat3 normals[MAX_JOINTS];
 uniform bool hasAnimations;
-uniform float morphWeights[8];
+uniform float morphWeights[MAX_MORPH_TARGETS];
 uniform int numMorphTargets = 0;
+uniform sampler2DArray morphTargets;
+
+
+vec3 getOffset(int vertexID, int targetIndex, int texSize)
+{
+	int x = vertexID % texSize;
+	int y = vertexID / texSize;
+	return texelFetch(morphTargets, ivec3(x, y, targetIndex), 0).rgb;
+}
+
+vec3 getTargetAttribute(int vertexID, int attrOffset)
+{
+	// TODO: update number of attributes with uniform
+	vec3 offset = vec3(0);
+	int texSize = textureSize(morphTargets, 0).x;
+	for(int i = 0; i < numMorphTargets; i++)
+		offset += morphWeights[i] * getOffset(vertexID, i * 3 + attrOffset, texSize);
+	return offset;
+}
 
 void main()
 {
 	vec3 mPosition = vPosition;
 	vec3 mNormal = vNormal;
 	vec3 mTangent = vTangent.xyz;
-	vec3 mBitangent = cross(vNormal, vTangent.xyz) * vTangent.w;
-	
-#ifdef MORPH_TARGETS_2
+	vec3 mBitangent = cross(mNormal, mTangent) * sign(vTangent.w);
 	if(numMorphTargets > 0)
 	{
-		mPosition += vTargetPosition0 * morphWeights[0];
-		mNormal += vTargetNormal0 * morphWeights[0];
-		mTangent += vTargetTangent0 * morphWeights[0];
+		mPosition += getTargetAttribute(gl_VertexID, MORPH_TARGET_POSITION_OFFSET);
+		mNormal += getTargetAttribute(gl_VertexID, MORPH_TARGET_NORMAL_OFFSET);
+		mTangent += getTargetAttribute(gl_VertexID, MORPH_TARGET_TANGENT_OFFSET);
 	}
-	if(numMorphTargets > 1)
-	{
-		mPosition += vTargetPosition1 * morphWeights[1];
-		mNormal += vTargetNormal1 * morphWeights[1];
-		mTangent += vTargetTangent1 * morphWeights[1];
-	}
-#endif
-
-#ifdef MORPH_TARGETS_8
-	if(numMorphTargets > 0)
-		mPosition += vTargetPosition0 * morphWeights[0];
-	if(numMorphTargets > 1)
-		mPosition += vTargetPosition1 * morphWeights[1];
-	if(numMorphTargets > 2)
-		mPosition += vTargetPosition2 * morphWeights[2];
-	if(numMorphTargets > 3)
-		mPosition += vTargetPosition3 * morphWeights[3];
-	if(numMorphTargets > 4)
-		mPosition += vTargetPosition4 * morphWeights[4];
-	if(numMorphTargets > 5)
-		mPosition += vTargetPosition5 * morphWeights[5];
-	if(numMorphTargets > 6)
-		mPosition += vTargetPosition6 * morphWeights[6];
-	if(numMorphTargets > 7)
-		mPosition += vTargetPosition7 * morphWeights[7];
-#endif
 
 	if(hasAnimations)
 	{
@@ -110,11 +86,12 @@ void main()
 	wPosition = vec3(M * vec4(mPosition, 1.0));
 	wNormal = normalize(N * mNormal);
 	vec3 wTangent = normalize(N * mTangent);
-	vec3 wBitangent = normalize(N * mBitangent); 
-	wTBN = mat3(wTangent, wBitangent, wNormal);
+	vec3 wBitangent = normalize(N * mBitangent);
+	wTBN = mat3(wTangent, wBitangent, wNormal);	
 
 	vertexColor = vColor;
 	texCoord0 = vTexCoord0;
 	texCoord1 = vTexCoord1;
+	lightPosition = VP * vec4(wPosition, 1.0);
 	gl_Position = camera.VP * vec4(wPosition, 1.0);
 }

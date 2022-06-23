@@ -22,5 +22,5 @@ add_executable(GLTFViewer ${SRC_LIST})
 target_link_libraries(GLTFViewer PRIVATE libphoton)
 
 if(WIN32)
-	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT GLTFViewer)
+	set_target_properties(GLTFViewer PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
 endif()

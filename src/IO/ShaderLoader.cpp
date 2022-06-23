@@ -133,17 +133,25 @@ namespace IO
 		}
 
 		// TODO: where to put this? config file? data driven? 
-		std::vector<std::vector<std::string>> shaderVariants =
-		{	{ "SHEEN" }, 
+		std::vector<std::vector<std::string>> shaderVariants = {
+			{},
+		 	{ "SHEEN" }, 
 			{ "CLEARCOAT" }, 
 			{ "TRANSMISSION" }, 
+			{ "TRANSLUCENCY" },
 			{ "SPECULAR" }, 
 			{ "IRIDESCENCE" },
+			{ "ANISOTROPY" },
 			{ "SHEEN", "SPECULAR" },
 			{ "CLEARCOAT", "SPECULAR" },
 			{ "CLEARCOAT", "TRANSMISSION" },
 			{ "TRANSMISSION", "IRIDESCENCE" },
-			{ "TRANSMISSION", "SPECULAR" } 
+			{ "TRANSMISSION", "SPECULAR" },
+			{ "TRANSMISSION", "SPECULAR", "IRIDESCENCE" },
+			{ "TRANSMISSION", "TRANSLUCENCY" },
+			{ "SPECULAR", "IRIDESCENCE" },
+			{ "ANISOTROPY", "IRIDESCENCE" },
+			{ "SPECGLOSS" }
 		};
 
 		for (auto shaderName : shaderFiles)
@@ -153,38 +161,6 @@ namespace IO
 			if (stageList.size() > 1)
 			{
 				std::cout << "compiling shader " << name << std::endl;
-
-				bool success = true;
-				auto shader = Shader::create(name);
-				for (auto shaderFile : shaderName.second)
-				{
-					int index = shaderFile.find_last_of('.') + 1;
-					int len = shaderFile.length() - index;
-
-					std::string stage = shaderFile.substr(index, len);
-					std::string code = loadExpanded(path + "/" + shaderFile);
-					code = "#version 460 core\n" + code;
-
-					if (stage.compare("vert") == 0)
-						success = shader->compile<GL::VertexShader>(code);
-					else if (stage.compare("geom") == 0)
-						success = shader->compile<GL::GeometryShader>(code);
-					else if (stage.compare("frag") == 0)
-						success = shader->compile<GL::FragmentShader>(code);
-
-					if (!success)
-						break;
-				}
-
-				if (success)
-				{
-					shader->link();
-					shaderList.push_back(shader);
-				}
-				else
-				{
-					std::cout << "error loading shader " << name << std::endl;
-				}
 
 				if (name.compare("Default") == 0)
 				{
@@ -204,20 +180,30 @@ namespace IO
 					for (auto variants : shaderVariants)
 					{
 						std::string expandedCode = "#version 460 core\n";
-						for(auto v : variants)
+						bool specGlossMat = false;
+						for (auto v : variants)
+						{
 							expandedCode += "#define " + v + "\n";
+							if (v.compare("SPECGLOSS") == 0)
+								specGlossMat = true;
+						}
+						if (!specGlossMat)
+							expandedCode += "#define METAL_ROUGH_MATERIAL\n";
+
+						expandedCode += "#define DEBUG_OUTPUT\n";
 						expandedCode += fsCode;
 
 						GL::FragmentShader fs;
 						if (!fs.compile(expandedCode.c_str()))
 						{
+							std::cout << expandedCode << std::endl;
 							std::cout << "error compiling shader " << name << std::endl;
 							std::cout << fs.getErrorLog() << std::endl;
 							continue;
 						}
 
 						std::string variantName = name;
-						for (auto v : variants) 
+						for (auto v : variants)
 							variantName += '_' + v;
 
 						std::cout << "compiling shader " << variantName << std::endl;
@@ -233,6 +219,39 @@ namespace IO
 						{
 							std::cout << "error loading shader " << name << std::endl;
 						}
+					}
+				}
+				else
+				{
+					bool success = true;
+					auto shader = Shader::create(name);
+					for (auto shaderFile : shaderName.second)
+					{
+						int index = shaderFile.find_last_of('.') + 1;
+						int len = shaderFile.length() - index;
+
+						std::string stage = shaderFile.substr(index, len);
+						std::string code = loadExpanded(path + "/" + shaderFile);
+						code = "#version 460 core\n" + code;
+						if (stage.compare("vert") == 0)
+							success = shader->compile<GL::VertexShader>(code);
+						else if (stage.compare("geom") == 0)
+							success = shader->compile<GL::GeometryShader>(code);
+						else if (stage.compare("frag") == 0)
+							success = shader->compile<GL::FragmentShader>(code);
+
+						if (!success)
+							break;
+					}
+
+					if (success)
+					{
+						shader->link();
+						shaderList.push_back(shader);
+					}
+					else
+					{
+						std::cout << "error loading shader " << name << std::endl;
 					}
 				}
 			}

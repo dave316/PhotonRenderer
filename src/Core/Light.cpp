@@ -27,7 +27,7 @@ void Light::writeUniformData(UniformData& uniformData, Transform::Ptr transform)
 
 	uniformData.position = glm::vec4(pos, 1.0f);
 	uniformData.direction = glm::vec4(dir, 1.0f);
-	uniformData.color = glm::vec4(color, 1.0f);
+	uniformData.color = color;
 	uniformData.intensity = intensity;
 	uniformData.range = range;
 	uniformData.innterConeAngle = innerConeAngle;
@@ -50,10 +50,40 @@ void Light::writeUniformData(UniformData& uniformData, Transform::Ptr transform)
 //	this->direction = direction;
 //}
 
+void Light::setColor(glm::vec3 color)
+{
+	this->color = color;
+}
+
+void Light::setIntensity(float intensity)
+{
+	this->intensity = intensity;
+}
+
+void Light::setRange(float range)
+{
+	this->range = range;
+}
+
 void Light::setConeAngles(float inner, float outer)
 {
 	this->innerConeAngle = inner;
 	this->outerConeAngle = outer;
+}
+
+void Light::setInnerAngle(float inner)
+{
+	this->innerConeAngle = inner;
+}
+
+void Light::setOuterAngle(float outer)
+{
+	this->outerConeAngle = outer;
+}
+
+int Light::getType()
+{
+	return type;
 }
 
 glm::vec3 Light::getColor()

@@ -61,6 +61,7 @@ class Material
 {
 	std::string shaderName;
 	std::vector<Texture2D::Ptr> textures;
+	std::map<std::string, Texture2D::Ptr> texNames;
 	std::map<std::string, IProperty::Ptr> properties;
 	bool blending = false;
 	bool doubleSided = false;
@@ -84,11 +85,14 @@ public:
 		return prop->getValue();
 	}
 
-	void addTexture(const std::string& name, Texture2D::Ptr texture)
+	void addTexture(const std::string& texName, Texture2D::Ptr texture)
 	{
 		int index = (int)textures.size();
 		textures.push_back(texture);
-		properties[name] = Property<int>::create(name, index, true);
+		texNames.insert(std::make_pair(texName, texture));
+
+		std::string uniform = texName + ".tSampler";
+		properties[uniform] = Property<int>::create(uniform, index, true);
 	}
 	void setDoubleSided(bool doubleSided)
 	{
@@ -130,6 +134,11 @@ public:
 	std::string getShader()
 	{
 		return shaderName;
+	}
+
+	Texture2D::Ptr getTexture(std::string name)
+	{
+		return texNames[name];
 	}
 
 	typedef std::shared_ptr<Material> Ptr;

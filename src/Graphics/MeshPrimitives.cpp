@@ -95,7 +95,7 @@ namespace MeshPrimitives
 		//indices.push_back(baseIndex);
 	}
 
-	Mesh::Ptr createIcosphere(glm::vec3 position, float radius, unsigned int subdivisions)
+	Primitive::Ptr createIcosphere(glm::vec3 position, float radius, unsigned int subdivisions)
 	{
 		constexpr float phi = glm::golden_ratio<float>();
 		constexpr float s = 1.0f;
@@ -116,8 +116,10 @@ namespace MeshPrimitives
 		return nullptr;
 	}
 
-	Mesh::Ptr createSphere(glm::vec3 position, float radius, unsigned int rings, unsigned int sectors)
+	Primitive::Ptr createUVSphere(glm::vec3 position, float radius, unsigned int rings, unsigned int sectors)
 	{
+		// TODO: add only one vertex for north and south pole to prevent problems with tangent space
+
 		TriangleSurface surface;
 
 		float R = 1.0f / (float)(rings - 1);
@@ -166,10 +168,10 @@ namespace MeshPrimitives
 
 		surface.calcTangentSpace();
 
-		return Mesh::create("sphere", surface, 4, 0);
+		return Primitive::create("sphere", surface, 4, 0);
 	}
 
-	Mesh::Ptr createCube(glm::vec3 position, float edgeLength)
+	Primitive::Ptr createCube(glm::vec3 position, float edgeLength)
 	{
 		float s = edgeLength / 2.0f;
 
@@ -190,10 +192,10 @@ namespace MeshPrimitives
 		addFace(surface, v5, v6, v2, v1);
 		addFace(surface, v3, v4, v8, v7);
 
-		return Mesh::create("cube", surface, 4, 0);
+		return Primitive::create("cube", surface, 4, 0);
 	}
 
-	Mesh::Ptr createBox(glm::vec3 position, glm::vec3 size)
+	Primitive::Ptr createBox(glm::vec3 position, glm::vec3 size)
 	{
 		glm::vec3 extent = size / 2.0f;
 
@@ -214,10 +216,12 @@ namespace MeshPrimitives
 		addFace(surface, v5, v6, v2, v1);
 		addFace(surface, v3, v4, v8, v7);
 
-		return Mesh::create("box", surface, 4, 0);
+		auto mat = getDefaultMaterial();
+		mat->addProperty("material.metallicFactor", 0.0f);
+		return Primitive::create("box", surface, 4, mat);
 	}
 
-	Mesh::Ptr createLineBox(glm::vec3 position, glm::vec3 size)
+	Primitive::Ptr createLineBox(glm::vec3 position, glm::vec3 size)
 	{
 		glm::vec3 extent = size / 2.0f;
 
@@ -238,10 +242,10 @@ namespace MeshPrimitives
 		addLine(surface, v5, v6, v2, v1);
 		addLine(surface, v3, v4, v8, v7);
 
-		return Mesh::create("line_box", surface, 1, 0);
+		return Primitive::create("line_box", surface, 1, 0);
 	}
 
-	Mesh::Ptr createQuad(glm::vec3 position, float edgeLength)
+	Primitive::Ptr createQuad(glm::vec3 position, float edgeLength)
 	{
 		std::vector<Vertex> vertices;
 		std::vector<GLuint> indices;
@@ -257,6 +261,6 @@ namespace MeshPrimitives
 
 		surface.calcTangentSpace();
 
-		return Mesh::create("quad", surface, 4, 0);
+		return Primitive::create("quad", surface, 4, 0);
 	}
 }

@@ -1,8 +1,10 @@
 #include "Editor.h"
 
-#include <imgui/imgui_impl_glfw.h>
-#include <imgui/imgui_impl_opengl3.h>
-#include <imgui/ImGuiFileDialog.h>
+#include <IO/SceneExporter.h>
+
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <ImGuiFileDialog/ImGuiFileDialog.h>
 
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -26,11 +28,14 @@ bool Editor::init()
 
 	const char* glsl_version = "#version 460";
 
+	std::string assetPath = "../../../../assets";
+
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
-	io.Fonts->AddFontFromFileTTF("../../../../assets/Fonts/arial.ttf", 28); 
+	std::string fontPath = assetPath + "/Fonts/arial.ttf";
+	io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 28);
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -39,6 +44,7 @@ bool Editor::init()
 		return false;
 
 	scene = Scene::create("scene");
+	//scene = IO::loadScene("scene.json");
 
 	//std::string assetPath = "../../../../assets";
 	//std::string gltfPath = assetPath + "/glTF-Sample-Models_/2.0";
@@ -46,8 +52,10 @@ bool Editor::init()
 	//scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
 	//scene->updateAnimations(0.0f);
 
-	renderer.initEnv(scene);
+	std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
+	renderer.initEnv(envFn, scene);
 	renderer.initLights(scene);
+	scene->initShadowMaps();
 	renderer.updateShadows(scene);
 
 	setupInput();
@@ -84,16 +92,16 @@ void Editor::initCamera()
 void Editor::setupInput()
 {
 	input.addKeyCallback(GLFW_KEY_ESCAPE, GLFW_PRESS, std::bind(&GLWindow::close, &window));
-	input.addKeyCallback(GLFW_KEY_W, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::FORWARD));
-	input.addKeyCallback(GLFW_KEY_S, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::BACK));
-	input.addKeyCallback(GLFW_KEY_A, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::LEFT));
-	input.addKeyCallback(GLFW_KEY_D, GLFW_PRESS, std::bind(&Camera::setDirection, &camera, Camera::Direction::RIGHT));
-	input.addKeyCallback(GLFW_KEY_W, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::FORWARD));
-	input.addKeyCallback(GLFW_KEY_S, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::BACK));
-	input.addKeyCallback(GLFW_KEY_A, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::LEFT));
-	input.addKeyCallback(GLFW_KEY_D, GLFW_RELEASE, std::bind(&Camera::releaseDirection, &camera, Camera::Direction::RIGHT));
-	input.setMouseMoveCallback(std::bind(&Camera::updateRotation, &camera, _1, _2));
-	input.setMouseWheelCallback(std::bind(&Camera::updateSpeed, &camera, _1, _2));
+	input.addKeyCallback(GLFW_KEY_W, GLFW_PRESS, std::bind(&FPSCamera::setDirection, &camera, FPSCamera::Direction::FORWARD));
+	input.addKeyCallback(GLFW_KEY_S, GLFW_PRESS, std::bind(&FPSCamera::setDirection, &camera, FPSCamera::Direction::BACK));
+	input.addKeyCallback(GLFW_KEY_A, GLFW_PRESS, std::bind(&FPSCamera::setDirection, &camera, FPSCamera::Direction::LEFT));
+	input.addKeyCallback(GLFW_KEY_D, GLFW_PRESS, std::bind(&FPSCamera::setDirection, &camera, FPSCamera::Direction::RIGHT));
+	input.addKeyCallback(GLFW_KEY_W, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::FORWARD));
+	input.addKeyCallback(GLFW_KEY_S, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::BACK));
+	input.addKeyCallback(GLFW_KEY_A, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::LEFT));
+	input.addKeyCallback(GLFW_KEY_D, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::RIGHT));
+	input.setMouseMoveCallback(std::bind(&FPSCamera::updateRotation, &camera, _1, _2));
+	input.setMouseWheelCallback(std::bind(&FPSCamera::updateSpeed, &camera, _1, _2));
 	input.addKeyCallback(GLFW_MOUSE_BUTTON_1, GLFW_RELEASE, std::bind(&Editor::selectModel, this));
 
 	//input.addKeyCallback(GLFW_KEY_M, GLFW_PRESS, std::bind(&Renderer::nextMaterial, &renderer));
@@ -108,13 +116,12 @@ void Editor::setupInput()
 
 void Editor::handleDrop(int count, const char** paths)
 {
-	//if (count != 1)
-	//{
-	//	std::cout << "only one file allowed!" << std::endl;
-	//	return;
-	//}
+	if (count != 1)
+	{
+		std::cout << "only one file allowed!" << std::endl;
+		return;
+	}
 
-	// TODO: check if valid files etc.
 	for (int i = 0; i < count; i++)
 	{
 		std::string fullPath(paths[i]);
@@ -123,11 +130,22 @@ void Editor::handleDrop(int count, const char** paths)
 		std::string filename = fullPath.substr(fnIndex, fullPath.length() - fnIndex);
 		int lastDot = filename.find_last_of('.');
 		std::string name = filename.substr(0, lastDot);
-		scene->loadModel(name, fullPath);
+
+		int extIndex = lastDot + 1;
+		std::string ext = filename.substr(extIndex, filename.length() - extIndex);
+
+		if (ext.compare("gltf") == 0 || ext.compare("glb") == 0)
+			scene->loadModelGLTF(name, fullPath);
+		else
+			scene->loadModelASSIMP(name, fullPath);
 	}
 
 	renderer.initLights(scene);
 	scene->initShadowMaps();
+	if (animate)
+		scene->playAnimations();
+	else
+		scene->stopAnimations();
 	initCamera();
 }
 
@@ -256,7 +274,7 @@ void Editor::addTreeNode(Entity::Ptr entity)
 				glm::mat4 sourceT = sourceTransform->getTransform();
 				glm::mat4 targetT = entity->getComponent<Transform>()->getTransform();
 				glm::mat4 M = glm::inverse(targetT) * sourceT;
-				sourceTransform->setTransform(M);
+				sourceTransform->setLocalTransform(M);
 				sourceEntity->setParent(entity);
 				entity->addChild(sourceEntity);
 			}
@@ -288,10 +306,23 @@ void Editor::gui()
 		if (ImGui::BeginMenu("File"))
 		{
 			ImGui::MenuItem("New");
-			if (ImGui::MenuItem("Open"))
-			{
+			if (ImGui::MenuItem("Open GLTF"))
 				ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Select GLTF file", ".gltf,.glb", "../../../../assets");
-			}
+			if (ImGui::MenuItem("Save Scene"))
+				IO::saveScene("scene.json", scene);
+			if (ImGui::MenuItem("Load Scene"))
+			{
+				scene = IO::loadScene("scene.json");
+				scene->updateAnimations(0.0f);
+
+				std::string assetPath = "../../../../assets";
+				std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
+				renderer.initEnv(envFn, scene);
+				renderer.initLights(scene);
+				renderer.setLights(scene->numLights());
+				scene->initShadowMaps();
+				renderer.updateShadows(scene);
+			}				
 			ImGui::EndMenu();
 		}
 
@@ -307,6 +338,7 @@ void Editor::gui()
 			{
 				scene->addLight("light_01");
 				renderer.initLights(scene);
+				renderer.setLights(scene->numLights());
 				scene->initShadowMaps();
 			}			
 
@@ -420,10 +452,11 @@ void Editor::gui()
 				parentTransform = parent->getComponent<Transform>()->getTransform();
 				localTransform = glm::inverse(parentTransform) * localTransform;
 			}
-			t->setTransform(localTransform);
+			t->setLocalTransform(localTransform);
 
 			selectedModel->update(parentTransform);
 			renderer.initLights(scene);
+			renderer.setLights(scene->numLights());
 			renderer.updateShadows(scene);
 			//scene->updateBoxes();
 			scene->selectBox(selectedModel);
@@ -459,8 +492,9 @@ void Editor::gui()
 			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 			std::string fileName = ImGuiFileDialog::Instance()->GetCurrentFileName();
 			std::string name = fileName.substr(0, fileName.find_last_of("."));
-			scene->loadModel(name, filePathName);
+			scene->loadModelGLTF(name, filePathName);
 			renderer.initLights(scene);
+			renderer.setLights(scene->numLights());
 			scene->initShadowMaps();
 			//renderer.updateShadows(scene);
 			initCamera();

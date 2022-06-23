@@ -17,40 +17,42 @@ public:
 	typedef std::shared_ptr<Transform> Ptr;
 
 private:
-	glm::vec3 position;
-	glm::quat rotation;
-	glm::vec3 scale;
-	glm::mat4 transform;
+	// local transformations
 	glm::vec3 localPosition;
 	glm::quat localRotation;
 	glm::vec3 localScale;
 	glm::mat4 localTransform;
+
+	// world transformations
+	glm::vec3 position;
+	glm::quat rotation;
+	glm::mat4 transform;
 	glm::mat3 normalTransform;
+	
 	AABB boundingBox;
 
 public:
 	Transform();
 	~Transform();
-	void setPosition(glm::vec3 p);
-	void setRotation(glm::quat q);
-	void setScale(glm::vec3 s);
-	void setTransform(glm::mat4 M);
-	void setLocalPostion(glm::vec3 p);
+	void setLocalPosition(glm::vec3 p);
 	void setLocalRotation(glm::quat q);
 	void setLocalScale(glm::vec3 s);
 	void setLocalTransform(glm::mat4 M);
+	void updateLocalTransform();
 	void update(glm::mat4 parentTransform);
 	void setUniforms(Shader::Ptr shader);
 	void translate(glm::vec3 t);
 	void rotate(float angle, glm::vec3 axis);
-	void calcNormalMatrix();
 	void setBounds(AABB& aabb);
 	AABB getBounds();
+
+	glm::vec3 getLocalPosition();
+	glm::quat getLocalRotation();
+	glm::vec3 getLocalScale();
 	glm::mat4 getLocalTransform();
-	glm::mat4 getTransform();
 	glm::vec3 getPosition();
 	glm::quat getRotation();
-	glm::vec3 getScale();
+	glm::mat4 getTransform();
 };
 
 #endif // INCLUDED_TRANSFORM

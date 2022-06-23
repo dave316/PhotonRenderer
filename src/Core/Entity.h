@@ -16,6 +16,7 @@ class Entity : public std::enable_shared_from_this<Entity>
 private:
 	std::shared_ptr<Entity> parent = nullptr;
 	std::string name;
+	std::string uri;
 	std::map<std::type_index, Component::Ptr> components;
 	std::vector<std::shared_ptr<Entity>> children;
 
@@ -34,7 +35,12 @@ public:
 
 	~Entity()
 	{
-		//std::cout << "Entity " << name << " destroyed" << std::endl;
+		std::cout << "Entity " << name << " destroyed" << std::endl;
+	}
+
+	void setURI(const std::string& uri)
+	{
+		this->uri = uri;
 	}
 
 	template<typename T>
@@ -144,6 +150,11 @@ public:
 		return name;
 	}
 
+	std::string getUri() const
+	{
+		return uri;
+	}
+
 	int numChildren()
 	{
 		return children.size();
@@ -177,6 +188,13 @@ public:
 		}
 
 		return nullptr;
+	}
+
+	void clearParent()
+	{
+		parent = nullptr;
+		for (auto c : children)
+			c->clearParent();
 	}
 
 	unsigned int getID()

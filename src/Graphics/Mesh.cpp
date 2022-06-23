@@ -1,100 +1,142 @@
 #include "Mesh.h"
 
-#include <iostream>
-
-Mesh::Mesh(const std::string& name, TriangleSurface& surface, GLenum topology, unsigned int materialIndex) :
-	name(name), topology(topology), materialIndex(materialIndex)
+Mesh::Mesh(const std::string& name) :
+	name(name)
 {
-	updatGeometry(surface);
 }
 
 Mesh::~Mesh()
 {
-	//std::cout << "mesh " << name << " destroyed" << std::endl;
+	//std::cout << "Mesh " << name << " destroyed" << std::endl;
+}
+
+void Mesh::addPrimitive(Primitive::Ptr primitive)
+{
+	numVertices += primitive->numVertices();
+	numTrianlges += primitive->numTriangles();
+	primitives.push_back(primitive);
+}
+
+void Mesh::addVariant(std::string name)
+{
+	variants.push_back(name);
+}
+
+void Mesh::switchVariant(int index)
+{
+	for (auto p : primitives)
+		p->switchVariant(index);
+}
+
+void Mesh::setMorphWeights(std::vector<float>& weights)
+{
+	this->morphWeights = weights;
 }
 
 void Mesh::flipWindingOrder()
 {
-	surface.flipWindingOrder();
-	updatGeometry(surface);
+	for (auto p : primitives)
+		p->flipWindingOrder();
 }
 
-void Mesh::updatGeometry(TriangleSurface& surface)
+void Mesh::draw(Shader::Ptr shader)
 {
-	this->surface = surface;
-
-	std::vector<GLuint> indices;
-	for (auto& tri : surface.triangles)
+	for (auto primitve : primitives)
 	{
-		indices.push_back(tri.v0);
-		indices.push_back(tri.v1);
-		indices.push_back(tri.v2);
+		shader->setUniform("computeFlatNormals", primitve->getFlatNormals());
+
+		auto material = primitve->getMaterial(); // materials[primitve->getMaterialIndex()];
+		if (material->isDoubleSided())
+			glDisable(GL_CULL_FACE);
+
+		if (material->useBlending())
+		{
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
+			glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+		}
+
+		material->setUniforms(shader);
+		primitve->draw();
+
+		if (material->useBlending())
+			glDisable(GL_BLEND);
+
+		if (material->isDoubleSided())
+		{
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_BACK);
+		}
 	}
-
-	vertexBuffer.upload(surface.vertices);
-	indexBuffer.upload(indices);
-
-	vao.addAttrib(0, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, position));
-	vao.addAttrib(1, 4, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, color));
-	vao.addAttrib(2, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, normal));
-	vao.addAttrib(3, 2, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, texCoord0));
-	vao.addAttrib(4, 2, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, texCoord1));
-	vao.addAttrib(5, 4, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, tangent));
-	vao.addAttrib(6, 4, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, boneIDs));
-	vao.addAttrib(7, 4, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, boneWeights));
-#ifdef MORPH_TARGETS_2
-	vao.addAttrib(8, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition0));
-	vao.addAttrib(9, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetNormal0));
-	vao.addAttrib(10, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetTangent0));
-	vao.addAttrib(11, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition1));
-	vao.addAttrib(12, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetNormal1));
-	vao.addAttrib(13, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetTangent1));
-#endif
-
-#ifdef MORPH_TARGETS_8
-	vao.addAttrib(8, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition0));
-	vao.addAttrib(9, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition1));
-	vao.addAttrib(10, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition2));
-	vao.addAttrib(11, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition3));
-	vao.addAttrib(12, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition4));
-	vao.addAttrib(13, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition5));
-	vao.addAttrib(14, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition6));
-	vao.addAttrib(15, 3, vertexBuffer, sizeof(Vertex), (void*)offsetof(Vertex, targetPosition7));
-#endif
-
-	vao.bind();
-	indexBuffer.bind();
-	vao.unbind();
 }
 
-void Mesh::setBoundingBox(glm::vec3& minPoint, glm::vec3& maxPoint)
+std::string Mesh::getShader()
 {
-	boundingBox = AABB(minPoint, maxPoint);
-}
-
-void Mesh::draw()
-{
-	vao.bind();
-	if (indexBuffer.size() > 0)
-		glDrawElements(topology, indexBuffer.size(), GL_UNSIGNED_INT, 0);
-	else
-		glDrawArrays(topology, 0, vertexBuffer.size());
-	vao.unbind();
-}
-
-void Mesh::drawPoints()
-{
-	vao.bind();
-	glDrawArrays(GL_POINTS, 0, vertexBuffer.size());
-	vao.unbind();
+	return primitives[0]->getMaterial()->getShader();
 }
 
 AABB Mesh::getBoundingBox()
 {
+	AABB boundingBox;
+	for (auto& p : primitives)
+		boundingBox.expand(p->getBoundingBox());
 	return boundingBox;
 }
 
-std::vector<Vertex> Mesh::getVertices()
+std::vector<Primitive::Ptr> Mesh::getPrimitives()
 {
-	return surface.vertices;
+	return primitives;
+}
+
+std::vector<float> Mesh::getWeights()
+{
+	return morphWeights;
+}
+
+std::vector<std::string> Mesh::getVariants()
+{
+	return variants;
+}
+
+bool Mesh::useMorphTargets()
+{
+	return !morphWeights.empty();
+}
+
+bool Mesh::useBlending()
+{
+	for (auto p : primitives)
+	{
+		auto mat = p->getMaterial(); // materials[p->getMaterialIndex()];
+		if (mat->useBlending())
+			return true;
+	}
+	return false;
+}
+
+bool Mesh::isTransmissive()
+{
+	for (auto p : primitives)
+	{
+		auto mat = p->getMaterial();  //materials[p->getMaterialIndex()];
+		if (mat->isTransmissive())
+			return true;
+	}
+	return false;
+}
+
+int Mesh::getNumVertices()
+{
+	return numVertices;
+}
+
+int Mesh::getNumTriangles()
+{
+	return numTrianlges;
+}
+
+int Mesh::getNumPrimitives()
+{
+	return primitives.size();
 }

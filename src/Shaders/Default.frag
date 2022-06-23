@@ -5,91 +5,45 @@ layout(location = 1) in vec4 vertexColor;
 layout(location = 2) in vec3 wNormal;
 layout(location = 3) in vec2 texCoord0;
 layout(location = 4) in vec2 texCoord1;
-layout(location = 5) in mat3 wTBN;
+layout(location = 5) in vec4 lightPosition;
+layout(location = 6) in mat3 wTBN;
 
 layout(location = 0) out vec4 fragColor;
 
+#include "Utils.glsl"
 #include "Camera.glsl"
 #include "Material.glsl"
 #include "Light.glsl"
 #include "BRDF.glsl"
-#include "Utils.glsl"
 #include "IBL.glsl"
+#include "HDR.glsl"
+
+#ifdef IRIDESCENCE
 #include "iridescence.glsl"
+#endif
 
 uniform bool useIBL = false;
 uniform bool useGammaEncoding = false;
-uniform bool useSpecGlossMat = false;
-uniform int numLights;
-uniform float apertureFactor;
-uniform bool pq = false;
-
-vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness,
-    vec3 f0, vec3 f90, vec3 baseColor, float ior)
-{
-    float transmissionRougness = applyIorToRoughness(alphaRoughness, ior);
-
-    vec3 n = normalize(normal);
-    vec3 v = normalize(view);
-    vec3 l = normalize(pointToLight);
-    vec3 l_mirror = normalize(l + 2.0*n*dot(-l, n));
-    vec3 h = normalize(l_mirror + v);
-
-    float D = D_GGX_TR(clamp(dot(n, h), 0.0, 1.0), transmissionRougness);
-    vec3 F = F_Schlick(clamp(dot(v, h), 0.0, 1.0), f0);
-    float Vis = V_GGX(clamp(dot(n, l_mirror), 0.0, 1.0), clamp(dot(n, v), 0.0, 1.0), transmissionRougness);
-
-    return (1.0 - F) * baseColor * D * Vis;
-}
-
-uniform sampler2D sheenLUTE;
-
-float E(float NdotV, float sheenRoughness)
-{
-	return texture(sheenLUTE, vec2(NdotV, sheenRoughness)).r;
-}
-
-float E_compute(float cos_theta, float alpha) 
-{
-	float c = 1.0 - cos_theta;
-	float c3 = c * c * c;
-	return 0.65584461 * c3 + 1.0 / (4.16526551 + exp(-7.97291361 * sqrt(alpha) + 6.33516894));
-}
-
-vec3 BT_2100_OOTF(vec3 color, float rangeExp, float gamma)
-{
-	vec3 nonLinear = 1.099 * pow(rangeExp * color, vec3(0.45)) - 0.099;
-	return 100.0 * pow(nonLinear, vec3(gamma));
-}
-
-vec3 BT_2100_OETF(vec3 color)
-{
-	float m1 = 2610.0 / 16384.0;
-    float m2 = 2523.0 / 4096.0 * 128.0;
-    float c1 = 3424.0 / 4096.0;
-    float c2 = 2413.0 / 4096.0 * 32.0;
-    float c3 = 2392.0 / 4096.0 * 32.0;
-	vec3 Ypow = pow(color / 10000.0, vec3(m1));
-	return pow((c1 + c2 * Ypow) / (1.0 + c3 * Ypow), vec3(m2));
-}
+uniform bool computeFlatNormals = false;
+#ifdef DEBUG_OUTPUT
+uniform int debugChannel = 0;
+#endif
 
 void main()
 {
-	// main material parameters
-	vec3 c_diff = vec3(1.0);
-	vec3 F0 = vec3(0.0);
-	vec3 F90 = vec3(1.0);
-	float roughness = 0.0;
-	float metallic = 0.0;
-	float alphaRoughness = 0.0;
-	float transparency = 1.0;
-	float specularWeight = 1.0;
-	vec4 baseColor = vec4(1.0);
+#ifdef METAL_ROUGH_MATERIAL
+	// base color + alpha
+	vec4 baseColor = vertexColor * getBaseColor(texCoord0, texCoord1);
+	float alpha = baseColor.a;
+	if(material.alphaMode == 1 && alpha < material.alphaCutOff)
+		discard;
 
+	// emission
+	vec3 emission = getEmission(texCoord0, texCoord1);
+
+	// unlit material
 	if(material.unlit)
 	{
-		baseColor = vertexColor * getBaseColor(texCoord0, texCoord1);
-		vec3 emission = getEmission(texCoord0, texCoord1);
 		vec3 unlitColor = emission + baseColor.rgb;
 		float unlitAlpha = baseColor.a;
 		if(useGammaEncoding)
@@ -102,98 +56,95 @@ void main()
 		return;
 	}
 
-	if(useSpecGlossMat)
-	{
-		vec4 diffuseColor = getDiffuseColor(texCoord0);
-		float transparency = diffuseColor.a;
-		if(material2.alphaMode == 1)
-			if(transparency < material2.alphaCutOff)
-				discard;
+	// metal, roughness, occlusion
+	vec3 orm = getPBRValues(texCoord0, texCoord1);
+	float ao = orm.r; 
+	float roughness = clamp(orm.g, 0.05, 1.0);
+	float metallic = orm.b;
 
-		vec4 specGlossColor = getSpecularColor(texCoord0);
-		vec3 specularColor = specGlossColor.rgb;
-		float glossiness = specGlossColor.a;
-		roughness = 1.0 - glossiness;
-
-		c_diff = diffuseColor.rgb * (1.0 - max(max(specularColor.r, specularColor.g), specularColor.b));
-		F0 = specularColor;
-		alphaRoughness = roughness * roughness;
-	}
-	else
-	{
-		baseColor = vertexColor * getBaseColor(texCoord0, texCoord1);
-		transparency = baseColor.a;
-		if(material.alphaMode == 1)
-			if(transparency < material.alphaCutOff)
-				discard;
-
-		vec3 pbrValues = getPBRValues(texCoord0, texCoord1);
-		metallic = pbrValues.b;
-		roughness = pbrValues.g;
-
-		vec3 dielectricSpecular = vec3(pow((material.ior - 1.0) / (material.ior + 1.0), 2.0));
-		c_diff = mix(baseColor.rgb * (1.0 - dielectricSpecular), vec3(0.0), metallic);
-		F0 = mix(dielectricSpecular, baseColor.rgb, metallic);
-		alphaRoughness = roughness * roughness;
+	// main material parameters
+	vec3 black = vec3(0);
+	vec3 dielectricSpecular = vec3(pow((material.ior - 1.0) / (material.ior + 1.0), 2.0));
+	vec3 c_diffuse = mix(baseColor.rgb, black, metallic);
+	vec3 F0 = mix(dielectricSpecular, baseColor.rgb, metallic);
+	vec3 F90 = vec3(1.0);
+	float alphaRoughness = roughness * roughness;
+	float specularWeight = 1.0f;
 
 #ifdef SPECULAR
-		float specularFactor = getSpecular(texCoord0, texCoord1);
-		vec3 specularColor = getSpecularColor(texCoord0, texCoord1);
-
-		vec3 dielectricSpecularF0 = min(F0 * specularColor, vec3(1.0));
-		F0 = mix(dielectricSpecularF0, baseColor.rgb, metallic);
-		specularWeight = specularFactor;
-		c_diff = mix(baseColor.rgb * (1.0 - max3(dielectricSpecularF0)), vec3(0.0), metallic);
+	float specularFactor = getSpecular(texCoord0, texCoord1);
+	vec3 specularColor = getSpecularColor(texCoord0, texCoord1);
+	vec3 dielectricSpecularF0 = min(F0 * specularColor, vec3(1.0));
+	F0 = mix(dielectricSpecularF0, baseColor.rgb, metallic);
+	F90 = vec3(mix(specularFactor, 1.0, metallic));
+	specularWeight = specularFactor;
+	c_diffuse = mix(baseColor.rgb, black, metallic);
 #endif
-	}
+#else
+	vec4 diffuseColor = vertexColor * getDiffuseColor(texCoord0, texCoord1);
+	float alpha = diffuseColor.a;
+	if(material.alphaMode == 1 && alpha < material.alphaCutOff)
+		discard;
 
+	// emission
 	vec3 emission = getEmission(texCoord0, texCoord1);
-	float ao = getOcclusionFactor(texCoord0, texCoord1);
 
+	vec3 orm = getPBRValues(texCoord0, texCoord1);
+	float ao = orm.r;
+
+	vec4 specularColor = getSpecGloss(texCoord0, texCoord1);
+	vec3 F0 = specularColor.rgb;
+	vec3 F90 = vec3(1.0);
+	vec3 c_diffuse = diffuseColor.rgb * (1.0 - max3(F0));
+	float roughness = 1.0 - specularColor.a;
+	float alphaRoughness = roughness * roughness;
+	float specularWeight = 1.0f;
+#endif
+
+	// compute shading normal
 	vec3 n = normalize(wNormal);
-	if (material.computeFlatNormals)
+	if (computeFlatNormals)
 		n = normalize(cross(dFdx(wPosition), dFdy(wPosition)));
+
+//		vec2 UV = texCoord0;
+//		vec3 uv_dx = dFdx(vec3(UV, 0.0));
+//		vec3 uv_dy = dFdy(vec3(UV, 0.0));
+//	
+//		vec3 t_ = (uv_dy.t * dFdx(wPosition) - uv_dx.t * dFdy(wPosition)) / (uv_dx.s * uv_dy.t - uv_dy.s * uv_dx.t);
+//			
+//		vec3 t = normalize(t_ - n * dot(n, t_));
+//		vec3 b = cross(n, t);
+
 	if(normalTex.use)
-	{
-		vec3 tNormal = getTexel(normalTex, texCoord0, texCoord1).rgb * 2.0 - 1.0;
-		tNormal *= vec3(material.normalScale, material.normalScale, 1.0);
-		n = wTBN * normalize(tNormal);
-
-//		vec2 f = getTexel(normalTex, texCoord0, texCoord1).rg * 2.0 - 1.0;
-//		vec3 tNormal = vec3(f.x, f.y, 1.0 - abs(f.x) - abs(f.x));
-//		float t = saturate(-tNormal.z);
-//		tNormal.x += tNormal.x >= 0.0 ? -t : t;
-//		tNormal.y += tNormal.y >= 0.0 ? -t : t;
-//		n = wTBN * normalize(tNormal);
-	}
-
+		n = normalize(wTBN * getNormal(texCoord0, texCoord1));
 	if(gl_FrontFacing == false)
-		n = -n;
+		n = -n;	
 
+	// view vector
 	vec3 v = normalize(camera.position - wPosition);
 	vec3 r = normalize(reflect(-v, n));
-	float NdotV = clamp(dot(n, v), 0.0, 1.0);
+	float NoV = clampDot(n, v);
 
-	// extension materials
-#ifdef SHEEN
+#ifdef SHEEN // sheen
 	vec3 sheenColor = getSheenColor(texCoord0, texCoord1);
 	float sheenRoughness = getSheenRoughness(texCoord0, texCoord1);
 	sheenRoughness = max(sheenRoughness, 0.07);
 #endif
 
-#ifdef CLEARCOAT
+#ifdef CLEARCOAT // clearcoat
 	vec3 clearCoatNormal = normalize(wNormal);
 	if(clearCoatNormalTex.use)
 	{
 		vec3 tNormal = getTexel(clearCoatNormalTex, texCoord0, texCoord1).rgb * 2.0 - 1.0;
-		clearCoatNormal = normalize(wTBN * tNormal);
+		clearCoatNormal = wTBN * normalize(tNormal);
 	}
 	if(gl_FrontFacing == false)
 		clearCoatNormal = -clearCoatNormal;
 
 	float clearCoatFactor = getClearCoat(texCoord0, texCoord1);
 	float clearCoatRoughness = getClearCoatRoughness(texCoord0, texCoord1);
-	vec3 clearCoatFresnel = F_Schlick(clamp(dot(clearCoatNormal, v), 0.0, 1.0), F0);
+	float clearcoatNoV = clampDot(clearCoatNormal, v);
+	vec3 clearCoatFresnel = F_Schlick(F0, F90, clearcoatNoV);
 #endif
 
 #ifdef TRANSMISSION // TODO: seperate thin and thick transmission
@@ -203,219 +154,242 @@ void main()
 
 #ifdef IRIDESCENCE
 	float iridescenceFactor = getIridescence(texCoord0, texCoord1);
-	vec3 iridescenceFresnel = vec3(0.0);
+	float iridescenceThickness = 0.0;
+	vec3 iridescenceFresnel = F0;
 	vec3 iridescenceF0 = F0;
 	if (iridescenceFactor > 0.0)
 	{
 		float topIOR = 1.0; // TODO: add clearcoat factor
-		float iridescenceIOR = material.iridescenceIOR;
-		float iridescenceThickness = getIridescenceThickness(texCoord0, texCoord1);
-		//float viewAngle = sqrt(1.0 + (sq(NdotV) - 1.0) / sq(topIOR));
-		iridescenceFresnel = evalIridescence(topIOR, iridescenceIOR, NdotV, iridescenceThickness, F0);
-		iridescenceF0 = Schlick2F0(iridescenceFresnel, vec3(1.0), NdotV);
+		float iridescenceIOR = material.iridescenceIor;
+		iridescenceThickness = getIridescenceThickness(texCoord0, texCoord1);
+		iridescenceFresnel = evalIridescence(topIOR, iridescenceIOR, NoV, iridescenceThickness, F0);
+		iridescenceF0 = Schlick2F0(iridescenceFresnel, F90, NoV);
 	}
+#ifdef DEBUG_OUTPUT
+	if(debugChannel == 7)
+		iridescenceFactor = 0.0;
 #endif
-
+#endif
+float anisotropy = 0.0;
+vec3 anisotropyDirection = vec3(0);
 #ifdef ANISOTROPY
-	float anisotropy = getAnisotropy(texCoord0, texCoord1);
-	vec3 anisotropyDirection = getAnisotropyDirection(texCoord0, texCoord1);
+//	vec3 uv_dx = dFdx(vec3(texCoord0, 0.0));
+//	vec3 uv_dy = dFdy(vec3(texCoord0, 0.0));
+//	vec3 t_ = (uv_dy.t * dFdx(wPosition) - uv_dx.t * dFdy(wPosition)) / (uv_dx.s * uv_dy.t - uv_dy.s * uv_dx.t);
+//	vec3 tangent = normalize(t_ - n * dot(n, t_));
+//	vec3 bitangent = cross(n,tangent);
+
+	anisotropy = getAnisotropy(texCoord0, texCoord1);
+	anisotropyDirection = getAnisotropyDirection(texCoord0, texCoord1);
 	vec3 t = normalize(wTBN * anisotropyDirection);
 	vec3 b = normalize(cross(n, t));
 #endif
 
-	vec3 ambient = vec3(0);
-	vec3 F_ambient;
-	vec3 irradiance;
+	vec3 f_diffuse = vec3(0);
+	vec3 f_specular = vec3(0);
+	vec3 f_emissive = emission;
+	vec3 f_sheen = vec3(0);
+	vec3 f_clearcoat = vec3(0);
+	vec3 f_transmission = vec3(0);
+	vec3 f_translucency = vec3(0);
+
+	float albedoScaling = 1.0;
+
+	// image based lights
 	if(useIBL)
 	{
-		// ambient light
-		// TODO: add multiple scattering
+		vec3 F0_diff = F0;
+		vec3 F_ambient = F_Schlick_Rough(F0, NoV, roughness);
+		vec3 F_diff = F_ambient;
+		vec3 F_spec = F_ambient;
+
 #ifdef IRIDESCENCE
 		vec3 iridescenceF0Max = vec3(max3(iridescenceF0));
-		vec3 mixedF0 = mix(F0, iridescenceF0Max, iridescenceFactor);
-		F_ambient = F_Schlick_Rough(NdotV, mixedF0, roughness);
-#else
-		F_ambient = F_Schlick_Rough(NdotV, F0, roughness);
+		F0_diff = mix(F0, iridescenceF0Max, iridescenceFactor);
+		F_diff = F_Schlick_Rough(F0_diff, NoV, roughness);
+		F_spec = mix(F_ambient, iridescenceFresnel, iridescenceFactor);
 #endif
-		vec3 kD = (vec3(1.0) - specularWeight * F_ambient);
-		irradiance = texture(irradianceMap, n).rgb;
-		vec3 diffuse = kD * irradiance * c_diff; 
-		vec3 specular = vec3(0.0);
-
 #ifdef ANISOTROPY
-		specular = specularWeight * getIBLRadianceAnisotropy(n, v, t, b, anisotropy, roughness, F0);
-#else
-#ifdef IRIDESCENCE
-		specular = getIBLRadianceGGXIridescence(n, v, roughness, F0, iridescenceFresnel, iridescenceFactor, specularWeight);
-#else
-		specular = specularWeight * getIBLRadiance(n, v, roughness, F0);
+		vec3 anisotropyDir = anisotropy >= 0.0 ? b : t;
+		vec3 anisotropyTangent = cross(anisotropyDir, v);
+		vec3 anisotropyNormal = cross(anisotropyTangent, anisotropyDir);
+		float bendFactor = abs(anisotropy) * clamp(5.0 * roughness, 0.0, 1.0);
+		vec3 bendNormal = normalize(mix(n, anisotropyNormal, bendFactor));
+		r = normalize(reflect(-v, bendNormal));
 #endif
-#endif
-		// apply ao before transmission
-		diffuse *= ao;
-#ifdef TRANSMISSION
-		vec3 transmission = transmissionFactor * getIBLVolumeRefraction(n, v, roughness, baseColor.rgb, F0, vec3(1.0), wPosition, thickness, material.attenuationDistance, material.attenuationColor);
-		if(transmissionFactor > 0.0)
-			diffuse = mix(diffuse, transmission, transmissionFactor);
-#endif
+		f_diffuse = ao * getIBLRadianceLambert(n, F0_diff, F_diff, c_diffuse, NoV, roughness, specularWeight);
+		f_specular = ao * getIBLRadianceGGX(r, F_spec, NoV, roughness, specularWeight);
 
 #ifdef SHEEN
-		vec3 sheen = getIBLRadianceCharlie(n, v, sheenRoughness, sheenColor);
-		float albedoScalingIBL = 1.0 - max3(sheenColor) * E(NdotV, sheenRoughness);
-		ambient = diffuse * albedoScalingIBL + (specular * albedoScalingIBL + sheen) * ao;
-#else
-		float sheen = 0.0;
-		float albedoScalingIBL = 1.0;
-		ambient = diffuse + specular * ao;
+		f_sheen = ao * getIBLRadianceCharlie(n, v, sheenRoughness, sheenColor);
 #endif
-
 #ifdef CLEARCOAT
-		vec3 clearCoat = getIBLRadiance(clearCoatNormal, v, clearCoatRoughness, F0) * ao;
-		ambient = diffuse * albedoScalingIBL + (specular * albedoScalingIBL + sheen) * ao;
-		ambient = ambient * (1.0 - clearCoatFactor * clearCoatFresnel) + clearCoat * clearCoatFactor;
+		vec3 F_ambient_cc = F_Schlick_Rough(F0, clearcoatNoV, clearCoatRoughness);
+		vec3 r_cc = normalize(reflect(-v, clearCoatNormal));
+		f_clearcoat = ao * getIBLRadianceGGX(r_cc, F_ambient_cc, clearcoatNoV, clearCoatRoughness, 1.0);
+#endif
+#ifdef TRANSMISSION
+		f_transmission = transmissionFactor * getIBLVolumeRefraction(n, v, roughness, baseColor.rgb, F0, F90, wPosition, material.ior, thickness, material.attenuationDistance, material.attenuationColor);
+#endif
+#ifdef TRANSLUCENCY
+		f_translucency = material.translucencyFactor * texture(irradianceMap, -n).rgb * material.translucencyColorFactor * c_diffuse;
 #endif
 	}
-//	else
-//	{
-//		vec3 transmission = transmissionFactor * getIBLVolumeRefraction(n, v, roughness, baseColor.rgb, F0, vec3(1.0), wPosition, thickness, material.attenuationDistance, material.attenuationColor);
-//		if(transmissionFactor > 0.0)
-//			ambient = mix(ambient, transmission, transmissionFactor);
-//	}
 
-	// direct light (diffuse+specular)
-	vec3 lo = vec3(0);
-	vec3 f_clearCoat = vec3(0);
+	// punctual lights
 	for(int i = 0; i < numLights; i++)
 	{
 		Light light = lights[i];
-		vec3 pointToLight = vec3(0);
+		vec3 lightDir = vec3(0);
 		if(light.type == 0)
-			pointToLight = -light.direction;
+			lightDir = -light.direction;
 		else
-		{
-			pointToLight = light.position - wPosition;
-//			float dist = length(pointToLight);
-//			if(dist > light.range)
-//				continue;
-		}			
+			lightDir = light.position - wPosition;
 
-		vec3 l = normalize(pointToLight);
+		vec3 l = normalize(lightDir);
 		vec3 h = normalize(l + v);
+		float NoL = clampDot(n, l);
+		float NoH = clampDot(n, h);
+		float HoV = clampDot(h, v);
 
-		float NdotL = clamp(dot(n, l), 0.0, 1.0); 
-		float NdotH = clamp(dot(n, h), 0.0, 1.0);
-		float HdotV = clamp(dot(h, v), 0.0, 1.0);
-
-		vec3 f_diff = Lambert(F0, l, v, c_diff, specularWeight);
-		vec3 f_spec = vec3(0.0);
-
-#ifdef ANISOTROPY
-		f_spec = SpecularGGXAnisotropic(F0, vec3(1.0), n, l, v, t, b, alphaRoughness, specularWeight, anisotropy, iridescenceFresnel, iridescenceFactor);
-#else
-#ifdef IRIDESCENCE
-		f_spec = SpecularGGXIridescence(F0, vec3(1.0), n, l, v,  alphaRoughness, specularWeight, iridescenceFresnel, iridescenceFactor);
-#else
-		f_spec = CookTorrance(F0, F90, n, l, v, alphaRoughness, specularWeight);
-#endif
-#endif
-		float shadow = 1.0; // TODO: compute shadows for other light types
-		if(light.type > 0)
-			shadow = getShadow(wPosition, i);
-
-		float rangeAttenuation = 1.0f;
-		float spotAttenuation = 1.0f;
-
-		if (light.type != 0)
-		{
-			float dist = length(pointToLight);
-			if(light.range < 0.0)
-				rangeAttenuation = 1.0 / pow(dist, 2.0);
+		float shadow = 1.0;
+		if(NoL > 0.0 || NoV > 0.0)
+		{			
+			if(light.type == 0)
+				shadow = getDirectionalShadow(lightPosition, NoL);
 			else
-				rangeAttenuation = max(min(1.0 - pow(dist / light.range, 4.0), 1.0), 0.0) / pow(dist, 2.0);
-		}
+				shadow = getPointShadow(wPosition, i);
 
-		if(light.type == 2)
-		{
-			// these can be precomputed
-			float cosInner = cos(light.innerConeAngle);
-			float cosOuter = cos(light.outerConeAngle);
+			vec3 intensity = getIntensity(light) * getAttenuation(light, lightDir);
+			vec3 luminance = intensity * NoL * shadow;
 
-			float cosAngle = dot(normalize(light.direction), normalize(-pointToLight));
-			spotAttenuation = 0.0;
-			if(cosAngle > cosOuter)
-			{
-				spotAttenuation = 1.0;
-				if(cosAngle < cosInner)
-					spotAttenuation = smoothstep(cosOuter, cosInner, cosAngle);
-			}
-		}
-
-		float attenuation = rangeAttenuation * spotAttenuation;
-		vec3 lightIntensity = lights[i].color * lights[i].intensity * attenuation;
-
-		if(NdotL > 0 || NdotV > 0)
-		{
-			f_diff = f_diff * NdotL * lightIntensity * shadow;
-#ifdef TRANSMISSION
-			if(transmissionFactor > 0.0)
-			{
-			    vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, material.ior, M);
-				pointToLight -= transmissionRay;
-				l = normalize(pointToLight);
-	
-				vec3 f_transmission = lightIntensity * getPunctualRadianceTransmission(n, v, l, alphaRoughness, F0, vec3(1.0), baseColor.rgb, material.ior);
-				f_transmission *= transmissionFactor;
-				f_diff = mix(f_diff, f_transmission, transmissionFactor);
-			}
-#endif
-
-#ifdef SHEEN
-			vec3 f_sheen = SpecularSheen(sheenColor, sheenRoughness, NdotL, NdotV, NdotH);
-			float albedoScaling = min(1.0 - max3(sheenColor) * E(NdotV, sheenRoughness), 1.0 - max3(sheenColor) * E(NdotL, sheenRoughness));
-			vec3 color = f_diff * albedoScaling + (f_spec * albedoScaling + f_sheen) * NdotL * lightIntensity * shadow;
+			vec3 F = F_Schlick(F0, F90, HoV);
+#ifdef IRIDESCENCE
+			vec3 iridescenceFresnelMax = vec3(max3(iridescenceFresnel));
+			vec3 F_diff = mix(F, iridescenceFresnelMax, iridescenceFactor);
+			vec3 F_spec = mix(F, iridescenceFresnel, iridescenceFactor);
 #else
-			vec3 color = f_diff + f_spec * NdotL * lightIntensity * shadow;
+			vec3 F_diff = F;
+			vec3 F_spec = F;
+#endif			
+#ifdef ANISOTROPY
+		   	vec3 Fr = F_spec * specularWeight * specularGGXAnisotropic(n, l, v, t, b, alphaRoughness, anisotropy);
+#else		
+			vec3 Fr = F_spec * specularWeight * specularGGX(NoL, NoV, NoH, alphaRoughness);
 #endif
-
+			f_diffuse += luminance * (1 - F_diff * specularWeight) * lambert(c_diffuse); 
+			f_specular += luminance * Fr;
+#ifdef SHEEN
+			f_sheen += luminance * SpecularSheen(sheenColor, sheenRoughness, NoL, NoV, NoH);
+			albedoScaling = min(1.0 - max3(sheenColor) * E(NoV, sheenRoughness), 1.0 - max3(sheenColor) * E(NoL, sheenRoughness));
+#endif
 #ifdef CLEARCOAT
-			if(clearCoatFactor > 0.0)
-			{
-				f_clearCoat = CookTorrance(F0, F90, clearCoatNormal, l, v, clearCoatRoughness * clearCoatRoughness, 1.0);
-				f_clearCoat = f_clearCoat * lightIntensity * shadow * clamp(dot(clearCoatNormal, l), 0.0, 1.0);
-				color = color * (1.0 - clearCoatFactor * clearCoatFresnel) + f_clearCoat * clearCoatFactor;
-			}
+			float ccNoL = clampDot(clearCoatNormal, l);
+			float ccNoH = clampDot(clearCoatNormal, h);
+			float ccHoV = clampDot(clearCoatNormal, v);
+			vec3 ccLuminance = intensity * ccNoL * shadow;
+			f_clearcoat += ccLuminance * F * specularGGX(ccNoL, ccHoV, ccNoH, alphaRoughness);
 #endif
-			lo += color;
 		}
+#ifdef TRANSMISSION // TODO: add translucency here, also check the dot products! 
+					//		 since transmission should only be computed when looking through the surface!
+		if(dot(n,l) < 0.0 && NoV > 0.0)
+		{
+			vec3 transmissionRay = getVolumeTransmissionRay(n, v, thickness, material.ior, M);
+			lightDir -= transmissionRay;
+			l = normalize(lightDir);
+			vec3 intensity = getIntensity(light) * getAttenuation(light, lightDir);
+			vec3 transmittedLight = intensity * getPunctualRadianceTransmission(n, v, l, alphaRoughness, F0, vec3(1.0), c_diffuse, material.ior);
+			f_transmission += transmissionFactor * F_Schlick(F0, F90, HoV) * abs(dot(n,l)) * applyVolumeAttenuation(transmittedLight, length(transmissionRay), material.attenuationDistance, material.attenuationColor);
+		}
+#endif
+#ifdef TRANSLUCENCY
+		if(dot(n,l) < 0.0 && NoV > 0.0)
+		{
+			vec3 intensity = getIntensity(light) * getAttenuation(light, lightDir);
+			vec3 diffuseTransmissionColor = c_diffuse * material.translucencyColorFactor;
+			f_translucency += intensity * abs(dot(n,l)) * shadow * lambert(diffuseTransmissionColor);
+		}
+#endif
 	}
 
-	vec3 intensity = emission + ambient + lo;
+	vec3 diffuse = f_diffuse;
 
-	// TODO: this should be moved to the post processing stage
-	float EV = 0.0; 
-	float exposure = 1.0f;
-	//intensity = vec3(1.0) - exp(-intensity * exposure);
-	//intensity = intensity * pow(2.0, EV);
-	//intensity = intensity / (1.0 + intensity);			// reinhard
+// layer blending
+#ifdef TRANSLUCENCY // diffuse BSDF
+	diffuse = mix(diffuse, f_translucency, material.translucencyFactor);
+#endif
+#ifdef TRANSMISSION // specular BTDF
+	diffuse = mix(diffuse, f_transmission, transmissionFactor);
+#endif
+	// default layer: diffuse BRDF + specular dielectric/metallic BRDF
+	vec3 color =  diffuse + f_specular;
+#ifdef SHEEN // sheen specular BRDF
+	color = color * albedoScaling + f_sheen;
+#endif
+	color += f_emissive;
+#ifdef CLEARCOAT // clearcoat dielectric BRDF
+	color = color * (1.0 - clearCoatFactor * clearCoatFresnel) + f_clearcoat * clearCoatFactor;
+#endif
 
-	if(pq)
-	{
-		float rangeExponentSDR = 46.42;
-		vec3 colorScaled = intensity / 10000.0;
-		vec3 apertureAdjustedColor = colorScaled * apertureFactor;
-		vec3 ootf = BT_2100_OOTF(apertureAdjustedColor, rangeExponentSDR, 2.4);
-		vec3 oetf = BT_2100_OETF(ootf);
-		intensity = max(oetf, 0.0);
-	}
-	else if(useGammaEncoding)
-		intensity = pow(intensity, vec3(1.0 / 2.2));
+//	float exposure = 1.0f;
+//	color = vec3(1.0) - exp(-color * exposure);
 
-	vec3 rgbToGray = vec3(0.2126, 0.7152, 0.0722);
-	float brightness = dot(intensity, rgbToGray);
+	//if(useGammaEncoding)
+		//color = linear2sRGB(color);
 
 	if(material.alphaMode == 0 || material.alphaMode == 1)
-		//fragColor = vec4(n * 0.5 + 0.5, 1.0);
-		fragColor = vec4(intensity, 1.0);
+		fragColor = vec4(color, alpha);
 	else 
-		fragColor = vec4(intensity * transparency, transparency);
+		fragColor = vec4(color * alpha, alpha);
+
+#ifdef DEBUG_OUTPUT 
+	if(debugChannel > 0)
+		fragColor.a = 1.0;
+
+	switch(debugChannel)
+	{
+	case 0: break; // No debug, keep frag color
+	case 1: fragColor.rgb = sRGB2Linear(vec3(texCoord0, 0.0)); break;
+	case 2: fragColor.rgb = sRGB2Linear(vec3(texCoord1, 0.0)); break;
+	case 3: fragColor.rgb = sRGB2Linear(wNormal * 0.5 + 0.5); break;
+	case 4: fragColor.rgb = sRGB2Linear(n * 0.5 + 0.5); break;
+	case 5: fragColor.rgb = vec3(ao); break;
+	case 6: fragColor.rgb = emission; break;
+#ifdef METAL_ROUGH_MATERIAL
+	case 7: fragColor.rgb = f_diffuse + f_specular; break;
+	case 8: fragColor.rgb = baseColor.rgb; break;
+	case 9: fragColor.rgb = vec3(roughness); break;
+	case 10: fragColor.rgb = vec3(metallic); break;
+#ifdef SHEEN
+	case 11: fragColor.rgb = f_sheen; break;
+	case 12: fragColor.rgb = sheenColor; break;
+	case 13: fragColor.rgb = vec3(sheenRoughness); break;
+#endif
+#ifdef CLEARCOAT
+	case 14: fragColor.rgb = f_clearcoat; break;
+	case 15: fragColor.rgb = vec3(clearCoatFactor); break;
+	case 16: fragColor.rgb = vec3(clearCoatRoughness); break;
+	case 17: fragColor.rgb = sRGB2Linear(clearCoatNormal * 0.5 + 0.5); break;
+#endif
+#ifdef TRANSMISSION
+	case 18: fragColor.rgb = f_transmission; break;
+	case 19: fragColor.rgb = vec3(transmissionFactor); break;
+	case 20: fragColor.rgb = vec3(thickness); break;
+	case 21: fragColor.rgb = material.attenuationColor; break;
+#endif
+#ifdef SPECULAR
+	case 22: fragColor.rgb = f_specular; break;
+	case 23: fragColor.rgb = vec3(specularFactor); break;
+	case 24: fragColor.rgb = specularColor; break;
+#endif
+#ifdef IRIDESCENCE
+	case 25: fragColor.rgb = iridescenceFresnel; break;
+	case 26: fragColor.rgb = vec3(iridescenceFactor); break;
+	case 27: fragColor.rgb = vec3(iridescenceThickness / 1200.0); break;
+#endif
+#endif
+	default: fragColor.rgb = vec3(0); break;
+	}
+#endif // DEBUG_OUTPUT
 }

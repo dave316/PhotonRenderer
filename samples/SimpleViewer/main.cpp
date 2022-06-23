@@ -1,3 +1,4 @@
+#define GLM_FORCE_UNRESTRICTED_GENTYPE
 #include "Application.h"
 
 int main()

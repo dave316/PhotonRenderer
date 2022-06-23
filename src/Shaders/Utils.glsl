@@ -1,22 +1,4 @@
-mat3 generateTBN(vec3 normal)
-{
-	vec3 bitangent = vec3(0.0, 1.0, 0.0);
-
-	float NdotUp = dot(normal, vec3(0.0, 1.0, 0.0));
-	float epsilon = 0.0000001;
-	if (1.0 - abs(NdotUp) <= epsilon)
-	{
-		if (NdotUp > 0.0)
-			bitangent = vec3(0.0, 0.0, 1.0);
-		else
-			bitangent = vec3(0.0, 0.0, -1.0);
-	}
-
-	vec3 tangent = normalize(cross(bitangent, normal));
-	bitangent = cross(normal, tangent);
-
-	return mat3(tangent, bitangent, normal);
-}
+float PI = 3.14159265358979323846;
 
 float radicalInverse(uint bits)
 {
@@ -73,3 +55,68 @@ float applyIorToRoughness(float roughness, float ior)
 {
 	return roughness * saturate(ior * 2.0 - 2.0);
 }
+
+mat3 generateTBN(vec3 normal)
+{
+	vec3 bitangent = vec3(0.0, 1.0, 0.0);
+
+	float NdotUp = dot(normal, vec3(0.0, 1.0, 0.0));
+	float epsilon = 0.0000001;
+	if (1.0 - abs(NdotUp) <= epsilon)
+	{
+		if (NdotUp > 0.0)
+			bitangent = vec3(0.0, 0.0, 1.0);
+		else
+			bitangent = vec3(0.0, 0.0, -1.0);
+	}
+
+	vec3 tangent = normalize(cross(bitangent, normal));
+	bitangent = cross(normal, tangent);
+
+	return mat3(tangent, bitangent, normal);
+}
+
+vec3 hemisphereSample(vec2 s)
+{
+	float cosTheta = sqrt(1.0 - s.y);
+	float sinTheta = sqrt(s.y);
+	float phi = 2.0 * PI * s.x;
+
+	vec3 h;
+	h.x = cos(phi) * sinTheta;
+	h.y = sin(phi) * sinTheta;
+	h.z = cosTheta;
+
+	return h;
+}
+
+vec3 importanceSampleGGX(vec2 x, float roughness)
+{
+	float alpha = roughness * roughness;
+	float phi = 2.0 * PI * x.x;
+	float cosTheta = saturate(sqrt((1.0 - x.y) / (1.0 + (alpha * alpha - 1.0) * x.y)));
+	float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+
+	vec3 h;
+	h.x = cos(phi) * sinTheta;
+	h.y = sin(phi) * sinTheta;
+	h.z = cosTheta;
+
+	return h;
+}
+
+vec3 importanceSampleCharlie(vec2 x, float roughness)
+{
+	float alpha = max(roughness * roughness, 0.000001);
+	float sinTheta = pow(x.y, alpha / (2.0 * alpha + 1.0));
+	float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
+	float phi = 2.0 * PI * x.x;
+
+	vec3 h;
+	h.x = cos(phi) * sinTheta;
+	h.y = sin(phi) * sinTheta;
+	h.z = cosTheta;
+
+	return h;
+}
+

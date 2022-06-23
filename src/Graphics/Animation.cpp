@@ -3,68 +3,6 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <iostream>
 
-int Channel::findPosition(float currentTime)
-{
-	if (currentTime < positions[0].first)
-		return -1;
-
-	for (int i = 0; i < positions.size() - 1; i++)
-	{
-		if (currentTime < positions[i + 1].first)
-		{
-			return i;
-		}
-	}
-	return -1;
-}
-
-int Channel::findRotation(float currentTime)
-{
-	if (currentTime < rotations[0].first)
-		return -1;
-
-	for (int i = 0; i < rotations.size() - 1; i++)
-	{
-		if (currentTime < rotations[i + 1].first)
-		{
-			return i;
-		}
-	}
-
-	return -1;
-}
-
-int Channel::findScaling(float currentTime)
-{
-	if (currentTime < scales[0].first)
-		return -1;
-
-	for (int i = 0; i < scales.size() - 1; i++)
-	{
-		if (currentTime < scales[i + 1].first)
-		{
-			return i;
-		}
-	}
-	return -1;
-}
-
-int Channel::findWeight(float currentTime)
-{
-	if (currentTime < weights[0].first)
-		return -1;
-
-	for (int i = 0; i < weights.size() - 1; i++)
-	{
-		if (currentTime < weights[i + 1].first)
-		{
-			return i;
-		}
-	}
-
-	return -1;
-}
-
 Animation::Animation() :
 	name(""),
 	currentTime(0.0f),
@@ -73,10 +11,10 @@ Animation::Animation() :
 
 }
 
-Animation::Animation(const std::string& name, float duration) :
+Animation::Animation(const std::string& name) :
 	name(name),
 	currentTime(0.0f),
-	duration(duration)
+	duration(0.0f)
 {
 
 }
@@ -86,229 +24,14 @@ Animation::~Animation()
 	//std::cout << "deleted Animation " << name << std::endl;
 }
 
-void Animation::addChannel(int index, Channel& channel)
+void Animation::addChannel(IChannel::Ptr channel)
 {
-	channels.insert(std::make_pair(index, channel));
+	channels.push_back(channel);
 }
 
-glm::vec3 Animation::calcInterpPosition(int index)
+void Animation::setDuration(float duration)
 {
-	if (channels.find(index) == channels.end())
-		return glm::vec3(0.0f);
-
-	glm::vec3 result(0.0f);
-	Channel& channel = channels[index];
-	if (channel.positions.size() == 1)
-	{
-		result = channel.positions[0].second[0];
-	}
-	else if (channel.positions.size() > 1)
-	{
-		int positionIndex = channel.findPosition(currentTime);
-		if (positionIndex < 0)
-			return channel.positions[0].second[0];
-		int nextPositionIndex = positionIndex + 1;
-		float deltaTime = channel.positions[nextPositionIndex].first - channel.positions[positionIndex].first;
-		float factor = (currentTime - channel.positions[positionIndex].first) / deltaTime;
-		glm::vec3 start = channel.positions[positionIndex].second[0];
-		glm::vec3 end = channel.positions[nextPositionIndex].second[0];
-
-		switch (channel.interpolation)
-		{
-		case Interpolation::STEP:
-			if (factor < 0.5f)
-				result = start;
-			else
-				result = end;
-			break;
-		case Interpolation::LINEAR:
-			result = glm::mix(start, end, factor);
-			break;
-		case Interpolation::CUBIC: // TODO: check out of bounds ....
-			glm::vec3 a_k1 = channel.positions[nextPositionIndex].second[0];
-			glm::vec3 v_k = channel.positions[positionIndex].second[1];
-			glm::vec3 v_k1 = channel.positions[nextPositionIndex].second[1];
-			glm::vec3 b_k = channel.positions[positionIndex].second[2];
-
-			float t_k = channel.positions[positionIndex].first;
-			float t_k1 = channel.positions[nextPositionIndex].first;
-			float t_current = currentTime;
-			float t = (t_current - t_k) / (t_k1 - t_k);
-			glm::vec3 p_0 = v_k;
-			glm::vec3 m_0 = (t_k1 - t_k) * b_k;
-			glm::vec3 p_1 = v_k1;
-			glm::vec3 m_1 = (t_k1 - t_k) * a_k1;
-
-			float t2 = t * t;
-			float t3 = t2 * t;
-			glm::vec3 p = (2 * t3 - 3 * t2 + 1) * p_0 +
-				(t3 - 2 * t2 + t) * m_0 +
-				(-2 * t3 + 3 * t2) * p_1 +
-				(t3 - t2) * m_1;
-
-			result = p;
-
-			break;
-		}
-	}
-	return result;
-}
-
-glm::quat Animation::calcInterpRotation(int index)
-{
-	if (channels.find(index) == channels.end())
-		return glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-
-	glm::quat result(1.0f, 0.0f, 0.0f, 0.0f);
-	Channel& channel = channels[index];
-	if (channel.rotations.size() == 1)
-	{
-		result = channel.rotations[0].second[0];
-	}
-	else if (channel.rotations.size() > 1)
-	{
-		int rotationIndex = channel.findRotation(currentTime);
-		if (rotationIndex < 0)
-			return channel.rotations[0].second[0];
-		int nextRotationIndex = rotationIndex + 1;
-		float deltaTime = channel.rotations[nextRotationIndex].first - channel.rotations[rotationIndex].first;
-		float factor = (currentTime - channel.rotations[rotationIndex].first) / deltaTime;
-		const glm::quat& start = channel.rotations[rotationIndex].second[0];
-		const glm::quat& end = channel.rotations[nextRotationIndex].second[0];
-		
-		switch (channel.interpolation)
-		{
-		case Interpolation::STEP:
-			if (factor < 0.5f)
-				result = start;
-			else
-				result = end;
-			break;
-		case Interpolation::LINEAR:
-			result = glm::slerp(start, end, factor);
-			break;
-		case Interpolation::CUBIC:
-			glm::quat a_k1 = channel.rotations[nextRotationIndex].second[0];
-			glm::quat v_k = channel.rotations[rotationIndex].second[1];
-			glm::quat v_k1 = channel.rotations[nextRotationIndex].second[1];
-			glm::quat b_k = channel.rotations[rotationIndex].second[2];
-
-			float t_k = channel.rotations[rotationIndex].first;
-			float t_k1 = channel.rotations[nextRotationIndex].first;
-			float t_current = currentTime;
-			float t = (t_current - t_k) / (t_k1 - t_k);
-			glm::quat p_0 = v_k;
-			glm::quat m_0 = (t_k1 - t_k) * b_k;
-			glm::quat p_1 = v_k1;
-			glm::quat m_1 = (t_k1 - t_k) * a_k1;
-
-			float t2 = t * t;
-			float t3 = t2 * t;
-			glm::quat q = (2 * t3 - 3 * t2 + 1) * p_0 +
-				(t3 - 2 * t2 + t) * m_0 +
-				(-2 * t3 + 3 * t2) * p_1 +
-				(t3 - t2) * m_1;
-
-			result = glm::normalize(q);
-
-			break;
-		}
-	}
-	return glm::mat4_cast(result);
-}
-
-glm::vec3 Animation::calcInterpScaling(int index)
-{
-	if (channels.find(index) == channels.end())
-		return glm::vec3(1.0f);
-
-	glm::vec3 result(1.0f);
-	Channel& channel = channels[index];
-	if (channel.scales.size() == 1)
-	{
-		result = channel.scales[0].second[0];
-	}
-	else if (channel.scales.size() > 1)
-	{
-		int scaleIndex = channel.findScaling(currentTime);
-		if (scaleIndex < 0)
-			return channel.scales[0].second[0];
-		int nextScaleIndex = scaleIndex + 1;
-		float deltaTime = channel.scales[nextScaleIndex].first - channel.scales[scaleIndex].first;
-		float factor = (currentTime - channel.scales[scaleIndex].first) / deltaTime;
-		glm::vec3 start = channel.scales[scaleIndex].second[0];
-		glm::vec3 end = channel.scales[nextScaleIndex].second[0];
-
-		switch (channel.interpolation)
-		{
-		case Interpolation::STEP:
-			if (factor < 0.5f)
-				result = start;
-			else
-				result = end;
-			break;
-		case Interpolation::LINEAR:
-			result = glm::mix(start, end, factor);
-			break;
-		case Interpolation::CUBIC:
-			glm::vec3 a_k1 = channel.scales[nextScaleIndex].second[0];
-			glm::vec3 v_k = channel.scales[scaleIndex].second[1];
-			glm::vec3 v_k1 = channel.scales[nextScaleIndex].second[1];
-			glm::vec3 b_k = channel.scales[scaleIndex].second[2];
-
-			float t_k = channel.scales[scaleIndex].first;
-			float t_k1 = channel.scales[nextScaleIndex].first;
-			float t_current = currentTime;
-			float t = (t_current - t_k) / (t_k1 - t_k);
-			glm::vec3 p_0 = v_k;
-			glm::vec3 m_0 = (t_k1 - t_k) * b_k;
-			glm::vec3 p_1 = v_k1;
-			glm::vec3 m_1 = (t_k1 - t_k) * a_k1;
-
-			float t2 = t * t;
-			float t3 = t2 * t;
-			glm::vec3 p = (2 * t3 - 3 * t2 + 1) * p_0 +
-				(t3 - 2 * t2 + t) * m_0 +
-				(-2 * t3 + 3 * t2) * p_1 +
-				(t3 - t2) * m_1;
-
-			result = p;
-
-			break;
-		}
-	}
-	return result;
-}
-
-std::vector<float> Animation::calcInterpWeight(int index)
-{
-	if (channels.find(index) == channels.end())
-		return std::vector<float>();
-
-	std::vector<float> result;
-	Channel& channel = channels[index];
-	if (channel.weights.size() == 1)
-	{
-		return channel.weights[0].second;
-	}
-	else
-	{
-		int numWeights = channel.weights[0].second.size();
-		int weightIndex = channel.findWeight(currentTime);
-		if(weightIndex < 0)
-			return channel.weights[0].second;
-		int nextWeightIndex = weightIndex + 1;
-		float deltaTime = channel.weights[nextWeightIndex].first - channel.weights[weightIndex].first;
-		float factor = (currentTime - channel.weights[weightIndex].first) / deltaTime;
-		for (int i = 0; i < numWeights; i++)
-		{
-			float start = channel.weights[weightIndex].second[i];
-			float end = channel.weights[nextWeightIndex].second[i];
-			float w = glm::mix(start, end, factor);
-			result.push_back(w);
-		}
-	}
-	return result;
+	this->duration = duration;
 }
 
 std::vector<float> Animation::getWeights()
@@ -316,7 +39,166 @@ std::vector<float> Animation::getWeights()
 	return currentWeights;
 }
 
-void Animation::update(float dt, std::vector<Entity::Ptr>& nodes)
+void Animation::setCameraProperty(IChannel::Ptr iChannel, Camera::Ptr camera, AnimAttribute attribute)
+{
+	auto channel = std::dynamic_pointer_cast<Channel<float>>(iChannel);
+	float value = channel->interpolate(currentTime);
+	switch (attribute)
+	{
+		case AnimAttribute::CAMERA_ASPECT: camera->setAspectRatio(value); break;
+		case AnimAttribute::CAMERA_YFOV: camera->setFieldOfView(glm::radians(value)); break;
+		case AnimAttribute::CAMERA_ZNEAR: camera->setNearPlane(value); break;
+		case AnimAttribute::CAMERA_ZFAR: camera->setFarPlane(value); break;
+	}
+}
+
+void Animation::setLightProperty(IChannel::Ptr iChannel, Light::Ptr light, AnimAttribute attribute)
+{
+	switch (attribute)
+	{
+		case AnimAttribute::LIGHT_COLOR:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<glm::vec4>>(iChannel);
+			glm::vec3 lightColor = channel->interpolate(currentTime);
+			light->setColor(lightColor);
+			break;
+		}
+		case AnimAttribute::LIGHT_INTENSITY:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<float>>(iChannel);
+			float lightIntensity = channel->interpolate(currentTime);
+			light->setIntensity(lightIntensity);
+			break;
+		}
+		case AnimAttribute::LIGHT_RANGE:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<float>>(iChannel);
+			float lightRange = channel->interpolate(currentTime);
+			light->setRange(lightRange);
+			break;
+		}
+		case AnimAttribute::LIGHT_INNERANGLE:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<float>>(iChannel);
+			float innerAngle = channel->interpolate(currentTime);
+			light->setInnerAngle(innerAngle);
+			break;
+		}
+		case AnimAttribute::LIGHT_OUTERANGLE:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<float>>(iChannel);
+			float outerAngle = channel->interpolate(currentTime);
+			light->setOuterAngle(outerAngle);
+			break;
+		}
+	}
+}
+
+void Animation::setTransformProperty(IChannel::Ptr iChannel, Transform::Ptr transform, AnimAttribute attribute)
+{
+	switch (attribute)
+	{
+		case AnimAttribute::TRANSFORM_POSITION:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<glm::vec3>>(iChannel);
+			glm::vec3 translation = channel->interpolate(currentTime);
+			transform->setLocalPosition(translation);
+			break;
+		}
+		case AnimAttribute::TRANSFORM_ROTATION:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<glm::quat>>(iChannel);
+			glm::quat rotation = glm::normalize(channel->interpolate(currentTime));
+			transform->setLocalRotation(rotation);
+			break;
+		}
+		case AnimAttribute::TRANSFORM_SCALE:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<glm::vec3>>(iChannel);
+			glm::vec3 scale = channel->interpolate(currentTime);
+			transform->setLocalScale(scale);
+			break;
+		}
+		case AnimAttribute::TRANSFORM_WEIGHTS:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<float>>(iChannel);
+			currentWeights = channel->interpolateElements(currentTime);
+			break;
+		}
+	}
+}
+
+void Animation::setMaterialProperty(IChannel::Ptr channel, Material::Ptr material, AnimAttribute attribute)
+{
+	// TODO: cast to correct value type before creating the channel
+	AnimAttribute attr = static_cast<AnimAttribute>(attribute & AnimAttribute::MATERIAL_MASK);
+	switch (attr)
+	{
+		case AnimAttribute::MATERIAL_BASECOLOR: setPropertyValue<glm::vec4>(channel, material, "material.baseColorFactor"); break;
+		case AnimAttribute::MATERIAL_ROUGHNESS: setPropertyValue<float>(channel, material, "material.roughnessFactor"); break;
+		case AnimAttribute::MATERIAL_METALLIC: setPropertyValue<float>(channel, material, "material.metallicFactor"); break;
+		case AnimAttribute::MATERIAL_EMISSIVE_FACTOR: //setPropertyValue<glm::vec4>(channel, material, "material.emissiveFactor"); break;
+		{
+			auto ch = std::dynamic_pointer_cast<Channel<glm::vec4>>(channel);
+			glm::vec3 emissiveColor = ch->interpolate(currentTime);
+			material->addProperty("material.emissiveFactor", emissiveColor);
+			break;
+		}
+		case AnimAttribute::MATERIAL_EMISSIVE_STRENGTH: setPropertyValue<float>(channel, material, "material.emissiveStrength"); break;
+		case AnimAttribute::MATERIAL_ALPHA_CUTOFF: setPropertyValue<float>(channel, material, "material.alphaCutOff"); break;
+		case AnimAttribute::MATERIAL_BASECOLORTEXTURE: setTextureTransform(channel, material, attribute, "baseColorTex"); break;
+		case AnimAttribute::MATERIAL_EMISSIVETEXTURE: setTextureTransform(channel, material, attribute, "emissiveTex"); break;
+		case AnimAttribute::MATERIAL_NORMAL_SCALE: setPropertyValue<float>(channel, material, "material.normalScale"); break;
+		case AnimAttribute::MATERIAL_OCCLUSION_STRENGTH: setPropertyValue<float>(channel, material, "material.occlusionStrength"); break;
+		case AnimAttribute::MATERIAL_IOR: setPropertyValue<float>(channel, material, "material.ior"); break;
+		case AnimAttribute::MATERIAL_TRANSMISSION_FACTOR: setPropertyValue<float>(channel, material, "material.transmissionFactor"); break;
+		case AnimAttribute::MATERIAL_THICKNESS_FACTOR: setPropertyValue<float>(channel, material, "material.thicknessFactor"); break;
+		case AnimAttribute::MATERIAL_ATTENUATION_DISTANCE: setPropertyValue<float>(channel, material, "material.attenuationDistance"); break;
+		case AnimAttribute::MATERIAL_ATTENUATION_COLOR:// setPropertyValue<glm::vec4>(channel, material, "material.attenuationColor"); break;
+		{
+			auto ch = std::dynamic_pointer_cast<Channel<glm::vec4>>(channel);
+			glm::vec3 color = ch->interpolate(currentTime);
+			auto mat = material;
+			mat->addProperty("material.attenuationColor", color);
+			break;
+		}
+		case AnimAttribute::MATERIAL_IRIDESCENCE_FACTOR: setPropertyValue<float>(channel, material, "material.iridescenceFactor"); break;
+		case AnimAttribute::MATERIAL_IRIDESCENCE_IOR: setPropertyValue<float>(channel, material, "material.iridescenceIor"); break;
+		case AnimAttribute::MATERIAL_IRIDESCENCE_THICKNESS_MAXIMUM: setPropertyValue<float>(channel, material, "material.iridescenceThicknessMax"); break;
+	}
+}
+
+void Animation::setTextureTransform(IChannel::Ptr iChannel, Material::Ptr material, AnimAttribute attribute, std::string texUniform)
+{
+	AnimAttribute texAttr = static_cast<AnimAttribute>(attribute & AnimAttribute::TEXTURE_MASK);
+	switch (texAttr)
+	{
+		case AnimAttribute::TEXTURE_OFFSET:
+		{
+			auto channel = std::dynamic_pointer_cast<Channel<glm::vec2>>(iChannel);
+			glm::vec2 offset = channel->interpolate(currentTime);
+
+			auto tex = material->getTexture(texUniform);
+			tex->setOffset(offset);
+			material->addProperty(texUniform + ".uvTransform", tex->getUVTransform());
+			break;
+		}
+		case AnimAttribute::TEXTURE_SCALE:
+		{
+			auto ch = std::dynamic_pointer_cast<Channel<glm::vec2>>(iChannel);
+			glm::vec2 scale = ch->interpolate(currentTime);
+
+			auto tex = material->getTexture(texUniform);
+			tex->setScale(scale);
+			material->addProperty(texUniform + ".uvTransform", tex->getUVTransform());
+			break;
+		}
+	}
+}
+
+// TODO: more generic way to get the component to be animated
+// TODO: add all specified animateable properties from KHR_animation_pointer
+void Animation::update(float dt, std::vector<Entity::Ptr>& nodes, std::vector<Material::Ptr>& materials, std::vector<Light::Ptr>& lights, std::vector<Camera::Ptr>& cameras)
 {
 	// TODO: update the animation to the last keyframe
 	currentTime += dt;
@@ -324,22 +206,21 @@ void Animation::update(float dt, std::vector<Entity::Ptr>& nodes)
 	{
 		finished = true;
 		return;
-	}		
-
-	for (auto&& [nodeIndex, channel] : channels)
+	}
+	for (auto channel : channels)
 	{
-		glm::vec3 translation = calcInterpPosition(nodeIndex);
-		glm::quat rotation = calcInterpRotation(nodeIndex);
-		glm::vec3 scale = calcInterpScaling(nodeIndex);
-		auto t = nodes[nodeIndex]->getComponent<Transform>();
-		if(!channel.positions.empty())
-			t->setPosition(translation);
-		if (!channel.rotations.empty())
-			t->setRotation(rotation);
-		if (!channel.scales.empty())
-			t->setScale(scale);
-		if (!channel.weights.empty())
-			currentWeights = calcInterpWeight(nodeIndex);
+		unsigned int index = channel->getTargetIndex();
+		auto attribType = channel->getAttributeType();
+		auto transform = nodes[index]->getComponent<Transform>();
+
+		if (attribType & AnimAttribute::CAMERA_MASK)
+			setCameraProperty(channel, cameras[index], attribType);
+		else if (attribType & AnimAttribute::MATERIAL_MASK)
+			setMaterialProperty(channel, materials[index], attribType);
+		else if (attribType & AnimAttribute::LIGHT_MASK)
+			setLightProperty(channel, lights[index], attribType);
+		else if (attribType & AnimAttribute::TRANSFORM_MASK)
+			setTransformProperty(channel, transform, attribType);
 	}
 }
 
@@ -363,4 +244,9 @@ void Animation::print()
 	//	<< " rot keys " << ch.rotations.size()
 	//	<< " scale keys " << ch.scales.size()
 	//	<< std::endl;
+}
+
+std::string Animation::getName()
+{
+	return name;
 }

@@ -4,6 +4,7 @@
 #pragma once
 
 #include <GL/glew.h>
+#include <iostream>
 
 namespace GL
 {
@@ -22,8 +23,9 @@ namespace GL
 		D24_S8,
 		RGB32F,
 		RGBA32F,
+		RG16F,
 		RGB16F,
-		RG16F
+		RGBA16F,
 	};
 
 	enum TextureFilter
@@ -98,6 +100,7 @@ namespace GL
 			dataFormat = GL_RGB;
 			break;
 		case RGBA8:
+		case RGBA16F:
 		case RGBA32F:
 		case SRGBA8:
 			dataFormat = GL_RGBA;
@@ -132,8 +135,8 @@ namespace GL
 			dataType = GL_UNSIGNED_BYTE;
 			break;
 		case RG16F:
-			dataType = GL_UNSIGNED_SHORT;
-			break;
+		case RGB16F:
+		case RGBA16F:
 		case DEPTH16:
 			dataType = GL_HALF_FLOAT;
 			break;
@@ -165,6 +168,7 @@ namespace GL
 		Texture()
 		{
 			glGenTextures(1, &id);
+			//std::cout << "tex ID: " << (int)id << std::endl;
 		}
 
 		~Texture()
@@ -172,7 +176,7 @@ namespace GL
 			glDeleteTextures(1, &id);
 		}
 
-		void upload(const void* data, int width, int height, TextureFormat format, GLenum target = Target)
+		void upload2D(const void* data, int width, int height, TextureFormat format, GLenum target = Target)
 		{
 			GLint internalFormat = getInternalFormat(format);
 			GLenum dataFormat = getDataFormat(format);
@@ -180,6 +184,18 @@ namespace GL
 
 			bind(); 
 			glTexImage2D(target, 0, internalFormat, width, height, 0, dataFormat, dataType, data);
+			unbind();
+		}
+
+		void upload3D(const void* data, int width, int height, int depth, TextureFormat format, GLenum target = Target)
+		{
+			GLint internalFormat = getInternalFormat(format);
+			GLenum dataFormat = getDataFormat(format);
+			GLenum dataType = getDataType(format);
+
+			bind();
+			//glTexImage2D(target, 0, internalFormat, width, height, 0, dataFormat, dataType, data);
+			glTexImage3D(target, 0, internalFormat, width, height, depth, 0, dataFormat, dataType, data);
 			unbind();
 		}
 
@@ -247,6 +263,7 @@ namespace GL
 			//bind();
 			//glTexParameteri(Target, GL_TEXTURE_WRAP_S, wrapMode);
 			//glTexParameteri(Target, GL_TEXTURE_WRAP_T, wrapMode);
+			//glTexParameteri(Target, GL_TEXTURE_WRAP_R, wrapMode);
 			//unbind();
 		}
 
@@ -293,6 +310,7 @@ namespace GL
 	typedef Texture<GL_TEXTURE_1D_ARRAY> Texture1DArray;
 	typedef Texture<GL_TEXTURE_2D_ARRAY> Texture2DArray;
 	typedef Texture<GL_TEXTURE_CUBE_MAP> TextureCubeMap;
+	typedef Texture<GL_TEXTURE_CUBE_MAP_ARRAY> TextureCubeMapArray;
 	typedef Texture<GL_TEXTURE_2D_MULTISAMPLE> Texture2DMultisample;
 	typedef Texture<GL_TEXTURE_2D_MULTISAMPLE_ARRAY> Texture2DMultisampleArray;
 
@@ -335,6 +353,14 @@ namespace GL
 		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	}
 
+	template<>
+	void Texture2DArray::setWrap(TextureWrap wrapS, TextureWrap wrapT, TextureWrap)
+	{
+		glBindTexture(GL_TEXTURE_2D, id);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
 }
 
 #endif // INCLUDED_GLTEXTURE

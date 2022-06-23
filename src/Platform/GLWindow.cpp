@@ -38,6 +38,21 @@ GLWindow::GLWindow(const char* title, unsigned int width, unsigned int height) :
 		return;
 	}
 
+	//GLint maxTexSize = 0;
+	//GLint maxTexArrayLayers = 0;
+	//GLint numTexUnits = 0;
+	//GLint numVertexAttr = 0;
+
+	//glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTexSize);
+	//glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &maxTexArrayLayers);
+	//glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &numTexUnits);
+	//glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &numVertexAttr);
+	//
+	//std::cout << "max. texture size: " << maxTexSize << std::endl;
+	//std::cout << "max. texture layers: " << maxTexArrayLayers << std::endl;
+	//std::cout << "max. texture units: " << numTexUnits << std::endl;
+	//std::cout << "max. vertex attributes: " << numVertexAttr << std::endl;
+
 	//GLint numExtensions = 0;
 	//glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
 	//for (GLint i = 0; i < numExtensions; i++)

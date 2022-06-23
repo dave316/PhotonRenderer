@@ -1,8 +1,6 @@
 #ifndef INCLUDED_GEOMETRY
 #define INCLUDED_GEOMETRY
 
-#define MORPH_TARGETS_2
-
 #pragma once
 
 #include <glm/glm.hpp>
@@ -19,25 +17,6 @@ struct Vertex
 	glm::vec4 tangent;
 	glm::vec4 boneIDs;
 	glm::vec4 boneWeights;
-#ifdef MORPH_TARGETS_2
-	glm::vec3 targetPosition0;
-	glm::vec3 targetNormal0;
-	glm::vec3 targetTangent0;
-	glm::vec3 targetPosition1;
-	glm::vec3 targetNormal1;
-	glm::vec3 targetTangent1;
-#endif
-
-#ifdef MORPH_TARGETS_8
-	glm::vec3 targetPosition0;
-	glm::vec3 targetPosition1;
-	glm::vec3 targetPosition2;
-	glm::vec3 targetPosition3;
-	glm::vec3 targetPosition4;
-	glm::vec3 targetPosition5;
-	glm::vec3 targetPosition6;
-	glm::vec3 targetPosition7;
-#endif
 
 	Vertex(glm::vec3 position = glm::vec3(0), 
 		glm::vec4 color = glm::vec4(1.0f), 
@@ -58,25 +37,7 @@ struct Vertex
 		boneIDs(boneIDs),
 		boneWeights(boneWeights)
 	{
-#ifdef MORPH_TARGETS_2
-		targetPosition0 = glm::vec3(0);
-		targetNormal0 = glm::vec3(0);
-		targetTangent0 = glm::vec3(0);
-		targetPosition1 = glm::vec3(0);
-		targetNormal1 = glm::vec3(0);
-		targetTangent1 = glm::vec3(0);
-#endif
 
-#ifdef MORPH_TARGETS_8
-		targetPosition0 = glm::vec3(0);
-		targetPosition1 = glm::vec3(0);
-		targetPosition2 = glm::vec3(0);
-		targetPosition3 = glm::vec3(0);
-		targetPosition4 = glm::vec3(0);
-		targetPosition5 = glm::vec3(0);
-		targetPosition6 = glm::vec3(0);
-		targetPosition7 = glm::vec3(0);
-#endif
 	}
 };
 
@@ -105,6 +66,10 @@ struct TriangleSurface
 {
 	std::vector<Vertex> vertices;
 	std::vector<TriangleIndices> triangles;
+	glm::vec3 minPoint;
+	glm::vec3 maxPoint;
+	bool calcNormals = false;
+	bool computeFlatNormals = false;
 
 	void addVertex(Vertex& v)
 	{
@@ -117,6 +82,9 @@ struct TriangleSurface
 
 	void calcSmoothNormals()
 	{
+		for (auto& v : vertices)
+			v.normal = glm::vec3(0);
+
 		for (auto& t : triangles)
 		{
 			Vertex& v0 = vertices[t.v0];
@@ -162,9 +130,8 @@ struct TriangleSurface
 		}
 	}
 
-	void calcTangentSpace()
+	void calcTangentSpace(unsigned int uvIndex = 0)
 	{
-		// TODO: calc tanget space on correct uv set
 		for (auto& t : triangles)
 		{
 			Vertex& v0 = vertices[t.v0];
@@ -174,9 +141,27 @@ struct TriangleSurface
 			glm::vec3 p0 = v0.position;
 			glm::vec3 p1 = v1.position;
 			glm::vec3 p2 = v2.position;
-			glm::vec2 uv0 = v0.texCoord0;
-			glm::vec2 uv1 = v1.texCoord0;
-			glm::vec2 uv2 = v2.texCoord0;
+			glm::vec2 uv0, uv1, uv2;
+
+			switch (uvIndex)
+			{
+			case 0:
+				uv0 = v0.texCoord0;
+				uv1 = v1.texCoord0;
+				uv2 = v2.texCoord0;
+				break;
+			case 1:
+				uv0 = v0.texCoord1;
+				uv1 = v1.texCoord1;
+				uv2 = v2.texCoord1;
+				break;
+			default:
+				std::cout << "warning uv index " << uvIndex << " is not supported using uvIndex=0." << std::endl;
+				uv0 = v0.texCoord0;
+				uv1 = v1.texCoord0;
+				uv2 = v2.texCoord0;
+				break;
+			} 
 
 			glm::vec3 e1 = p1 - p0;
 			glm::vec3 e2 = p2 - p0;

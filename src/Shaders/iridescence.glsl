@@ -57,7 +57,7 @@ vec3 evalIridescence(float outsideIOR, float eta2, float cosTheta1, float thinFi
 
     // First interface
     float R0 = IorToFresnel0(iridescenceIOR, outsideIOR);
-    float R12 = F_Schlick(cosTheta1, R0);
+    float R12 = F_Schlick(R0, 1.0, cosTheta1);
     float R21 = R12;
     float T121 = 1.0 - R12;
     float phi12 = 0.0;
@@ -67,7 +67,7 @@ vec3 evalIridescence(float outsideIOR, float eta2, float cosTheta1, float thinFi
     // Second interface
     vec3 baseIOR = Fresnel0ToIor(clamp(baseF0, 0.0, 0.9999)); // guard against 1.0
     vec3 R1 = IorToFresnel0(baseIOR, iridescenceIOR);
-    vec3 R23 = F_Schlick(cosTheta2, R1);
+    vec3 R23 = F_Schlick(R1, vec3(1.0), cosTheta2);
     vec3 phi23 = vec3(0.0);
     if (baseIOR[0] < iridescenceIOR) phi23[0] = PI;
     if (baseIOR[1] < iridescenceIOR) phi23[1] = PI;

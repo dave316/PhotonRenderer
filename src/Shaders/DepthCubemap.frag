@@ -1,17 +1,24 @@
-#version 450 core
+#version 460 core
 
+#define METAL_ROUGH_MATERIAL
+
+#include "utils.glsl"
 #include "material.glsl"
 #include "light.glsl"
 
-in vec3 wPosition;
-in vec2 fTexCoord0;
-in vec2 fTexCoord1;
+layout(location = 0) in vec3 wPosition;
+layout(location = 1) in vec2 fTexCoord0;
+layout(location = 2) in vec2 fTexCoord1;
 
 uniform int lightIndex;
 
 void main()
 {
+#ifdef METAL_ROUGH_MATERIAL
 	vec4 baseColor = getBaseColor(fTexCoord0, fTexCoord1);
+#else
+	vec4 baseColor = getDiffuseColor(fTexCoord0, fTexCoord1);
+#endif
 	float transparency = baseColor.a;
 	if(material.alphaMode == 1)
 		if(transparency < material.alphaCutOff)

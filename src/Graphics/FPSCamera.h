@@ -1,11 +1,11 @@
-#ifndef INCLUDED_CAMERA
-#define INCLUDED_CAMERA
+#ifndef INCLUDED_FPSCAMERA
+#define INCLUDED_FPSCAMERA
 
 #pragma once
 
 #include <glm/glm.hpp>
 
-class Camera
+class FPSCamera
 {
 private:
 	glm::vec3 position;
@@ -45,13 +45,13 @@ public:
 		float zFar;
 	};
 
-	Camera();
+	FPSCamera();
 	void init(glm::vec3 pos = glm::vec3(0.0f),
 		glm::vec3 direction = glm::vec3(0.0f, 0.0f, -1.0f),
 		glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
 		float fov = 60.0f,
 		float aspect = 4.0f / 3.0f,
-		float zNear = 0.1f,
+		float zNear = 0.01f,
 		float zFar = 1000.0f);
 
 	void setAspect(float aspect);
@@ -76,4 +76,4 @@ public:
 	void writeUniformData(UniformData& data);
 };
 
-#endif // INCLUDED_CAMERA
+#endif // INCLUDED_FPSCAMERA

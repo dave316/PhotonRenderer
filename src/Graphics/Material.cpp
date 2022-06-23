@@ -44,7 +44,7 @@ Material::Ptr getDefaultMaterial()
 	defaultMaterial->addProperty("material.alphaCutOff", 0.0f);
 	defaultMaterial->addProperty("material.alphaMode", 0);
 	defaultMaterial->addProperty("baseColorTex.use", false);
-	defaultMaterial->addProperty("pbrTex.use", false);
+	defaultMaterial->addProperty("metalRoughTex.use", false);
 	defaultMaterial->addProperty("normalTex.use", false);
 	defaultMaterial->addProperty("emissiveTex.use", false);
 	defaultMaterial->addProperty("occlusionTex.use", false);

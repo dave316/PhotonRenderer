@@ -1,6 +1,8 @@
 #ifndef INCLUDED_FONT
 #define INCLUDED_FONT
 
+#ifdef WITH_FREETYPE
+
 #pragma once
 
 #include <ft2build.h>
@@ -70,5 +72,7 @@ public:
 
 	typedef std::shared_ptr<Font> Ptr;
 };
+
+#endif
 
 #endif // INCLUDED_FONT

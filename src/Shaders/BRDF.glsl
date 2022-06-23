@@ -1,15 +1,3 @@
-//#define PI 3.1415926535897932384626433832795
-float PI = 3.14159265358979323846;
-
-float D_GGX_TR(float NdotH, float alpha)
-{
-	float a2 = alpha * alpha;
-	float NdotH2 = NdotH * NdotH;
-	float d = (NdotH2 * (a2 - 1.0) + 1.0);
-	return a2 / (PI * d * d);
-}
-
-// TODO: why is this distribution different??
 float D_GGX(float NdotH, float roughness)
 {
 	float a = NdotH * roughness;
@@ -67,24 +55,24 @@ vec3 Schlick2F0(vec3 f, vec3 F90, float VdotH)
 	return (f - F90 * x5) / 1.0 - x5;
 }
 
-float F_Schlick(float HdotV, float F0)
+float F_Schlick(float F0, float F90, float HoV)
 {
-	return max(F0 + (1.0 - F0) * pow(1.0 - HdotV, 5.0), F0);
+	return F0 + (F90 - F0) * pow(1.0 - HoV, 5.0);
 }
 
-vec3 F_Schlick(float HdotV, vec3 F0)
+vec3 F_Schlick(vec3 F0, vec3 F90, float HoV)
 {
-	return max(F0 + (vec3(1.0) - F0) * pow(1.0 - HdotV, 5.0), F0);
+	return F0 + (F90 - F0) * pow(1.0 - HoV, 5.0);
 }
 
-vec3 F_Schlick(vec3 F0, vec3 F90, float HdotV)
+vec3 F_Schlick_Rough(vec3 F0, float HoV, float roughness)
 {
-	return max(F0 + (F90 - F0) * pow(1.0 - HdotV, 5.0), F0);
+	return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - HoV, 5.0);
 }
 
-vec3 F_Schlick_Rough(float HdotV, vec3 F0, float roughness)
+vec3 F_Schlick_Rough(vec3 F0, vec3 F90, float HoV, float roughness)
 {
-	return max(F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - HdotV, 5.0), F0);
+	return F0 + (max(vec3(F90 - roughness), F0) - F0) * pow(1.0 - HoV, 5.0);
 }
 
 // https://github.com/KhronosGroup/glTF/tree/master/extensions/2.0/Khronos/KHR_materials_sheen
@@ -118,10 +106,15 @@ float V_Sheen(float NdotL, float NdotV, float sheenRoughness)
 	return clamp(sheenVisibility, 0.0, 1.0);
 }
 
+float V_Ashikhmin(float NdotL, float NdotV)
+{
+	return clamp(1.0 / (4.0 * (NdotL + NdotV - NdotL * NdotV)), 0.0, 1.0);
+}
+
 float D_Charlie(float sheenRoughness, float NdotH)
 {
-	float alphaG = sheenRoughness * sheenRoughness;
-	float invR = 1.0 / alphaG;
+	float alpha = max(sheenRoughness * sheenRoughness, 0.000001);
+	float invR = 1.0 / alpha;
 	float cos2h = NdotH * NdotH;
 	float sin2h = 1.0 - cos2h;
 	float sheenDistribution = (2.0 + invR) * pow(sin2h, invR * 0.5) / (2.0 * PI);
@@ -135,7 +128,19 @@ vec3 SpecularSheen(vec3 sheenColor, float sheenRoughness, float NdotL, float Ndo
 	return sheenColor * sheenDistribution * sheenVisibility;
 }
 
-vec3 SpecularGGXAnisotropic(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, vec3 t, vec3 b, float alpha, float specularWeight, float anisotropy, vec3 iridescenceFresnel, float iridescenceFactor)
+vec3 lambert(vec3 color)
+{
+	return color / PI;
+}
+
+float specularGGX(float NoL, float NoV, float NoH, float alpha)
+{
+	float V = V_GGX(NoL, NoV, alpha);
+	float D = D_GGX(NoH, alpha);
+	return V * D;
+}
+
+float specularGGXAnisotropic(vec3 n, vec3 l, vec3 v, vec3 t, vec3 b, float alpha, float anisotropy)
 {
 	vec3 h = normalize(l + v);
 	float NdotL = clamp(dot(n, l), 0.0, 1.0);
@@ -153,89 +158,26 @@ vec3 SpecularGGXAnisotropic(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, vec3 t, v
 	float at = max(alpha * (1.0 + anisotropy), 0.00001);
 	float ab = max(alpha * (1.0 - anisotropy), 0.00001);
 
-	//vec3 F = F_Schlick(HdotV, F0);
-	vec3 F = mix(F_Schlick(F0, F90, HdotV), iridescenceFresnel, iridescenceFactor);
-	//vec3 F = F_Schlick(F0, F90, HdotV);
 	float V = V_GGX_Anisotropic(NdotL, NdotV, BdotV, TdotV, TdotL, BdotL, at, ab);
 	float D = D_GGX_Anisotropic(NdotH, TdotH, BdotH, at, ab);
 
-	return specularWeight * F * V * D;
+	return V * D;
 }
 
-vec3 SpecularGGXIridescence(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, float alpha, float specularWeight, vec3 iridescenceFresnel, float iridescenceFactor)
+vec3 getPunctualRadianceTransmission(vec3 normal, vec3 view, vec3 pointToLight, float alphaRoughness,
+	vec3 f0, vec3 f90, vec3 baseColor, float ior)
 {
-	vec3 h = normalize(l + v);
-	float NdotL = clamp(dot(n, l), 0.0, 1.0);
-	float NdotV = clamp(dot(n, v), 0.0, 1.0);
-	float NdotH = clamp(dot(n, h), 0.0, 1.0);
-	float HdotV = clamp(dot(h, v), 0.0, 1.0);
+	float transmissionRougness = applyIorToRoughness(alphaRoughness, ior);
 
-	vec3 F = mix(F_Schlick(F0, F90, HdotV), iridescenceFresnel, iridescenceFactor);
-	float V = V_GGX(NdotL, NdotV, alpha);
-	float D = D_GGX_TR(NdotH, alpha);
+	vec3 n = normalize(normal);
+	vec3 v = normalize(view);
+	vec3 l = normalize(pointToLight);
+	vec3 l_mirror = normalize(reflect(l, n));
+	vec3 h = normalize(l_mirror + v);
 
-	return specularWeight * F * V * D;
-}
+	float D = D_GGX(clamp(dot(n, h), 0.0, 1.0), transmissionRougness);
+	vec3 F = F_Schlick(f0, f90, clamp(dot(v, h), 0.0, 1.0));
+	float Vis = V_GGX(clamp(dot(n, l_mirror), 0.0, 1.0), clamp(dot(n, v), 0.0, 1.0), transmissionRougness);
 
-vec3 CookTorrance(vec3 F0, vec3 F90, vec3 n, vec3 l, vec3 v, float alpha, float specularWeight)
-{
-	vec3 h = normalize(l + v);
-	float NdotL = clamp(dot(n, l), 0.0, 1.0);
-	float NdotV = clamp(dot(n, v), 0.0, 1.0);
-	float NdotH = clamp(dot(n, h), 0.0, 1.0);
-	float HdotV = clamp(dot(h, v), 0.0, 1.0);
-
-	vec3 F = F_Schlick(F0, F90, HdotV);
-	float V = V_GGX(NdotL, NdotV, alpha);
-	float D = D_GGX_TR(NdotH, alpha);
-	
-	return specularWeight * F * V * D;
-}
-
-vec3 Lambert(vec3 F0, vec3 l, vec3 v, vec3 color, float specularWeight)
-{
-	vec3 h = normalize(l + v);
-	float HdotV = clamp(dot(h, v), 0.0, 1.0);
-
-	vec3 F = F_Schlick(HdotV, F0);
-	
-	return (1.0 - specularWeight * F) * color / PI;
-}
-
-vec3 importanceSampleGGX(vec2 x, vec3 n, float roughness)
-{
-	float a = roughness * roughness;
-	float phi = 2.0 * PI * x.x;
-	float cosTheta = sqrt((1.0 - x.y) / (1.0 + (a * a - 1.0) * x.y));
-	float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
-
-	vec3 h;
-	h.x = cos(phi) * sinTheta;
-	h.y = sin(phi) * sinTheta;
-	h.z = cosTheta;
-
-	vec3 up = abs(n.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-	vec3 tangent = normalize(cross(up, n));
-	vec3 bitangent = cross(n, tangent);
-	vec3 wSample = tangent * h.x + bitangent * h.y + n * h.z;
-	return normalize(wSample);
-}
-
-vec3 importanceSampleCharlie(vec2 x, vec3 n, float roughness)
-{
-	float a = roughness * roughness;
-	float phi = 2.0 * PI * x.x;
-	float sinTheta = pow(x.y, a / (2.0 * a + 1.0));
-	float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
-
-	vec3 h;
-	h.x = cos(phi) * sinTheta;
-	h.y = sin(phi) * sinTheta;
-	h.z = cosTheta;
-
-	vec3 up = abs(n.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
-	vec3 tangent = normalize(cross(up, n));
-	vec3 bitangent = cross(n, tangent);
-	vec3 wSample = tangent * h.x + bitangent * h.y + n * h.z;
-	return normalize(wSample);
+	return (1 - F) * baseColor * D * Vis;
 }
