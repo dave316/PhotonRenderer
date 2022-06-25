@@ -1,5 +1,7 @@
 #include "Renderer.h"
 
+#include <Core/Animator.h>
+
 #include <Graphics/Framebuffer.h>
 #include <Graphics/MeshPrimitives.h>
 #include <Graphics/Shader.h>

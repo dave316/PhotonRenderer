@@ -2,7 +2,7 @@
 
 int main()
 {
-	Application app("GLTF Viewer", 1920, 1080);
+	Application app("GLTF Viewer", 1600, 900);
 	if (app.init())
 	{
 		app.loop();

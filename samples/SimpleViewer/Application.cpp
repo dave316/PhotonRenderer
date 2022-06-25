@@ -435,11 +435,15 @@ glm::vec2 hammersley(unsigned int i, float iN)
 
 void Application::initShadowScene()
 {
+#ifdef WITH_ASSIMP
 	std::string assetPath = "../../../../assets";
 	IO::AssimpImporter importer;
 	auto model = importer.importModel(assetPath + "/plane.obj");
 	model->getComponent<Transform>()->setLocalScale(glm::vec3(25));
 	scene->addEntity("plane", model);
+#else
+	std::cout << "not supported file extension" << std::endl;
+#endif
 
 	//std::string name = "IridescenceSuzanne";
 	//std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
@@ -565,7 +569,11 @@ void Application::handleDrop(int count, const char** paths)
 		if (ext.compare("gltf") == 0 || ext.compare("glb") == 0)
 			scene->loadModelGLTF(name, fullPath);
 		else
+#ifdef WITH_ASSIMP
 			scene->loadModelASSIMP(name, fullPath);
+#else
+			std::cout << "not supported file extension: " << ext << std::endl;
+#endif
 	}
 
 	renderer.initLights(scene);

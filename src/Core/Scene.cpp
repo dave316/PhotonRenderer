@@ -337,7 +337,7 @@ bool Scene::loadModelGLTF(std::string name, std::string path)
 	return true;
 }
 
-
+#ifdef WITH_ASSIMP
 bool Scene::loadModelASSIMP(std::string name, std::string path)
 {
 	IO::AssimpImporter importer;
@@ -347,6 +347,7 @@ bool Scene::loadModelASSIMP(std::string name, std::string path)
 	addEntity(name, model);
 	return true;
 }
+#endif
 
 void Scene::addEntity(std::string name, Entity::Ptr entity)
 {

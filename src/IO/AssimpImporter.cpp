@@ -1,3 +1,5 @@
+#ifdef WITH_ASSIMP
+
 #include "AssimpImporter.h"
 
 #include <IO/Image/ImageDecoder.h>
@@ -168,34 +170,58 @@ namespace IO
 			{
 				const aiNodeAnim* pNodeAnim = pAnim->mChannels[j];
 				std::string nodeName = pNodeAnim->mNodeName.C_Str();
+				unsigned int targetNodeIndex = nodeIndices[nodeName];
 
 				//Channel channel;
+				auto translationChannel = Channel<glm::vec3>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_POSITION, targetNodeIndex);
 				for (int k = 0; k < pNodeAnim->mNumPositionKeys; k++)
 				{
 					float time = pNodeAnim->mPositionKeys[k].mTime / ticks;
-					std::vector<glm::vec3> translationValues;
-					translationValues.push_back(toVec3(pNodeAnim->mPositionKeys[k].mValue));
+					glm::vec3 position = toVec3(pNodeAnim->mPositionKeys[k].mValue);
+					std::vector<glm::vec3> positions;
+					positions.push_back(position);
+					translationChannel->addValue(time, positions);
+
+					//std::vector<glm::vec3> translationValues;
+					//translationValues.push_back(toVec3(pNodeAnim->mPositionKeys[k].mValue));
 					//channel.positions.push_back(std::make_pair(time, translationValues));
 				}
 
+				auto rotationChannel = Channel<glm::quat>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_ROTATION, targetNodeIndex);
 				for (int k = 0; k < pNodeAnim->mNumRotationKeys; k++)
 				{
 					float time = pNodeAnim->mRotationKeys[k].mTime / ticks;
-					std::vector<glm::quat> rotationValues;
-					rotationValues.push_back(toQuat(pNodeAnim->mRotationKeys[k].mValue));
+					glm::quat rotation = toQuat(pNodeAnim->mRotationKeys[k].mValue);
+					std::vector<glm::quat> rotations;
+					rotations.push_back(rotation);
+					rotationChannel->addValue(time, rotations);
+
+					//float time = pNodeAnim->mRotationKeys[k].mTime / ticks;
+					//std::vector<glm::quat> rotationValues;
+					//rotationValues.push_back(toQuat(pNodeAnim->mRotationKeys[k].mValue));
 					//channel.rotations.push_back(std::make_pair(time, rotationValues));
 				}
 
+				auto scaleChannel = Channel<glm::vec3>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_SCALE, targetNodeIndex);
 				for (int k = 0; k < pNodeAnim->mNumScalingKeys; k++)
 				{
 					float time = pNodeAnim->mScalingKeys[k].mTime / ticks;
+					glm::vec3 scale = toVec3(pNodeAnim->mScalingKeys[k].mValue);
 					std::vector<glm::vec3> scales;
-					scales.push_back(toVec3(pNodeAnim->mScalingKeys[k].mValue));
+					scales.push_back(scale);
+					scaleChannel->addValue(time, scales);
+
+					//std::vector<glm::vec3> scales;
+					//scales.push_back(toVec3(pNodeAnim->mScalingKeys[k].mValue));
 					//channel.scales.push_back(std::make_pair(time, scales));
 				}
 
-				unsigned int targetNodeIndex = nodeIndices[nodeName];
+				//unsigned int targetNodeIndex = nodeIndices[nodeName];
 				//animation->addChannel(targetNodeIndex, channel);
+
+				animation->addChannel(translationChannel);
+				animation->addChannel(rotationChannel);
+				animation->addChannel(scaleChannel);
 			}
 			animations.push_back(animation);
 		}
@@ -472,8 +498,8 @@ namespace IO
 					const aiBone* pBone = pMesh->mBones[j];
 					std::string boneName(pBone->mName.C_Str());
 
-					if (jointIndices.find(boneName) == jointIndices.end()) // already processed this bone, continue
-						continue;
+					//if (jointIndices.find(boneName) == jointIndices.end()) // already processed this bone, continue
+					//	continue;
 
 					unsigned int jointIndex = jointIndices[boneName];
 					for (int k = 0; k < pBone->mNumWeights; k++)
@@ -534,7 +560,8 @@ namespace IO
 	{
 		std::string name(pNode->mName.C_Str());
 		auto entity = Entity::create(name, parent);
-		entity->getComponent<Transform>()->setLocalTransform(toMat4(pNode->mTransformation));
+		auto t = entity->getComponent<Transform>();
+		t->setLocalTransform(toMat4(pNode->mTransformation));
 
 		std::vector<Primitive::Ptr> nodeMeshes;
 		for (int i = 0; i < pNode->mNumMeshes; i++)
@@ -578,3 +605,5 @@ namespace IO
 		return traverse(pScene->mRootNode, nullptr);
 	}
 }
+
+#endif

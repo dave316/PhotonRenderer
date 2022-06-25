@@ -146,8 +146,12 @@ namespace IO
 					}
 					else
 					{
+#ifdef WITH_ASSIMP
 						IO::AssimpImporter importer;
 						entity = importer.importModel(fn);
+#else
+						std::cout << "not supported file extension: " << ext << std::endl;
+#endif
 					}
 				}
 				else

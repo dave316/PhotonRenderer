@@ -64,7 +64,9 @@ public:
 	void initLightProbe(EnvironmentMap::Ptr lightProbe, std::map<std::string, Shader::Ptr>& shaders);
 	void initLights(std::map<std::string, Shader::Ptr>& shaders);
 	void initShadowMaps();
+#ifdef WITH_ASSIMP
 	bool loadModelASSIMP(std::string name, std::string path);
+#endif
 	bool loadModelGLTF(std::string name, std::string path);
 	void addEntity(std::string name, Entity::Ptr entity);
 	void addLight(std::string name);

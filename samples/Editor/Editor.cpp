@@ -137,7 +137,11 @@ void Editor::handleDrop(int count, const char** paths)
 		if (ext.compare("gltf") == 0 || ext.compare("glb") == 0)
 			scene->loadModelGLTF(name, fullPath);
 		else
+#ifdef WITH_ASSIMP
 			scene->loadModelASSIMP(name, fullPath);
+#else
+			std::cout << "not supported file extension: " << ext << std::endl;
+#endif
 	}
 
 	renderer.initLights(scene);

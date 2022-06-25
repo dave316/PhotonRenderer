@@ -24,7 +24,7 @@ namespace IO
 			aiProcess_CalcTangentSpace |
 			aiProcess_FindInstances |
 			aiProcess_OptimizeMeshes |
-			aiProcess_JoinIdenticalVertices |
+			//aiProcess_JoinIdenticalVertices |
 			aiProcess_ImproveCacheLocality |
 			//aiProcess_PreTransformVertices |
 			aiProcess_SortByPType |

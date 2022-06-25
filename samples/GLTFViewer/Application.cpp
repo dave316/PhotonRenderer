@@ -36,7 +36,7 @@ bool Application::init()
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	// TODO: check if font file available first.....
 	std::string fontPath = assetPath + "/Fonts/arial.ttf";
-	io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 28);
+	io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 20);
 	ImGui::StyleColorsDark();
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -220,7 +220,11 @@ void Application::handleDrop(int count, const char** paths)
 		if (ext.compare("gltf") == 0 || ext.compare("glb") == 0)
 			scene->loadModelGLTF(name, fullPath);
 		else
+#ifdef WITH_ASSIMP
 			scene->loadModelASSIMP(name, fullPath);
+#else
+			std::cout << "not supported file extension: " << ext << std::endl;
+#endif
 		modelInfo = scene->getModelInfo();
 		renderInfo = scene->getRenderInfo();
 	}
