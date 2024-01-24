@@ -10,25 +10,29 @@
 #include <Graphics/Skin.h>
 #include <Graphics/Shader.h>
 
-//struct RenderPrimitive
-//{
-//	Mesh::Ptr mesh;
-//	std::vector<Material::Ptr> materials;
-//	unsigned int materialIndex = 0;
-//	bool computeFlatNormals = false;
-//
-//	Material::Ptr getMaterial()
-//	{
-//		if (materialIndex < materials.size())
-//			return materials[materialIndex];
-//	}
-//
-//	void switchMaterial(unsigned int materialIndex)
-//	{
-//		if (materialIndex < materials.size())
-//			this->materialIndex = materialIndex;
-//	}
-//};
+struct ModelUniformData
+{
+	glm::mat4 M;
+	glm::mat4 N;
+	int animMode = 0;
+	//glm::vec3 padding;
+};
+
+struct IBLUniformData
+{
+	int diffuseMode;
+	int specularProbeIndex;
+	int lightMapIndex;
+	int padding;
+	glm::vec4 lightMapST;
+	glm::vec4 sh[9];
+};
+
+enum RenderType
+{
+	OPAQUE = 0,
+	TRANSPARENT = 1
+};
 
 class Renderable : public Component
 {
@@ -36,24 +40,55 @@ class Renderable : public Component
 	Skin::Ptr skin;
 	bool skinnedMesh = false;
 	bool morphTagets = false;
-		
+	bool enabled = true;
+
+	int bufferOffset = 0;
+	int diffuseMode = 0; // 0 - lightprobe(cubemap), 1 - lightprobe(SH), 2 - lightmap
+	int lightMapIndex = -1;
+	glm::vec2 lightMapOffset = glm::vec2(0);
+	glm::vec2 lightMapScale = glm::vec2(0);
+
+	std::string reflName = "";
+	int specularProbeIndex = 0;
+	std::vector<glm::vec3> sh9;
+
+	RenderType type;
+	unsigned int renderPriority;
+
 public:
-	Renderable() {}
+	Renderable(RenderType type = RenderType::OPAQUE) : type(type), renderPriority(0) {}
 	~Renderable();
 	void setMesh(Mesh::Ptr mesh);
-	void render(Shader::Ptr shaders);
+	void render(Shader::Ptr shader, bool useShader = false);
 	void switchMaterial(int materialIndex);
 	void setSkin(Skin::Ptr skin);
+	void setEnabled(bool enabled);
 	bool isSkinnedMesh();
 	bool useMorphTargets();
-	bool useBlending();
-	bool isTransmissive();
-	std::string getShader();
+	bool isEnabled();
+	void setPriority(unsigned int priority);
+	void setType(RenderType type);
+	void setDiffuseMode(int mode);
+	void setLightMapIndex(int mode);
+	void setLightMapST(glm::vec2 offsect, glm::vec2 scale);
+	void setReflectionProbe(std::string name, int index);
+	void setProbeSH9(std::vector<glm::vec3>& sh9);
+	void setOffset(int offset);
+	void writeUniformData(IBLUniformData& data);
 	std::vector<float> getWeights();
 	void computeJoints(std::vector<Entity::Ptr>& nodes);
 	Mesh::Ptr getMesh();
 	Skin::Ptr getSkin();
-	AABB getBoundingBox();
+	Box getBoundingBox();
+	glm::vec2 getLMOffset();
+	glm::vec2 getLMScale();
+	int getLMIndex();
+	int getRPIndex();
+	int getDiffuseMode();
+	std::string getReflName();
+	std::vector<glm::vec3> getSH9();
+	unsigned int getPriority();
+	RenderType  getType();
 	typedef std::shared_ptr<Renderable> Ptr;
 	static Ptr create()
 	{

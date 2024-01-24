@@ -6,7 +6,7 @@
 #include "Component.h"
 
 #include <Graphics/Shader.h>
-#include <Graphics/Geometry.h>
+#include <Math/Shapes.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -26,10 +26,11 @@ private:
 	// world transformations
 	glm::vec3 position;
 	glm::quat rotation;
+	glm::vec3 scale;
 	glm::mat4 transform;
 	glm::mat3 normalTransform;
 	
-	AABB boundingBox;
+	Box boundingBox;
 
 public:
 	Transform();
@@ -43,8 +44,8 @@ public:
 	void setUniforms(Shader::Ptr shader);
 	void translate(glm::vec3 t);
 	void rotate(float angle, glm::vec3 axis);
-	void setBounds(AABB& aabb);
-	AABB getBounds();
+	void setBounds(Box& aabb);
+	Box getBounds();
 
 	glm::vec3 getLocalPosition();
 	glm::quat getLocalRotation();
@@ -52,7 +53,9 @@ public:
 	glm::mat4 getLocalTransform();
 	glm::vec3 getPosition();
 	glm::quat getRotation();
+	glm::vec3 getScale();
 	glm::mat4 getTransform();
+	glm::mat3 getNormalMatrix();
 };
 
 #endif // INCLUDED_TRANSFORM

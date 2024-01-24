@@ -13,7 +13,6 @@ vec4 getTexel(in TextureInfo info, vec2 uv0, vec2 uv1)
 	return texture2D(info.tSampler, uv.xy);
 }
 
-#ifdef METAL_ROUGH_MATERIAL
 struct PBRMetalRoughMaterial
 {
 	// PBR base material
@@ -25,6 +24,15 @@ struct PBRMetalRoughMaterial
 	float emissiveStrength;
 	int alphaMode;
 	float alphaCutOff;
+	float specularWeight;
+
+#ifdef POM
+	float scale;
+	float refPlane;
+	float curvFix;
+	float curvatureU;
+	float curvatureV;
+#endif
 
 #ifdef SHEEN // sheen
 	vec3 sheenColorFactor;
@@ -72,6 +80,11 @@ struct PBRMetalRoughMaterial
 };
 uniform PBRMetalRoughMaterial material;
 
+//layout(std140, binding = 2) uniform MaterialUBO
+//{
+//	PBRMetalRoughMaterial material;
+//};
+
 // PBR base material textures
 uniform TextureInfo baseColorTex;
 uniform TextureInfo normalTex;
@@ -79,18 +92,108 @@ uniform TextureInfo metalRoughTex;
 uniform TextureInfo emissiveTex;
 uniform TextureInfo occlusionTex;
 
+#ifdef POM
+uniform TextureInfo heightTex;
+// tf can we reduce the parameters please??
+vec2 pom(vec2 uv, vec2 dx, vec2 dy, vec3 wNormal, vec3 wView, vec3 tViewDir, int minSamples, int maxSamples, float parallax, float refPlane, vec2 curv)
+{
+	vec3 result = vec3(0);
+	int stepIndex = 0;
+	int numSteps = int(mix(float(maxSamples), float(minSamples), float(dot(wNormal, wView))));
+	float layerHeight = 1.0 / numSteps;
+	vec2 plane = parallax * (tViewDir.xy / tViewDir.z);
+	uv += refPlane * plane;
+	vec2 deltaTex = -plane * layerHeight;
+	vec2 prevTexOffset = vec2(0);
+	float prevRayZ = 1.0f;
+	float prevHeight = 0.0f;
+	vec2 currTexOffset = deltaTex;
+	float currRayZ = 1.0f - layerHeight;
+	float currHeight = 0.0f;
+	float intersection = 0.0f;
+	vec2 finalTexOffset = vec2(0);
+	while(stepIndex < numSteps + 1)
+	{
+		// what does the curv parameter do??
+		result.z = dot(curv, currTexOffset * currTexOffset);
+		currHeight = textureGrad(heightTex.tSampler, uv + currTexOffset, dx, dy).r * (1 - result.z);
+		if(currHeight > currRayZ)
+		{
+			stepIndex = numSteps + 1;
+		}
+		else
+		{
+			stepIndex++;
+			prevTexOffset = currTexOffset;
+			prevRayZ = currRayZ;
+			prevHeight = currHeight;
+			currTexOffset += deltaTex;
+			currRayZ -= layerHeight * (1 - result.z) * (1 + material.curvFix);
+		}
+	}
+	int sectionSteps = 10;
+	int sectionIndex = 0;
+	float newZ = 0;
+	float newHeight = 0;
+	while(sectionIndex < sectionSteps)
+	{
+		intersection = (prevHeight - prevRayZ) / (prevHeight - currHeight + currRayZ - prevRayZ);
+		finalTexOffset = prevTexOffset + intersection * deltaTex;
+		newZ = prevRayZ - intersection * layerHeight;
+		newHeight = textureGrad(heightTex.tSampler, uv + finalTexOffset, dx, dy).r;
+		if(newHeight > newZ)
+		{
+			currTexOffset = finalTexOffset;
+			currHeight = newHeight;
+			currRayZ = newZ;
+			deltaTex = intersection * deltaTex;
+			layerHeight = intersection * layerHeight;
+		}
+		else
+		{
+			prevTexOffset = finalTexOffset;
+			prevHeight = newHeight;
+			prevRayZ = newZ;
+			deltaTex = (1 - intersection) * deltaTex;
+			layerHeight = (1 - intersection) * layerHeight;
+		}
+		sectionIndex++;
+	}
+	if(result.z > 1)
+		discard;
+	return uv + finalTexOffset;
+}
+#endif
+
 vec4 getBaseColor(vec2 uv0, vec2 uv1)
 {
 	vec4 baseColor = material.baseColorFactor;
+#ifdef POM
+	if (baseColorTex.use)
+	{
+		vec2 dx = dFdx(uv1);
+		vec2 dy = dFdy(uv1);
+		vec2 uv = vec2(baseColorTex.uvTransform * vec3(uv0, 1.0));
+		baseColor *= textureGrad(baseColorTex.tSampler, uv, dx, dy);
+	}
+#else
 	if (baseColorTex.use)
 		baseColor *= getTexel(baseColorTex, uv0, uv1);
+#endif
 	return baseColor;
 }
 
 vec3 getNormal(vec2 uv0, vec2 uv1)
 {
+#ifdef pom
+	vec2 dx = dFdx(uv1);
+	vec2 dy = dFdy(uv1);
+	vec3 normal = textureGrad(normalTex.tSampler, uv0, dx, dy).rgb * 2.0 - 1.0;
+	normal *= vec3(material.normalScale, material.normalScale, 1.0);
+#else
 	vec3 normal = getTexel(normalTex, uv0, uv1).rgb * 2.0 - 1.0;
 	normal *= vec3(material.normalScale, material.normalScale, 1.0);
+#endif
 	return normalize(normal);
 }
 
@@ -115,11 +218,26 @@ vec3 getEmission(vec2 uv0, vec2 uv1)
 vec3 getPBRValues(vec2 uv0, vec2 uv1)
 {
 	vec3 orm = vec3(material.occlusionStrength, material.roughnessFactor, material.metallicFactor);
+#ifdef POM
+	if (metalRoughTex.use)
+	{
+		vec2 dx = dFdx(uv1);
+		vec2 dy = dFdy(uv1);
+		orm *= vec3(1.0, textureGrad(metalRoughTex.tSampler, uv0, dx, dy).gb);
+	}
+	if (occlusionTex.use)
+	{
+		vec2 dx = dFdx(uv1);
+		vec2 dy = dFdy(uv1);
+		orm.r = 1.0 + orm.r * (textureGrad(occlusionTex.tSampler, uv0, dx, dy).r - 1.0);
+	}
+#else
 	if (metalRoughTex.use)
 		orm *= vec3(1.0, getTexel(metalRoughTex, uv0, uv1).gb);
 	if (occlusionTex.use)
 		orm.r = 1.0 + orm.r * (getTexel(occlusionTex, uv0, uv1).r - 1.0);
-	return orm;
+#endif
+	return vec3(orm.r, orm.g, orm.b);
 }
 
 // PBR extensions material textures
@@ -252,67 +370,3 @@ vec3 getAnisotropyDirection(vec2 uv0, vec2 uv1)
 	return direction;
 }
 #endif
-
-#else // SPEC_GLOSS_MATERIAL
-struct PBRSpecGlossMaterial
-{
-	vec4 diffuseFactor;
-	vec3 specularFactor;
-	float glossFactor;
-	float occlusionStrength;
-	vec3 emissiveFactor;
-	float emissiveStrength;
-	int alphaMode;
-	float alphaCutOff;
-
-	float normalScale;
-	bool unlit;
-};
-uniform PBRSpecGlossMaterial material;
-
-uniform TextureInfo diffuseTex;
-uniform TextureInfo specGlossTex;
-uniform TextureInfo normalTex;
-uniform TextureInfo emissiveTex;
-uniform TextureInfo occlusionTex;
-
-vec4 getDiffuseColor(vec2 uv0, vec2 uv1)
-{
-	vec4 diffuseColor = material.diffuseFactor;
-	if (diffuseTex.use)
-		diffuseColor *= getTexel(diffuseTex, uv0, uv1);
-	return diffuseColor;
-}
-
-vec4 getSpecGloss(vec2 uv0, vec2 uv1)
-{
-	vec4 specGlossColor = vec4(material.specularFactor, material.glossFactor);
-	if (specGlossTex.use)
-		specGlossColor *= getTexel(specGlossTex, uv0, uv1);
-	return specGlossColor;
-}
-
-vec3 getNormal(vec2 uv0, vec2 uv1)
-{
-	vec3 normal = getTexel(normalTex, uv0, uv1).rgb * 2.0 - 1.0;
-	normal *= vec3(material.normalScale, material.normalScale, 1.0);
-	return normalize(normal);
-}
-
-vec3 getEmission(vec2 uv0, vec2 uv1)
-{
-	vec3 emission = material.emissiveFactor;
-	if (emissiveTex.use)
-		emission *= getTexel(emissiveTex, uv0, uv1).rgb;
-	return emission * material.emissiveStrength;
-}
-
-vec3 getPBRValues(vec2 uv0, vec2 uv1)
-{
-	vec3 orm = vec3(material.occlusionStrength, 0.0, 0.0);
-	if (occlusionTex.use)
-		orm.r = 1.0 + orm.r * (getTexel(occlusionTex, uv0, uv1).r - 1.0);
-	return orm;
-}
-#endif
-

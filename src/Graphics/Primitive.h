@@ -8,6 +8,7 @@
 
 #include "Material.h"
 #include "Geometry.h"
+#include <Math/Shapes.h>
 
 #include <memory>
 #include <string>
@@ -22,42 +23,51 @@ private:
 	GL::VertexArray vao;
 	GLenum topology;
 
-	AABB boundingBox;
+	Box boundingBox;
 	TriangleSurface surface;
 	Texture2DArray::Ptr morphTex = nullptr;
 
-	Material::Ptr material;
-	std::map<int, Material::Ptr> variants;
 	bool computeFlatNormals = false;
+	unsigned int numDrawCalls = 0;
+	unsigned int id;
+	static unsigned int globalIDCount;
+
+	bool isInstanced = false;
+	unsigned int numInstances = 0;
 
 	Primitive(const Primitive&) = delete;
 	Primitive& operator=(const Primitive&) = delete;
 public:
 
-	Primitive(const std::string& name, TriangleSurface& surface, GLenum topology, Material::Ptr material);
+	Primitive(const std::string& name, TriangleSurface& surface, GLenum topology);
 	~Primitive();
 	void flipWindingOrder();
 	void updatGeometry(TriangleSurface& surface);
-	void setMaterial(Material::Ptr material);
+	void preTransform(const glm::mat4& T);
 	void setMorphTarget(Texture2DArray::Ptr morphTex);
-	void addVariant(int index, Material::Ptr material);
 	void setFlatNormals(bool flatNormals);
 	void setBoundingBox(glm::vec3& minPoint, glm::vec3& maxPoint);
-	void switchVariant(int index);
+	void setBoundingBox(Box& boundingBox);
+	void setInstances(unsigned int num);
 	void draw();
+	void reset();
 	bool getFlatNormals();
+	bool isUsingInstancing();
+	int getNumDrawCalls();
 	int numVertices();
 	int numTriangles();
-	AABB getBoundingBox();
-	Material::Ptr getMaterial();
+	unsigned int getID();
+	Box getBoundingBox();
+	TriangleSurface getSurface();
+	GLuint getVaoID();
 	std::string getName()
 	{
 		return name;
 	}
 	typedef std::shared_ptr<Primitive> Ptr;
-	static Ptr create(const std::string& name, TriangleSurface& surface, GLenum topology, Material::Ptr material)
+	static Ptr create(const std::string& name, TriangleSurface& surface, GLenum topology)
 	{
-		return std::make_shared<Primitive>(name, surface, topology, material);
+		return std::make_shared<Primitive>(name, surface, topology);
 	}
 };
 

@@ -12,12 +12,24 @@ layout(location = 6) in mat3 fTBN;
 
 layout(location = 0) out vec4 fragColor;
 
+struct ModelData
+{
+	mat4 M;
+	mat4 N;
+	int animationMode; // 0 - no animation, 1 - vertex skinning, 2 - morph targets
+};
+
+layout(std140, binding = 2) uniform ModelUBO
+{
+	ModelData model;
+};
+
 #include "Utils.glsl"
 #include "Camera.glsl"
+#include "IBL.glsl"
 #include "Material.glsl"
 #include "Light.glsl"
 #include "BRDF.glsl"
-#include "IBL.glsl"
 #include "HDR.glsl"
 
 #ifdef IRIDESCENCE
@@ -258,7 +270,7 @@ vec3 anisotropyDirection = vec3(0);
 			else
 				shadow = getPointShadow(wPosition, i);
 
-			vec3 intensity = getIntensity(light) * getAttenuation(light, lightDir);
+			vec3 intensity = getIntensity(light, wPosition, n, lightDir) * getAttenuation(light, lightDir);
 			vec3 luminance = intensity * NoL * shadow;
 
 			vec3 F = F_Schlick(F0, F90, HoV);
@@ -299,7 +311,7 @@ vec3 anisotropyDirection = vec3(0);
 //			vec3 l_mirror = normalize(l + 2.0 * n * dot(-l, n));
 //			vec3 h = normalize(l_mirror + v);
 //			vec3 F = F_Schlick(F0, F90, clamp(dot(v, h), 0.0, 1.0));
-			vec3 intensity = getIntensity(light) * getAttenuation(light, lightDir);
+			vec3 intensity = getIntensity(light, wPosition, n, lightDir) * getAttenuation(light, lightDir);
 			vec3 transmittedLight = intensity * abs(dot(n,l)) * getPunctualRadianceTransmission(n, v, l, alphaRoughness, F0, vec3(1.0), c_diffuse, material.ior);
 			//f_transmission += transmittedLight;
 			f_transmission += transmissionFactor * applyVolumeAttenuation(transmittedLight, length(transmissionRay), material.attenuationDistance, material.attenuationColor);

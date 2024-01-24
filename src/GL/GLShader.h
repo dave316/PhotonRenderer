@@ -56,6 +56,7 @@ namespace GL
 	typedef Shader<GL_VERTEX_SHADER> VertexShader;
 	typedef Shader<GL_FRAGMENT_SHADER> FragmentShader;
 	typedef Shader<GL_GEOMETRY_SHADER> GeometryShader;
+	typedef Shader<GL_COMPUTE_SHADER> ComputeShader;
 }
 
 #endif // INCLUDED_GLSHADER

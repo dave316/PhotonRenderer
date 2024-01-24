@@ -15,6 +15,7 @@ class Application
 	InputHandler input;
 	Renderer renderer;
 	Scene::Ptr scene;
+
 	bool animate = true;
 
 	Application(const Application&) = delete;
@@ -22,11 +23,13 @@ class Application
 public:
 	Application(const char* title, unsigned int width, unsigned int height);
 	bool init();
-	void initScene();
-	void initShadowScene();
 	void initCamera();
+	void initButterflyScene();
+	void initLightTestScene();
+	void initIESTestScene();
 	void setupInput();
-	void saveReflectionProbe();
+	bool loadGLTFModel(const std::string& name, const std::string& fullpath);
+	bool loadModelASSIMP(std::string name, std::string path);
 	void handleDrop(int count, const char** paths);
 	void loop();
 	void shutdown();

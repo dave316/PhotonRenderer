@@ -87,6 +87,57 @@ glm::mat3 Texture2D::getUVTransform()
 	return T * R * S;
 }
 
+Texture3D::Texture3D(unsigned int width, unsigned int height, unsigned depth, GL::TextureFormat format) :
+	width(width),
+	height(height),
+	depth(depth),
+	format(format)
+{
+	texture.upload3D(nullptr, width, height, depth, format);
+	texture.setFilter(GL::LINEAR, GL::LINEAR);
+	texture.setWrap(GL::REPEAT, GL::REPEAT, GL::REPEAT);
+}
+
+void Texture3D::upload(void* data)
+{
+	texture.upload3D(data, width, height, depth, format);
+}
+
+void Texture3D::download(void* data)
+{
+	texture.download(data, format);
+}
+
+void Texture3D::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
+{
+	texture.setFilter(minFilter, magFilter);
+}
+
+void Texture3D::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR)
+{
+	texture.setWrap(wrapS, wrapT, wrapR);
+}
+
+void Texture3D::generateMipmaps()
+{
+	texture.generateMipmaps();
+}
+
+void Texture3D::bind()
+{
+	texture.bind();
+}
+
+void Texture3D::use(GLuint unit)
+{
+	texture.use(unit);
+}
+
+GLuint Texture3D::getID()
+{
+	return texture;
+}
+
 const unsigned int NUM_CUBEMAP_FACES = 6;
 
 TextureCubeMap::TextureCubeMap(unsigned int width, unsigned int height, GL::TextureFormat format) :
@@ -224,6 +275,57 @@ void Texture2DArray::use(GLuint unit)
 }
 
 GLuint Texture2DArray::getID()
+{
+	return texture;
+}
+
+TextureCubeMapArray::TextureCubeMapArray(unsigned int width, unsigned int height, unsigned int layers, GL::TextureFormat format) : 
+	width(width),
+	height(height),
+	layers(layers),
+	format(format)
+{
+	texture.upload3D(nullptr, width, height, layers * NUM_CUBEMAP_FACES, format);
+	texture.setFilter(GL::LINEAR, GL::LINEAR);
+	texture.setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
+}
+
+void TextureCubeMapArray::upload(void* data)
+{
+	texture.upload3D(data, width, height, layers * NUM_CUBEMAP_FACES, format);
+}
+
+void TextureCubeMapArray::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
+{
+	texture.setFilter(minFilter, magFilter);
+}
+
+void TextureCubeMapArray::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR)
+{
+	texture.setWrap(wrapS, wrapT, wrapR);
+}
+
+void TextureCubeMapArray::setCompareMode()
+{
+	texture.setCompareMode();
+}
+
+void TextureCubeMapArray::generateMipmaps()
+{
+	texture.generateMipmaps();
+}
+
+void TextureCubeMapArray::bind()
+{
+	texture.bind();
+}
+
+void TextureCubeMapArray::use(GLuint unit)
+{
+	texture.use(unit);
+}
+
+GLuint TextureCubeMapArray::getID()
 {
 	return texture;
 }

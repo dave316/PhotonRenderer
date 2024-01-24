@@ -10,6 +10,8 @@
 
 #include <glm/glm.hpp>
 
+#include <GL/GLBuffer.h>
+
 class IProperty
 {
 protected:
@@ -56,6 +58,36 @@ public:
 		return std::make_shared<Property<T>>(name, value, useTextureMap);
 	}
 };
+struct PBRMetalRoughUBO
+{
+	glm::vec4 baseColorFactor;
+	float roughnessFactor;
+	float metallicFactor;
+	float occlusionStrength;
+	float padding;
+	glm::vec4 emissiveFactor;
+	float emissiveStrength;
+	int alphaMode;
+	float alphaCutOff;
+	bool unlit;
+	float normalScale;
+	float ior;
+};
+
+struct PBRSpecGlossMaterial
+{
+	glm::vec4 diffuseFactor;
+	glm::vec4 specularFactor;
+	glm::vec4 emissiveFactor;
+	float glossFactor;
+	float occlusionStrength;
+	float emissiveStrength;
+	int alphaMode;
+	float alphaCutOff;
+	float normalScale;
+	float detailNormalScale;
+	bool unlit;
+};
 
 class Material
 {
@@ -66,6 +98,7 @@ class Material
 	bool blending = false;
 	bool doubleSided = false;
 	bool transmissive = false;
+	bool writeDepth = true;
 
 	Material(const Material&) = delete;
 	Material& operator=(const Material&) = delete;
@@ -85,6 +118,11 @@ public:
 		return prop->getValue();
 	}
 
+	bool hasProperty(const std::string& name)
+	{
+		return (properties.find(name) != properties.end());
+	}
+
 	void addTexture(const std::string& texName, Texture2D::Ptr texture)
 	{
 		int index = (int)textures.size();
@@ -94,34 +132,35 @@ public:
 		std::string uniform = texName + ".tSampler";
 		properties[uniform] = Property<int>::create(uniform, index, true);
 	}
+
 	void setDoubleSided(bool doubleSided)
 	{
 		this->doubleSided = doubleSided;
 	}
+
 	void setBlending(bool blending)
 	{
 		this->blending = blending;
 	}
+
 	void setTransmissive(bool transmissive)
 	{
 		this->transmissive = transmissive;
 	}
+
 	bool isDoubleSided()
 	{
 		return doubleSided;
 	}
+
 	bool isTransmissive()
 	{
 		return transmissive;
 	}
+
 	bool useBlending()
 	{
 		return blending;
-	}
-
-	int getUsedTexUnits()
-	{
-		return textures.size();
 	}
 
 	void setUniforms(Shader::Ptr shader);
@@ -139,6 +178,17 @@ public:
 	Texture2D::Ptr getTexture(std::string name)
 	{
 		return texNames[name];
+	}
+
+	void replaceTexture(std::string name, Texture2D::Ptr newTex)
+	{
+		auto oldTex = texNames[name];
+		for (int i = 0; i < textures.size(); i++)
+		{
+			if (textures[i] == oldTex)
+				textures[i] = newTex;
+		}
+		texNames[name] = newTex;
 	}
 
 	typedef std::shared_ptr<Material> Ptr;

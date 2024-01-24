@@ -1,403 +1,88 @@
 #include "Scene.h"
 
-#include <Graphics/MeshPrimitives.h>
+#include <Math/Intersection.h>
+#include <Math/Frustrum.h>
 
-#include <IO/AssimpImporter.h>
 #include <IO/GLTFImporter.h>
-#include <Physics/Intersection.h>
-#include <IO/Image/ImageDecoder.h>
-
-#include <glm/gtx/matrix_decompose.hpp>
-#include <fstream>
-#include <sstream>
-#include <chrono>
-
-using namespace std::chrono;
 
 Scene::Scene(const std::string& name) :
 	name(name)
 {
-	//Channel<glm::vec3>::Ptr channel(new Channel<glm::vec3>(Interpolation::LINEAR));
+
 }
 
 Scene::~Scene()
 {
-	for (auto [name, entity] : rootEntities)
-	{
-		auto animators = entity->getComponentsInChildren<Animator>();
-		for (auto& a : animators)
-			a->clear();
-		entity->clearParent();
-	}
-	rootEntities.clear();
-	allEntities.clear();
+	clear();
 }
 
-void Scene::initEnvMaps(std::string fn, std::map<std::string, Shader::Ptr>& shaders)
+void Scene::addRootEntity(std::string name, Entity::Ptr entity)
 {
-	auto start = steady_clock::now();
-
-	auto pano2cmShader = shaders["PanoToCubeMap"];
-	auto iblFilterShader = shaders["IBLFilter"];
-	auto integrateBRDFShader = shaders["IBLIntegrateBRDF"];
-
-	unitCube = MeshPrimitives::createCube(glm::vec3(0), 1.0f);
-
-	//std::string assetPath = "../../../../assets";
-	//std::string assetPath = "C:/Users/dave316/Seafile/Assets/EnvMaps";
-
-	int size = 1024;
-	skybox = EnvironmentMap::create(size);
-	irradianceMap = EnvironmentMap::create(32);
-	specularMapGGX = EnvironmentMap::create(256);
-	specularMapCharlie = EnvironmentMap::create(256);
-
-	// TODO: add format to env map and saving to KTX
-	//skybox->fromFile("skybox.ktx2");
-	//irradianceMap->fromFile("irradianceMap.ktx2");
-	//specularMapGGX->fromFile("specularMapGGX.ktx2");
-	//specularMapCharlie->fromFile("specularMapCharlie.ktx2");
-
-	glDisable(GL_DEPTH_TEST);	
-
-	//auto pano = IO_Legacy::loadTextureHDR(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
-	//auto pano = IO::loadTextureHDR(assetPath + "/neutral.hdr");
-	//skybox->fromPanorama(pano, pano2cmShader);
- 	//skybox->fromFile(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
-
-	//auto panoImg = IO::decodeHDRFromFile(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr", true);
-	auto panoImg = IO::decodeHDRFromFile(fn, true);
-	auto pano = panoImg->upload(false);
-	skybox->fromPanorama(pano, pano2cmShader);
-	//skybox->fromFile(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
-
-	iblFilterShader->use();
-	iblFilterShader->setUniform("texSize", size);
-
-	// irradiance probe
-	iblFilterShader->setUniform("filterIndex", 0);
-	iblFilterShader->setUniform("sampleCount", 2048);
-	irradianceMap->filter(skybox, iblFilterShader);
-
-	// specular probe
-	iblFilterShader->setUniform("filterIndex", 1);
-	iblFilterShader->setUniform("sampleCount", 1024);
-	specularMapGGX->filterMips(skybox, iblFilterShader, 8);
-
-	// specular sheen
-	iblFilterShader->setUniform("filterIndex", 2);
-	iblFilterShader->setUniform("sampleCount", 64);
-	specularMapCharlie->filterMips(skybox, iblFilterShader, 8);
-
-	glEnable(GL_DEPTH_TEST);
-
-	//auto end = steady_clock::now();
-	//auto t = duration_cast<milliseconds>(end - start).count();
-	//std::cout << "baking env probes took: " << t << " ms" << std::endl;
-
-	//IO::saveCubemapKTX("skybox.ktx2", skybox->getCubeMap());
-	//IO::saveCubemapKTX("irradianceMap.ktx2", irradianceMap->getCubeMap());
-	//IO::saveCubemapKTX("specularMapGGX.ktx2", specularMapGGX->getCubeMap());
-	//IO::saveCubemapKTX("specularMapCharlie.ktx2", specularMapCharlie->getCubeMap());
-}
-
-void Scene::initLightProbe(EnvironmentMap::Ptr lightProbe, std::map<std::string, Shader::Ptr>& shaders)
-{
-	auto iblFilterShader = shaders["IBLFilter"];
-
-	reflectionProbe = lightProbe;
-
-	int size = 1024;
-	irradianceProbe = EnvironmentMap::create(32);
-	specularProbe = EnvironmentMap::create(256);
-
-	glDisable(GL_DEPTH_TEST);
-	iblFilterShader->use();
-	iblFilterShader->setUniform("texSize", size);
-
-	// irradiance probe
-	iblFilterShader->setUniform("filterIndex", 0);
-	iblFilterShader->setUniform("sampleCount", 2048);
-	irradianceProbe->filter(lightProbe, iblFilterShader);
-
-	// specular probe
-	iblFilterShader->setUniform("filterIndex", 1);
-	iblFilterShader->setUniform("sampleCount", 1024);
-	specularProbe->filterMips(lightProbe, iblFilterShader, 8);
-
-	glEnable(GL_DEPTH_TEST);
-}
-
-void Scene::initLights(std::map<std::string, Shader::Ptr>& shaders)
-{
-	//auto lightEntity = Entity::create("light", nullptr);
-	//lightEntity->addComponent(Light::create(LightType::POINT, glm::vec3(1), 10.0f, 10.0f));
-	//lightEntity->getComponent<Transform>()->setPosition(glm::vec3(0, 1, 1));
-	//rootEntities.insert(std::make_pair("light", lightEntity));
-
-	std::vector<Light::UniformData> lightData;
-	float maxIntensity = 0.0;
-	for (auto [name, entity] : rootEntities)
+	if (rootEntities.find(name) != rootEntities.end())
 	{
-		auto lightEntities = entity->getChildrenWithComponent<Light>();
-		for (auto lightEntity : lightEntities)
-		{
-			auto t = lightEntity->getComponent<Transform>();
-			auto l = lightEntity->getComponent<Light>();
-			glm::vec3 color = l->getColor();
-			float intensity = l->getIntensity();
-			float maxComponent = intensity * glm::max(glm::max(color.r, color.g), color.b);
-			maxIntensity = glm::max(maxIntensity, maxComponent);
-
-			Light::UniformData data;
-			l->writeUniformData(data, t);
-			lightData.push_back(data);
-		}
-	}
-
-	float value = glm::min(maxIntensity, 10000.0f);
-	float factor = value / maxIntensity;
-
-	lightUBO.upload(lightData, GL_DYNAMIC_DRAW);
-	lightUBO.bindBase(1);
-
-	//for (auto& [_, s] : shaders)
-	//{
-	//	s->setUniform("numLights", (int)lightData.size());
-	//	s->setUniform("apertureFactor", factor);
-	//	s->setUniform("pq", usePerceptualQuantization);
-	//}
-
-	views.clear();
-	for (auto [name, entity] : rootEntities)
-	{
-		auto lightsEntity = entity->getChildrenWithComponent<Light>();
-		for (auto lightEntity : lightsEntity)
-		{
-			auto l = lightEntity->getComponent<Light>();
-			if (l->getType() == LightType::DIRECTIONAL)
-			{
-				glm::mat4 M = lightEntity->getComponent<Transform>()->getTransform();
-				glm::vec3 skew;
-				glm::vec4 persp;
-				glm::vec3 pos;
-				glm::vec3 scale;
-				glm::quat rot;
-				glm::decompose(M, scale, rot, pos, skew, persp);
-				rot = glm::normalize(rot);
-				glm::vec3 dir = glm::mat3_cast(rot) * glm::vec3(0, 0, -1);
-				glm::mat4 V = glm::lookAt(pos - 2.0f*dir, pos + dir, glm::vec3(0, 1, 0));
-				if (glm::length(pos) > 0)
-					V = glm::inverse(M);
-
-				// TODO: compute optimal ortho frustrum based on scene extents
-				AABB bbox = getBoundingBox();
-				glm::vec3 size = bbox.getSize();
-				float maxExtent = glm::max(glm::max(size.x, size.y), size.z);
-				//std::cout << "max extent: " << maxExtent << std::endl;
-				glm::mat4 P = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, 0.1f, 20.0f);
-				std::vector<glm::mat4> VP;
-				VP.push_back(P * V);
-				views.push_back(VP);
-			}
-			else
-			{
-				glm::mat4 M = lightEntity->getComponent<Transform>()->getTransform();
-				glm::vec3 skew;
-				glm::vec4 persp;
-				glm::vec3 pos;
-				glm::vec3 scale;
-				glm::quat rot;
-				glm::decompose(M, scale, rot, pos, skew, persp);
-
-				//std::cout << "light pos: " << pos.x << " " << pos.y << " " << pos.z << std::endl;
-
-				glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
-				std::vector<glm::mat4> VP;
-				VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-				VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-				VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
-				VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
-				VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
-				VP.push_back(P * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
-				views.push_back(VP);
-			}
-		}
-	}
-}
-
-void Scene::initShadowMaps()
-{
-	for (auto [name, entity] : rootEntities)
-	{
-		auto lightsEntity = entity->getChildrenWithComponent<Light>();
-		for (auto lightEntity : lightsEntity)
-		{
-			const unsigned int size = 2048;
-			auto l = lightEntity->getComponent<Light>();
-			if (l->getType() == LightType::DIRECTIONAL)
-			{
-				auto shadowMap = Texture2D::create(size, size, GL::DEPTH16);
-				shadowMap->setFilter(GL::NEAREST, GL::NEAREST);
-				shadowMap->setWrap(GL::CLAMP_TO_BORDER, GL::CLAMP_TO_BORDER);
-				shadowMap->bind();
-				GLfloat color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-				glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, color);
-
-				auto shadowFBO = Framebuffer::create(size, size);
-				shadowFBO->addRenderTexture(GL::DEPTH, shadowMap);
-				shadowFBO->checkStatus();
-				shadowFBOs.push_back(shadowFBO);
-			}
-			else
-			{				
-				auto shadowMap = TextureCubeMap::create(size, size, GL::DEPTH16);
-				shadowMap->setCompareMode();
-
-				auto shadowFBO = Framebuffer::create(size, size);
-				shadowFBO->addRenderTexture(GL::DEPTH, shadowMap);
-				shadowFBO->checkStatus();
-				shadowFBOs.push_back(shadowFBO);
-			}
-		}
-	}
-}
-
-bool Scene::loadModelGLTF(std::string name, std::string path)
-{
-	modelInfo.clear();
-	renderInfo.clear();
-
-	IO::glTF::Importer importer;
-	auto rootEntity = importer.importModel(path);
-	if (rootEntity)
-	{
-		auto rootTransform = rootEntity->getComponent<Transform>();
-		rootEntity->update(glm::mat4(1.0f));
-		rootEntities.insert(std::make_pair(name, rootEntity));
-		currentModel = name;
-
-		modelInfo = importer.getGeneralStats();
-		renderInfo = importer.getRenderingStats();
+		std::cout << "error: root entity " << name << " already exists!" << std::endl;
 	}
 	else
 	{
-		// TODO: better error handling if model could not be loaded
-		return false;
+		//std::cout << "adding root entity: " << name << std::endl;
+		rootEntities.insert(std::make_pair(name, entity));
+		currentModel = name;
 	}
-	//usePerceptualQuantization |= importer.needsPQ;
 
-	auto models = rootEntity->getComponentsInChildren<Renderable>();
-	for (auto r : models)
+	for (auto r : entity->getComponentsInChildren<Renderable>())
 	{
-		if (r->useBlending() || r->isTransmissive())
+		if(r->getType() == RenderType::TRANSPARENT)
 			useTransmission = true;
 	}
-	rootEntity->getAllNodes(allEntities);
 
-	auto cameraEntites = rootEntity->getChildrenWithComponent<Camera>();
-	for (auto e : cameraEntites)
+	numLights = 0;
+	for (auto [_, root] : rootEntities)
 	{
-		auto t = e->getComponent<Transform>();
-		auto cam = e->getComponent<Camera>();
-
-		std::string name = cam->getName();
-		glm::mat4 T = t->getTransform();
-		glm::mat4 V = glm::inverse(T);
-		glm::mat4 P = cam->getProjection();
-		glm::vec3 pos = T * glm::vec4(0, 0, 0, 1);
-		cameras[name] = CameraInfo(P, V, pos);
+		auto lights = root->getComponentsInChildren<Light>();
+		numLights += lights.size();
 	}
 
-	//cameras = importer.getCameras();
-	//variants = importer.getVariants();
-	//importer.clear();
-
-	AABB worldBox;
-	auto renderables = rootEntity->getChildrenWithComponent<Renderable>();
-	for (auto e : renderables)
-	{
-		auto t = e->getComponent<Transform>();
-		auto r = e->getComponent<Renderable>();
-
-		glm::mat4 M = t->getTransform();
-		AABB bbox = r->getBoundingBox();
-		glm::vec3 minPoint = glm::vec3(M * glm::vec4(bbox.getMinPoint(), 1.0f));
-		glm::vec3 maxPoint = glm::vec3(M * glm::vec4(bbox.getMaxPoint(), 1.0f));
-		worldBox.expand(minPoint);
-		worldBox.expand(maxPoint);
-		//boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
-		//boxMat.push_back(M);
-	}
-	glm::vec3 s = worldBox.getSize();
-	//std::cout << "model size: " << s.x << " " << s.y << " " << s.z << std::endl;
-
-	//switchAnimations(1);
-
-	return true;
-}
-
-#ifdef WITH_ASSIMP
-bool Scene::loadModelASSIMP(std::string name, std::string path)
-{
-	IO::AssimpImporter importer;
-	auto model = importer.importModel(path);
-	if (model == nullptr)
-		return false;
-	addEntity(name, model);
-	return true;
-}
-#endif
-
-void Scene::addEntity(std::string name, Entity::Ptr entity)
-{
-	rootEntities.insert(std::make_pair(name, entity));
-	currentModel = name;
-	auto models = entity->getComponentsInChildren<Renderable>();
-	for (auto r : models)
-	{
-		if (r->useBlending() || r->isTransmissive())
-			useTransmission = true;
-	}
 	entity->getAllNodes(allEntities);
 }
 
-void Scene::addLight(std::string name)
+void Scene::addRootEntity(Entity::Ptr entity)
 {
-	glm::vec3 lightColor = glm::vec3(1.0f,0.2,0.1);
-	//glm::vec3 lightColor = glm::vec3(1.0f);
+	addRootEntity(entity->getName(), entity);
+}
 
-	auto lightEntity = Entity::create(name, nullptr);
-	//lightEntity->addComponent(Light::create(LightType::SPOT, lightColor, 20.0f, 25.0f));
-	lightEntity->addComponent(Light::create(LightType::DIRECTIONAL, lightColor, 2.0f, 10.0f));
-	//lightEntity->addComponent(Light::create(LightType::POINT, lightColor, 20.0f, 10.0f));
-	//lightEntity->getComponent<Transform>()->setLocalRotation(glm::angleAxis(glm::radians(45.0f), glm::vec3(-1, 0, 0)));
-	//lightEntity->getComponent<Transform>()->setLocalPosition(glm::vec3(0,2,0));
-	//lightEntity->getComponent<Light>()->setConeAngles(glm::pi<float>() / 8.0f, glm::pi<float>() / 4.0f);
+void Scene::addLightMaps(Texture2DArray::Ptr lightmaps)
+{
+	this->lightMaps = lightmaps;
+}
 
-	auto r = Renderable::create();
-	//Mesh mesh;
-	float radius = 0.05f;
-	auto prim = MeshPrimitives::createUVSphere(glm::vec3(0), radius, 32, 32);
-	prim->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
-	auto mat = getDefaultMaterial();
-	mat->addProperty("material.baseColorFactor", glm::vec4(lightColor, 1.0));
-	mat->addProperty("material.unlit", true);
-	prim->setMaterial(mat);
-	auto mesh = Mesh::create("Sphere");
-	mesh->addPrimitive(prim);
-	//mesh->addMaterial(mat);
-	r->setMesh(mesh);
+void Scene::addDirectionMaps(Texture2DArray::Ptr dirMaps)
+{
+	this->directionMaps = dirMaps;
+}
 
-	lightEntity->addComponent(r);
+void Scene::setIESProfile(Texture2DArray::Ptr iesProfiles)
+{
+	this->iesProfiles = iesProfiles;
+}
 
-	rootEntities.insert(std::make_pair(lightEntity->getName(), lightEntity));
-	lightEntity->getAllNodes(allEntities);
+void Scene::setSkybox(Skybox& skybox)
+{
+	this->skybox = skybox;
+}
+
+void Scene::setLightProbes(SHLightProbes& lightProbes)
+{
+	this->lightProbes = lightProbes;
 }
 
 void Scene::removeRootEntity(std::string name)
 {
 	rootEntities.erase(name);
+}
+
+bool Scene::hasTransmission()
+{
+	return useTransmission;
 }
 
 void Scene::updateAnimations(float dt)
@@ -410,18 +95,18 @@ void Scene::updateAnimations(float dt)
 
 		rootEntity->update(glm::mat4(1.0f));
 
-		auto cameraEntites = rootEntity->getChildrenWithComponent<Camera>();
-		for (auto e : cameraEntites)
-		{
-			auto t = e->getComponent<Transform>();
-			auto cam = e->getComponent<Camera>();
+		//auto cameraEntites = rootEntity->getChildrenWithComponent<Camera>();
+		//for (auto e : cameraEntites)
+		//{
+		//	auto t = e->getComponent<Transform>();
+		//	auto cam = e->getComponent<Camera>();
 
-			std::string name = cam->getName();
-			glm::mat4 T = t->getTransform();
-			cameras[name].V = glm::inverse(T);
-			cameras[name].P = cam->getProjection();
-			cameras[name].pos = T * glm::vec4(0, 0, 0, 1);
-		}
+		//	std::string name = cam->getName();
+		//	glm::mat4 T = t->getTransform();
+		//	cameras[name].V = glm::inverse(T);
+		//	cameras[name].P = cam->getProjection();
+		//	cameras[name].pos = T * glm::vec4(0, 0, 0, 1);
+		//}
 	}
 }
 
@@ -432,48 +117,6 @@ void Scene::updateAnimationState(float dt)
 		auto animator = e->getComponent<Animator>();
 		if (animator && animator->isFinished())
 			animator->play();
-	}
-}
-
-void Scene::switchVariant(int idx)
-{
-	if (!rootEntities.empty())
-	{
-		auto e = rootEntities[currentModel];
-		auto renderables = e->getComponentsInChildren<Renderable>();
-		for (auto r : renderables)
-			r->switchMaterial(idx);
-	}
-}
-
-void Scene::nextMaterial()
-{
-	//static unsigned int materialIndex = 0;
-	//materialIndex = (++materialIndex) % 5;
-
-	////if (rootEntities.find("GlamVelvetSofa") != rootEntities.end())
-	//{
-	//	//auto e = rootEntitis["GlamVelvetSofa"];
-	//	auto e = rootEntities[currentModel];
-	//	auto renderables = e->getComponentsInChildren<Renderable>();
-	//	for (auto r : renderables)
-	//		r->switchMaterial(materialIndex);
-	//}
-}
-
-void Scene::renderBoxes(Shader::Ptr shader)
-{
-	glEnable(GL_LINE_WIDTH);
-	glLineWidth(1.0f);
-
-	shader->use();
-	shader->setUniform("useTex", false);
-	shader->setUniform("orthoProjection", false);
-	shader->setUniform("solidColor", glm::vec3(1.0f, 0.5f, 0.0f));
-	for (int i = 0; i < boundingBoxes.size(); i++)
-	{
-		shader->setUniform("M", boxMat[i]);
-		boundingBoxes[i]->draw();
 	}
 }
 
@@ -507,43 +150,30 @@ void Scene::switchAnimations(int index)
 	}
 }
 
-void Scene::useIBL()
+void Scene::switchVariant(int index)
 {
-	if (reflectionProbe == nullptr)
+	if (!rootEntities.empty())
 	{
-		irradianceMap->use(15);
-		specularMapGGX->use(16);
-		specularMapCharlie->use(17);
+		auto e = rootEntities[currentModel];
+		auto renderables = e->getComponentsInChildren<Renderable>();
+		for (auto r : renderables)
+			r->switchMaterial(index);
 	}
-	else
-	{
-		irradianceProbe->use(15);
-		specularProbe->use(16);
-	}
-
-	for (int i = 0; i < views.size(); i++)
-	{
-		if (views[i].size() == 1)
-		{
-			shadowFBOs[i]->useTexture(GL::DEPTH, 19);
-		}
-		else
-		{
-			// TODO: find next free slot in omni shadow maps
-			shadowFBOs[i]->useTexture(GL::DEPTH, 8 + i);
-		}
-	}
-	//for (int i = 0; i < shadowFBOs.size(); i++)
-	//	shadowFBOs[i]->useTexture(GL::DEPTH, 10 + i);
 }
 
-void Scene::useSkybox()
+void Scene::select(Entity::Ptr e)
 {
-	//if (reflectionProbe == nullptr)
-		skybox->use(0);
-	//else
-	//	reflectionProbe->use(0);
+	selectedModel = e;
+}
 
+void Scene::unselect()
+{
+	selectedModel = nullptr;
+}
+
+int Scene::getNumLights()
+{
+	return numLights;
 }
 
 void Scene::clear()
@@ -557,140 +187,60 @@ void Scene::clear()
 	}
 	rootEntities.clear();
 	allEntities.clear();
-	cameras.clear();
-	views.clear();
-	shadowFBOs.clear();
 }
 
-void Scene::updateBoxes()
+PostProcessParameters Scene::getCurrentProfile(glm::vec3 cameraPosition)
 {
-	boundingBoxes.clear();
-	boxMat.clear();
-
-	for (auto [_, rootEntity] : rootEntities)
+	PostProcessParameters globalPPP;
+	for (auto [_, rootNodes] : rootEntities)
 	{
-		auto renderables = rootEntity->getChildrenWithComponent<Renderable>();
-		for (auto e : renderables)
+		for (auto v : rootNodes->getComponentsInChildren<Volume>())
 		{
-			auto t = e->getComponent<Transform>();
-			auto r = e->getComponent<Renderable>();
-			glm::mat4 M = t->getTransform();
-			AABB bbox = r->getBoundingBox();
-			boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
-			boxMat.push_back(M);
+			if (v->isGlobal())
+				globalPPP = v->getParameters();
 		}
-	}
-}
 
-void Scene::selectBox(Entity::Ptr e)
-{
-	boundingBoxes.clear();
-	boxMat.clear();
-
-	auto t = e->getComponent<Transform>();
-	auto r = e->getComponent<Renderable>();
-	if (r != nullptr)
-	{
-		glm::mat4 M = t->getTransform();
-		AABB bbox = r->getBoundingBox();
-		boundingBoxes.push_back(MeshPrimitives::createLineBox(bbox.getCenter(), bbox.getSize()));
-		boxMat.push_back(M);
-	}
-	else
-	{
-		glm::mat4 M = t->getTransform();
-		AABB selectedBox;
-		auto renderEntities = e->getChildrenWithComponent<Renderable>();
-		for (auto e : renderEntities)
+		for (auto e : rootNodes->getChildrenWithComponent<Volume>())
 		{
-			auto meshT = e->getComponent<Transform>();
-			auto meshR = e->getComponent<Renderable>();
-			AABB bbox = meshR->getBoundingBox();
-			glm::mat4 local2world = meshT->getTransform();
+			auto c = std::dynamic_pointer_cast<BoxCollider>(e->getComponent<Collider>());
+			auto t = e->getComponent<Transform>();
+			auto v = e->getComponent<Volume>();
 
-			auto points = bbox.getPoints();
-			for (auto p : points)
+			if (!v->isGlobal())
 			{
-				p = glm::vec3(local2world * glm::vec4(p, 1.0f));
-				p = glm::vec3(glm::inverse(M) * glm::vec4(p, 1.0f));
-				selectedBox.expand(p);
+				auto localToWorld = t->getTransform();
+				auto worldToLocal = glm::inverse(localToWorld);
+				auto camPosLocal = glm::vec3(worldToLocal * glm::vec4(cameraPosition, 1.0f));
+				Box bbox = c->getAABB();
+				auto volumeCenterLocal = bbox.getCenter();
+
+				if (bbox.isInside(camPosLocal))
+					return v->getParameters();
+
+				Ray r(camPosLocal, glm::normalize(volumeCenterLocal - camPosLocal));
+				glm::vec3 hitPoint;
+				if (c->rayTest(r, hitPoint))
+				{
+					glm::vec3 hitPointWorld = glm::vec3(localToWorld * glm::vec4(hitPoint, 1.0f));
+					float distance = glm::distance(cameraPosition, hitPointWorld);
+					if (distance < v->getDistance())
+					{
+						auto localPPP = v->getParameters();
+						float weight = distance / v->getDistance();
+
+						PostProcessParameters blendedPPP;
+						blendedPPP.postExposure = glm::mix(localPPP.postExposure, globalPPP.postExposure, weight);
+						blendedPPP.bloomThreshold = glm::mix(localPPP.bloomThreshold, globalPPP.bloomThreshold, weight);
+						blendedPPP.bloomIntensity = glm::mix(localPPP.bloomIntensity, globalPPP.bloomIntensity, weight);
+						blendedPPP.bloomTint = glm::mix(localPPP.bloomTint, globalPPP.bloomTint, weight);
+						return blendedPPP;
+					}
+				}
 			}
 		}
-
-		boundingBoxes.push_back(MeshPrimitives::createLineBox(selectedBox.getCenter(), selectedBox.getSize()));
-		boxMat.push_back(M);
 	}
 
-	selectedModel = e;
-}
-
-void Scene::unselect()
-{
-	boundingBoxes.clear();
-	boxMat.clear();
-
-	selectedModel = nullptr;
-}
-
-bool Scene::hasTransmission()
-{
-	return useTransmission;
-}
-
-int Scene::numLights()
-{
-	return lightUBO.size();
-}
-
-std::map<std::string, int> Scene::getModelInfo()
-{
-	return modelInfo;
-}
-
-std::map<std::string, int> Scene::getRenderInfo()
-{
-	return renderInfo;
-}
-
-CameraInfo Scene::getCameraInfo(std::string name)
-{
-	if (cameras.find(name) != cameras.end())
-		return cameras[name];
-}
-
-std::map<std::string, Entity::Ptr>& Scene::getEntities()
-{
-	return rootEntities;
-}
-
-std::vector<Framebuffer::Ptr>& Scene::getShadwoFBOs()
-{
-	return shadowFBOs;
-}
-
-std::vector<std::vector<glm::mat4>>& Scene::getViews()
-{
-	return views;
-}
-
-std::vector<std::string> Scene::getCameraNames()
-{
-	std::vector<std::string> names;
-	names.push_back("MainCamera");
-	for (auto [name,_] : cameras)
-		names.push_back(name);
-	return names;
-}
-
-std::vector<std::string> Scene::getVariantNames()
-{
-	if (!rootEntities.empty())
-	{
-		auto renderables = rootEntities[currentModel]->getComponentsInChildren<Renderable>();
-		auto mesh = renderables[0]->getMesh();
-		return mesh->getVariants();
-	}	
-	return std::vector<std::string>();
+	return globalPPP;
 }
 
 std::vector<std::string> Scene::getAnimations()
@@ -705,93 +255,303 @@ std::vector<std::string> Scene::getAnimations()
 	return names;
 }
 
-AABB Scene::getBoundingBox()
+void Scene::checkWindingOrder()
 {
-	// compute bounding box around loaded scene
-	AABB sceneBBox;
-	for (auto [_,entity] : rootEntities)
-	{		
-		auto renderables = entity->getChildrenWithComponent<Renderable>();
-		for (auto e : renderables)
+	for (auto [name, root] : rootEntities)
+	{
+		root->update(glm::mat4(1.0f));
+		auto entities = root->getChildrenWithComponent<Renderable>();
+		for (auto e : entities)
 		{
 			auto t = e->getComponent<Transform>();
-			auto r = e->getComponent<Renderable>();
+			glm::vec3 scale = t->getScale();
+			float sign = glm::sign(scale.x * scale.y * scale.z);
+			if (sign < 0)
+			{
+				auto r = e->getComponent<Renderable>();
+				auto mesh = r->getMesh();
 
-			AABB bbox = r->getBoundingBox();
-			glm::mat4 M = t->getTransform();
-			glm::vec3 minPoint = glm::vec3(M * glm::vec4(bbox.getMinPoint(), 1.0f));
-			glm::vec3 maxPoint = glm::vec3(M * glm::vec4(bbox.getMaxPoint(), 1.0f));
-			sceneBBox.expand(minPoint);
-			sceneBBox.expand(maxPoint);
+				auto newRend = Renderable::create();
+				newRend->setLightMapST(r->getLMOffset(), r->getLMScale());
+				newRend->setLightMapIndex(r->getLMIndex());
+				newRend->setReflectionProbe(r->getReflName(), r->getRPIndex());
+				newRend->setDiffuseMode(r->getDiffuseMode());
+
+				auto newMesh = Mesh::create(mesh->getName());
+				for (auto m : mesh->getSubMeshes())
+				{
+					auto surface = m.primitive->getSurface();
+					surface.flipWindingOrder();
+					
+					SubMesh s;
+					s.primitive = Primitive::create(m.primitive->getName(), surface, 4);
+					s.primitive->setBoundingBox(m.primitive->getBoundingBox().getMinPoint(), m.primitive->getBoundingBox().getMaxPoint());
+					s.material = m.material;
+					newMesh->addSubMesh(s);
+				}
+
+				newRend->setMesh(newMesh);
+				e->addComponent(newRend);
+			}
 		}
 	}
-
-	return sceneBBox;
 }
 
-Entity::Ptr Scene::getRootNode(std::string name)
+std::map<std::string, Entity::Ptr> Scene::getRootEntities()
 {
-	if (rootEntities.find(name) != rootEntities.end())
-		return rootEntities[name];
-	return nullptr;
+	return rootEntities;
 }
 
-Entity::Ptr Scene::getCurrentModel()
+std::map<std::string, std::vector<Renderable::Ptr>> Scene::batchOpaqueInstances()
 {
-	return selectedModel;
-}
-
-Entity::Ptr Scene::getNode(int id)
-{
-	return allEntities[id];
-}
-
-Entity::Ptr Scene::selectModelRaycast(glm::vec3 start, glm::vec3 end)
-{
-	Entity::Ptr nearestEntity = nullptr;
-	float minDist = std::numeric_limits<float>::max();
-	int hitCount = 0;
-
+	// TODO: check if opaque meshes and no skinned/animated nodes
+	struct InstanceMesh
+	{
+		SubMesh subMesh;
+		std::vector<glm::mat4> transformations;
+		std::vector<IBLUniformData> iblData;
+	};
+	std::map<unsigned int, InstanceMesh> meshInstances;
 	for (auto [name, entity] : rootEntities)
 	{
-		//AABB modelBox; // TODO: This could precomputed for root nodes, or select AABB for each submesh
-		auto renderables = entity->getChildrenWithComponent<Renderable>();
-		for (auto e : renderables)
+		auto models = entity->getChildrenWithComponent<Renderable>();
+		for (auto m : models)
 		{
-			auto t = e->getComponent<Transform>();
-			auto r = e->getComponent<Renderable>();
+			auto t = m->getComponent<Transform>();
+			auto r = m->getComponent<Renderable>();
 
-			AABB bbox = r->getBoundingBox();
-			glm::mat4 M = t->getTransform();
-			glm::mat4 M_I = glm::inverse(t->getTransform());
-			glm::vec3 startModel = glm::vec3(M_I * glm::vec4(start, 1.0f));
-			glm::vec3 endModel = glm::vec3(M_I * glm::vec4(end, 1.0f));
-
-			Ray ray;
-			ray.origin = startModel;
-			ray.direction = glm::normalize(endModel - startModel);
-			ray.dirInv = 1.0f / ray.direction;
-
-			glm::vec3 hitpoint;
-			if (Intersection::rayBoxIntersection(ray, bbox, hitpoint))
+			if (m->isActive() && r->isEnabled())
 			{
-				hitCount++;
-				glm::vec3 h = glm::vec3(M * glm::vec4(hitpoint, 1.0f));
-				float dist = glm::distance(h, start);
-				if (dist < minDist)
+				auto mesh = r->getMesh();
+
+				for (auto s : mesh->getSubMeshes())
 				{
-					minDist = dist;
-					nearestEntity = e;
+					auto id = s.primitive->getID();
+					if (meshInstances.find(id) == meshInstances.end())
+					{
+						InstanceMesh inst;
+						inst.subMesh = s;
+						meshInstances.insert(std::make_pair(id, inst));
+					}
+
+					meshInstances[id].transformations.push_back(t->getTransform());
+
+					IBLUniformData data;
+					data.diffuseMode = r->getDiffuseMode();
+					data.specularProbeIndex = r->getRPIndex();
+					data.lightMapIndex = r->getLMIndex();
+					data.lightMapST = glm::vec4(r->getLMOffset(), r->getLMScale());
+					auto sh9 = r->getSH9();
+					for (int i = 0; i < sh9.size(); i++)
+						data.sh[i] = glm::vec4(sh9[i], 0.0f);
+
+					meshInstances[id].iblData.push_back(data);
 				}
 			}
 		}
 	}
 
-	std::cout << "hit " << hitCount << " meshes" << std::endl;
-	//if (rootEntities.find(nearestModel) != rootEntities.end())
-	//	return rootEntities[nearestModel];
+	std::vector<IBLUniformData> iblData;
+	std::map<std::string, std::vector<Renderable::Ptr>> renderQueue;
+	for (auto [id, inst] : meshInstances)
+	{
+		//std::cout << "Prim ID: " << id << ", name: " << inst.subMesh.primitive->getName() << ", #transform: " << inst.transformations.size() << std::endl;
 
-	return nearestEntity;
+		// TODO: check winding order!
+		SubMesh s;
+		s.primitive = inst.subMesh.primitive;
+		s.material = inst.subMesh.material;
+
+		GLuint matrixBuffer;
+		glGenBuffers(1, &matrixBuffer);
+		glBindBuffer(GL_ARRAY_BUFFER, matrixBuffer);
+		glBufferData(GL_ARRAY_BUFFER, inst.transformations.size() * sizeof(glm::mat4), inst.transformations.data(), GL_STATIC_DRAW);
+
+		GLuint vaoID = s.primitive->getVaoID();
+		glBindVertexArray(vaoID);
+		glEnableVertexAttribArray(8);
+		glVertexAttribPointer(8, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)0);
+		glEnableVertexAttribArray(9);
+		glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(sizeof(glm::vec4)));
+		glEnableVertexAttribArray(10);
+		glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(2 * sizeof(glm::vec4)));
+		glEnableVertexAttribArray(11);
+		glVertexAttribPointer(11, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void*)(3 * sizeof(glm::vec4)));
+
+		glVertexAttribDivisor(8, 1);
+		glVertexAttribDivisor(9, 1);
+		glVertexAttribDivisor(10, 1);
+		glVertexAttribDivisor(11, 1);
+
+		glBindVertexArray(0);
+
+		int offset = iblData.size();
+		for (auto ibl : inst.iblData)
+			iblData.push_back(ibl);
+
+		s.primitive->setInstances(inst.transformations.size());
+
+		auto mesh = Mesh::create("mesh");
+		mesh->addSubMesh(s);
+
+		auto r = Renderable::create();
+		r->setMesh(mesh);
+		r->setOffset(offset);
+
+		auto shaderName = s.material->getShader();
+		if (renderQueue.find(shaderName) == renderQueue.end())
+			renderQueue.insert(std::make_pair(shaderName, std::vector<Renderable::Ptr>()));
+		renderQueue[shaderName].push_back(r);
+	}
+
+	iblUBO.bindBase(4);
+	iblUBO.upload(iblData, GL_DYNAMIC_DRAW);
+
+	return renderQueue;
+}
+
+std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> Scene::getOpaqueEntitiesCullFrustrum(FPSCamera& camera)
+{
+	Math::Frustrum frustrum(camera);
+
+	std::map<int, std::map<std::string, std::vector<Entity::Ptr>>> mapping;
+	for (auto [name, entity] : rootEntities)
+	{
+		auto models = entity->getChildrenWithComponent<Renderable>();
+		for (auto m : models)
+		{
+			auto t = m->getComponent<Transform>();
+			auto r = m->getComponent<Renderable>();
+			if (r->isEnabled() && r->getType() == RenderType::OPAQUE)
+			{
+				unsigned int p = r->getPriority();
+				if (mapping.find(p) == mapping.end())
+					mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
+
+				auto mesh = r->getMesh();
+				auto subMeshes = mesh->getSubMeshes();
+				std::set<std::string> usedShader;
+				for (auto s : subMeshes)
+				{
+					Box bbox = s.primitive->getBoundingBox();
+					glm::mat4 M = t->getTransform();
+
+					if (frustrum.isInside(bbox, M))
+					{
+						auto mat = s.material;
+						std::string shaderName = mat->getShader();
+						if (usedShader.find(shaderName) != usedShader.end())
+							continue;						
+
+						auto& shaderMapping = mapping[p];
+						if (shaderMapping.find(shaderName) == shaderMapping.end())
+							shaderMapping.insert(std::make_pair(shaderName, std::vector<Entity::Ptr>()));
+						shaderMapping[shaderName].push_back(m);
+						usedShader.insert(shaderName);
+					}
+				}
+			}
+		}
+	}
+
+	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> renderQueue;
+	for (auto [_, shaderMapping] : mapping)
+		for (auto [name, models] : shaderMapping)
+			renderQueue.push_back(std::make_pair(name, models));
+
+	return renderQueue;
+}
+
+std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> Scene::getOpaqueEntities()
+{
+	std::map<int, std::map<std::string, std::vector<Entity::Ptr>>> mapping;
+	for (auto [name, entity] : rootEntities)
+	{
+		auto models = entity->getChildrenWithComponent<Renderable>();
+		for (auto m : models)
+		{
+			auto r = m->getComponent<Renderable>();
+			if (r->isEnabled() && r->getType() == RenderType::OPAQUE)
+			{
+				unsigned int p = r->getPriority();
+				if (mapping.find(p) == mapping.end())
+					mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
+
+				auto mesh = r->getMesh();
+				auto subMeshes = mesh->getSubMeshes();
+				std::set<std::string> usedShader;
+				for (auto s : subMeshes)
+				{
+					auto mat = s.material;
+					std::string shaderName = mat->getShader();
+					if (usedShader.find(shaderName) != usedShader.end())
+						continue;
+					
+					auto& shaderMapping = mapping[p];
+					if (shaderMapping.find(shaderName) == shaderMapping.end())
+						shaderMapping.insert(std::make_pair(shaderName, std::vector<Entity::Ptr>()));
+					shaderMapping[shaderName].push_back(m);
+					usedShader.insert(shaderName);
+				}
+			}
+		}
+	}
+
+	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> renderQueue;
+	for (auto [_, shaderMapping] : mapping)
+		for (auto [name, models] : shaderMapping)
+			renderQueue.push_back(std::make_pair(name, models));
+
+	return renderQueue;
+}
+
+std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> Scene::getTransparentEntities()
+{
+	std::map<int, std::map<std::string, std::vector<Entity::Ptr>>> mapping;
+	for (auto [name, entity] : rootEntities)
+	{
+		auto models = entity->getChildrenWithComponent<Renderable>();
+		for (auto m : models)
+		{
+			auto r = m->getComponent<Renderable>();
+			if (r->isEnabled() && r->getType() == RenderType::TRANSPARENT)
+			{
+				unsigned int p = r->getPriority();
+				if (mapping.find(p) == mapping.end())
+					mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
+
+				auto mesh = r->getMesh();
+				auto subMeshes = mesh->getSubMeshes();
+				std::set<std::string> usedShader;
+				for (auto s : subMeshes)
+				{
+					auto mat = s.material;
+					std::string shaderName = mat->getShader();
+					if (usedShader.find(shaderName) != usedShader.end())
+						continue;
+
+					auto& shaderMapping = mapping[p];
+					if (shaderMapping.find(shaderName) == shaderMapping.end())
+						shaderMapping.insert(std::make_pair(shaderName, std::vector<Entity::Ptr>()));
+					shaderMapping[shaderName].push_back(m);
+					usedShader.insert(shaderName);
+				}
+			}
+		}
+	}
+
+	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> renderQueue;
+	for (auto [_, shaderMapping] : mapping)
+	{
+		for (auto it = shaderMapping.rbegin(); it != shaderMapping.rend(); ++it)
+		{
+			auto name = it->first;
+			auto models = it->second;
+			renderQueue.push_back(std::make_pair(name, models));
+		}
+	}
+	
+	return renderQueue;
 }
 
 std::vector<Entity::Ptr> Scene::selectModelsRaycast(glm::vec3 start, glm::vec3 end)
@@ -809,17 +569,13 @@ std::vector<Entity::Ptr> Scene::selectModelsRaycast(glm::vec3 start, glm::vec3 e
 			auto t = e->getComponent<Transform>();
 			auto r = e->getComponent<Renderable>();
 
-			AABB bbox = r->getBoundingBox();
+			Box bbox = r->getBoundingBox();
 			glm::mat4 M = t->getTransform();
 			glm::mat4 M_I = glm::inverse(t->getTransform());
 			glm::vec3 startModel = glm::vec3(M_I * glm::vec4(start, 1.0f));
 			glm::vec3 endModel = glm::vec3(M_I * glm::vec4(end, 1.0f));
 
-			Ray ray;
-			ray.origin = startModel;
-			ray.direction = glm::normalize(endModel - startModel);
-			ray.dirInv = 1.0f / ray.direction;
-
+			Ray ray(startModel, glm::normalize(endModel - startModel));
 			glm::vec3 hitpoint;
 			if (Intersection::rayBoxIntersection(ray, bbox, hitpoint))
 			{
@@ -847,61 +603,60 @@ std::vector<Entity::Ptr> Scene::selectModelsRaycast(glm::vec3 start, glm::vec3 e
 	return entities;
 }
 
-std::map<std::string, Entity::Ptr> Scene::getRootEntities()
+Entity::Ptr Scene::getNode(int id)
 {
-	return rootEntities;
+	return allEntities[id];
 }
 
-std::map<std::string, std::vector<Entity::Ptr>> Scene::getOpaqueEntities()
+Entity::Ptr Scene::getCurrentModel()
 {
-	std::map<std::string, std::vector<Entity::Ptr>> mapping;
+	return selectedModel;
+}
+
+Box Scene::getBoundingBox()
+{
+	Box sceneBox;
 	for (auto [_, entity] : rootEntities)
 	{
-		auto models = entity->getChildrenWithComponent<Renderable>();
-		for (auto m : models)
+		auto renderables = entity->getChildrenWithComponent<Renderable>();
+		for (auto e : renderables)
 		{
-			auto r = m->getComponent<Renderable>();
-			auto mesh = r->getMesh();
-			auto primitives = mesh->getPrimitives();
-			auto mat = primitives[0]->getMaterial();
-			if (!mat->isTransmissive() && !mat->useBlending())
-			{
-				std::string shaderName = mat->getShader();
-				if (mapping.find(shaderName) == mapping.end())
-					mapping.insert(std::make_pair(shaderName, std::vector<Entity::Ptr>()));
-				mapping[shaderName].push_back(m);
-			}
+			auto t = e->getComponent<Transform>();
+			auto r = e->getComponent<Renderable>();
+
+			Box bbox = r->getBoundingBox();
+			glm::mat4 M = t->getTransform();
+			glm::vec3 minPoint = glm::vec3(M * glm::vec4(bbox.getMinPoint(), 1.0f));
+			glm::vec3 maxPoint = glm::vec3(M * glm::vec4(bbox.getMaxPoint(), 1.0f));
+			sceneBox.expand(minPoint);
+			sceneBox.expand(maxPoint);
 		}
 	}
 
-	//for (auto [name, entities] : mapping)
-	//	std::cout << "shader " << name << ", entities: " << entities.size() << std::endl;
-	return mapping;
+	return sceneBox;
 }
 
-std::map<std::string, std::vector<Entity::Ptr>> Scene::getTransparentEntities()
+Texture2DArray::Ptr Scene::getLightMaps()
 {
-	std::map<std::string, std::vector<Entity::Ptr>> mapping;
-	for (auto [_, entity] : rootEntities)
-	{
-		auto models = entity->getChildrenWithComponent<Renderable>();
-		for (auto m : models)
-		{
-			auto r = m->getComponent<Renderable>();
-			auto mesh = r->getMesh();
-			auto primitives = mesh->getPrimitives();
-			auto mat = primitives[0]->getMaterial();
-			if (mat->isTransmissive() || mat->useBlending())
-			{
-				std::string shaderName = mat->getShader();
-				if (mapping.find(shaderName) == mapping.end())
-					mapping.insert(std::make_pair(shaderName, std::vector<Entity::Ptr>()));
-				mapping[shaderName].push_back(m);
-			}
-		}
-	}
+	return lightMaps;
+}
 
-	//for (auto [name, entities] : mapping)
-	//	std::cout << "shader " << name << ", entities: " << entities.size() << std::endl;
-	return mapping;
+Texture2DArray::Ptr Scene::getDirectionMaps()
+{
+	return directionMaps;
+}
+
+Texture2DArray::Ptr Scene::getIESProfiles()
+{
+	return iesProfiles;
+}
+
+SHLightProbes& Scene::getLightProbes()
+{
+	return lightProbes;
+}
+
+Skybox& Scene::getSkybox()
+{
+	return skybox;
 }

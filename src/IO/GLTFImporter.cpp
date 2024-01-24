@@ -241,7 +241,7 @@ namespace IO
 							float range = -1.0f; // -1 means infinity
 							float inner = 0.0f;
 							float outer = glm::pi<float>() / 4.0f;
-							int type = 0;
+							LightType type;
 
 							if (lightNode.HasMember("color"))
 							{
@@ -261,11 +261,11 @@ namespace IO
 							{
 								std::string typeStr = lightNode["type"].GetString();
 								if (typeStr.compare("directional") == 0)
-									type = 0;
+									type = LightType::DIRECTIONAL;
 								else if (typeStr.compare("point") == 0)
-									type = 1;
+									type = LightType::POINT;
 								else if (typeStr.compare("spot") == 0)
-									type = 2;
+									type = LightType::SPOT;
 							}
 
 							auto light = Light::create(type, color, intensity, range);

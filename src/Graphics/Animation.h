@@ -289,6 +289,7 @@ private:
 	std::vector<IChannel::Ptr> channels;
 	std::vector<float> currentWeights; // TODO: should be put in renderable
 
+	float offset = 0.0f;
 	float currentTime;
 	float duration;
 	bool finished = false;
@@ -319,6 +320,10 @@ public:
 
 	void addChannel(IChannel::Ptr channel);
 	void setDuration(float duration);
+	void setOffset(float offset)
+	{
+		this->offset = offset;
+	}
 	void update(float dt, std::vector<Entity::Ptr>& nodes, std::vector<Material::Ptr>& materials, std::vector<Light::Ptr>& lights, std::vector<Camera::Ptr>& cameras);
 	void reset();
 	bool isFinished();

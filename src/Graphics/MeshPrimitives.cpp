@@ -168,7 +168,7 @@ namespace MeshPrimitives
 
 		surface.calcTangentSpace();
 
-		return Primitive::create("sphere", surface, 4, 0);
+		return Primitive::create("sphere", surface, 4);
 	}
 
 	Primitive::Ptr createCube(glm::vec3 position, float edgeLength)
@@ -192,7 +192,7 @@ namespace MeshPrimitives
 		addFace(surface, v5, v6, v2, v1);
 		addFace(surface, v3, v4, v8, v7);
 
-		return Primitive::create("cube", surface, 4, 0);
+		return Primitive::create("cube", surface, 4);
 	}
 
 	Primitive::Ptr createBox(glm::vec3 position, glm::vec3 size)
@@ -218,7 +218,7 @@ namespace MeshPrimitives
 
 		auto mat = getDefaultMaterial();
 		mat->addProperty("material.metallicFactor", 0.0f);
-		return Primitive::create("box", surface, 4, mat);
+		return Primitive::create("box", surface, 4);
 	}
 
 	Primitive::Ptr createLineBox(glm::vec3 position, glm::vec3 size)
@@ -242,7 +242,7 @@ namespace MeshPrimitives
 		addLine(surface, v5, v6, v2, v1);
 		addLine(surface, v3, v4, v8, v7);
 
-		return Primitive::create("line_box", surface, 1, 0);
+		return Primitive::create("line_box", surface, 1);
 	}
 
 	Primitive::Ptr createQuad(glm::vec3 position, float edgeLength)
@@ -261,6 +261,44 @@ namespace MeshPrimitives
 
 		surface.calcTangentSpace();
 
-		return Primitive::create("quad", surface, 4, 0);
+		return Primitive::create("quad", surface, 4);
+	}
+
+	Primitive::Ptr createQuadInv(glm::vec3 position, float edgeLength)
+	{
+		std::vector<Vertex> vertices;
+		std::vector<GLuint> indices;
+		float s = edgeLength / 2.0f;
+
+		glm::vec3 v1 = glm::vec3(s, -s, 0.0f) + position;
+		glm::vec3 v2 = glm::vec3(-s, -s, 0.0f) + position;
+		glm::vec3 v3 = glm::vec3(-s, s, 0.0f) + position;
+		glm::vec3 v4 = glm::vec3(s, s, 0.0f) + position;
+
+		TriangleSurface surface;
+		addFace(surface, v1, v2, v3, v4);
+
+		surface.calcTangentSpace();
+
+		return Primitive::create("quad", surface, 4);
+	}
+
+	Primitive::Ptr createPlane(glm::vec3 position, float edgeLength)
+	{
+		std::vector<Vertex> vertices;
+		std::vector<GLuint> indices;
+		float s = edgeLength / 2.0f;
+
+		glm::vec3 v1 = glm::vec3(-s, 0.0f, s) + position;
+		glm::vec3 v2 = glm::vec3(s, 0.0f, s) + position;
+		glm::vec3 v3 = glm::vec3(s, 0.0f, -s) + position;
+		glm::vec3 v4 = glm::vec3(-s, 0.0f, -s) + position;
+
+		TriangleSurface surface;
+		addFace(surface, v1, v2, v3, v4);
+
+		surface.calcTangentSpace();
+
+		return Primitive::create("plane", surface, 4);
 	}
 }

@@ -25,7 +25,7 @@ namespace IO
 		return ss.str();
 	}
 
-	std::string loadExpanded(const std::string& fileName)
+	std::string loadExpanded(const std::string& fileName, const std::string& matFile)
 	{
 		std::string code = loadTxtFile(fileName);
 		std::stringstream is(code);
@@ -44,7 +44,13 @@ namespace IO
 					size_t start = line.find_first_of("\"") + 1;
 					size_t end = line.find_last_of("\"");
 					size_t index = fileName.find_last_of("/");
-					std::string includeFile = fileName.substr(0, index) + "/" + line.substr(start, end - start);
+					std::string subFile = line.substr(start, end - start);
+					std::string includeFile = fileName.substr(0, index) + "/" + subFile;
+
+					// TODO: find a better way todo this, maybe a json file that contains shader/material variants
+					if (!matFile.empty() && subFile.compare("Material.glsl") == 0)
+						includeFile = fileName.substr(0, index) + "/Materials/" + matFile; 
+
 					std::string includeCode = loadTxtFile(includeFile);
 					expandedCode += includeCode;
 				}
@@ -132,10 +138,48 @@ namespace IO
 			shaderFiles[name].push_back(fn);
 		}
 
+		std::vector<std::string> matfiles = {
+			"Default.glsl",
+			"Default.glsl",
+			"HeightBlend3.glsl",
+			"Rain.glsl",
+			"RainPOM.glsl",
+			"RainRefraction.glsl",
+			"Velvet.glsl",
+			"Glass.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"Default.glsl",
+			"SpecGloss.glsl",
+			"TerrainBlend.glsl",
+		};
+
 		// TODO: where to put this? config file? data driven? 
 		std::vector<std::vector<std::string>> shaderVariants = {
 			{},
-		 	{ "SHEEN" }, 
+			{ "POM" },
+			{ "LAYERED_MATERIAL" },
+			{ "RAIN_MATERIAL" },
+			{ "RAIN_MATERIAL_POM", "POM"},
+			{ "RAIN_REFRACTION" },
+			{ "VELVET_MATERIAL" },
+			{ "GLASS_MATERIAL" },
+			{ "VERTEX_WIND" },
+			{ "SHEEN" }, 
 			{ "CLEARCOAT" }, 
 			{ "TRANSMISSION" }, 
 			{ "TRANSLUCENCY" },
@@ -151,21 +195,30 @@ namespace IO
 			{ "TRANSMISSION", "TRANSLUCENCY" },
 			{ "SPECULAR", "IRIDESCENCE" },
 			{ "ANISOTROPY", "IRIDESCENCE" },
-			{ "SPECGLOSS" }
+			{ "SPECGLOSS" },
+			{ "SPECGLOSS", "LAYERED_MATERIAL" }
 		};
 
 		for (auto shaderName : shaderFiles)
 		{
 			auto name = shaderName.first;
 			auto stageList = shaderName.second;
-			if (stageList.size() > 1)
+			if (stageList.size() == 1)
 			{
-				std::cout << "compiling shader " << name << std::endl;
+				auto shaderFile = stageList[0];
+				int index = shaderFile.find_last_of('.') + 1;
+				int len = shaderFile.length() - index;
 
+				std::string stage = shaderFile.substr(index, len);
+				if (stage.compare("glsl") == 0)
+					continue;
+			}			
+			
+			{
 				if (name.compare("Default") == 0)
 				{
 					std::string vsCode = "#version 460 core\n";
-					vsCode += loadExpanded(path + "/" + shaderName.second[1]);
+					vsCode += loadExpanded(path + "/" + shaderName.second[1], "");
 
 					GL::VertexShader vs;
 					if (!vs.compile(vsCode.c_str()))
@@ -175,10 +228,13 @@ namespace IO
 						continue;
 					}
 
-					std::string fsCode = loadExpanded(path + "/" + shaderName.second[0]);
-
-					for (auto variants : shaderVariants)
+					for (int i = 0; i < shaderVariants.size(); i++)
 					{
+						auto variants = shaderVariants[i];
+						auto matFile = matfiles[i];
+
+						std::string fsCode = loadExpanded(path + "/" + shaderName.second[0], matFile);
+
 						std::string expandedCode = "#version 460 core\n";
 						bool specGlossMat = false;
 						for (auto v : variants)
@@ -209,7 +265,26 @@ namespace IO
 						std::cout << "compiling shader " << variantName << std::endl;
 
 						auto shader = Shader::create(variantName);
-						shader->attach(vs);
+
+						if (variantName.compare("Default_VERTEX_WIND") == 0)
+						{
+							std::string vsCode = "#version 460 core\n";
+							vsCode += "#define VERTEX_WIND\n";
+							vsCode += loadExpanded(path + "/" + shaderName.second[1], "");
+
+							GL::VertexShader windVS;
+							if (!windVS.compile(vsCode.c_str()))
+							{
+								std::cout << "error compiling shader " << name << std::endl;
+								std::cout << windVS.getErrorLog() << std::endl;
+								continue;
+							}
+							shader->attach(windVS);
+						}
+						else
+						{
+							shader->attach(vs);
+						}
 						shader->attach(fs);
 						if (shader->link())
 						{
@@ -223,6 +298,8 @@ namespace IO
 				}
 				else
 				{
+					std::cout << "compiling shader " << name << std::endl;
+
 					bool success = true;
 					auto shader = Shader::create(name);
 					for (auto shaderFile : shaderName.second)
@@ -231,7 +308,7 @@ namespace IO
 						int len = shaderFile.length() - index;
 
 						std::string stage = shaderFile.substr(index, len);
-						std::string code = loadExpanded(path + "/" + shaderFile);
+						std::string code = loadExpanded(path + "/" + shaderFile, "");
 						code = "#version 460 core\n" + code;
 						if (stage.compare("vert") == 0)
 							success = shader->compile<GL::VertexShader>(code);
@@ -239,6 +316,8 @@ namespace IO
 							success = shader->compile<GL::GeometryShader>(code);
 						else if (stage.compare("frag") == 0)
 							success = shader->compile<GL::FragmentShader>(code);
+						else if (stage.compare("comp") == 0)
+							success = shader->compile<GL::ComputeShader>(code);
 
 						if (!success)
 							break;

@@ -1,6 +1,6 @@
 #version 460 core
 
-#define MAX_JOINTS 128
+#define MAX_JOINTS 160
 #define MAX_MORPH_TARGETS 8
 #define MORPH_TARGET_POSITION_OFFSET 0
 #define MORPH_TARGET_NORMAL_OFFSET 1
@@ -15,9 +15,23 @@ layout(location = 7) in vec4 boneWeights;
 layout(location = 0) out vec2 texCoord0;
 layout(location = 1) out vec2 texCoord1;
 
-uniform mat4 M;
+struct ModelData
+{
+	mat4 M;
+	mat4 N;
+//	mat4 bones[MAX_JOINTS];
+//	mat3 normals[MAX_JOINTS];
+//	float morphWeights[MAX_MORPH_TARGETS];
+	int animationMode; // 0 - no animation, 1 - vertex skinning, 2 - morph targets
+};
+
+layout(std140, binding = 2) uniform ModelUBO
+{
+	ModelData model;
+};
+
 uniform mat4 bones[MAX_JOINTS];
-uniform bool hasAnimations;
+//uniform bool hasAnimations;
 uniform float morphWeights[MAX_MORPH_TARGETS];
 uniform int numMorphTargets = 0;
 uniform sampler2DArray morphTargets;
@@ -46,7 +60,7 @@ void main()
 	if(numMorphTargets > 0)
 		mPosition += getTargetAttribute(gl_VertexID, MORPH_TARGET_POSITION_OFFSET);
 
-	if(hasAnimations)
+	if(model.animationMode == 1)
 	{
 		mat4 B = mat4(0.0);
 		mat3 C = mat3(0.0);
@@ -58,6 +72,15 @@ void main()
 
 		mPosition = vec3(B * vec4(mPosition, 1.0));
 	}
+
+	mat4 M = model.M;
+	mat3 N = mat3(model.N);
+//	if(useInstancing)
+//	{
+//		M = modelMatrix;
+//		N = inverse(transpose(mat3(M)));
+//		instanceID = bufferOffset + gl_InstanceID;
+//	}
 
 	texCoord0 = vTexCoord0;
 	texCoord1 = vTexCoord1;

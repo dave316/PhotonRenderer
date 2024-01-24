@@ -5,7 +5,7 @@
 
 #include "Component.h"
 
-#include <Graphics/Geometry.h>
+#include <Math/Shapes.h>
 
 class Collider : public Component
 {
@@ -19,10 +19,11 @@ public:
 class BoxCollider : public Collider
 {
 private:
-	AABB boundingBox;
+	Box boundingBox;
 public:
-	BoxCollider(AABB& bbox);
+	BoxCollider(Box& bbox);
 	bool rayTest(Ray& ray, glm::vec3& hitpoint);
+	Box getAABB();
 };
 
 class SphereCollider : public Collider

@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include <half.hpp>
-
-using namespace half_float;
+//#include <half.hpp>
+//
+//using namespace half_float;
 
 typedef unsigned int uint32;
 typedef unsigned short uint16;

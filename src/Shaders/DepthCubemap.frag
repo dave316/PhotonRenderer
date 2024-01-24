@@ -2,9 +2,21 @@
 
 #define METAL_ROUGH_MATERIAL
 
-#include "utils.glsl"
-#include "material.glsl"
-#include "light.glsl"
+struct ModelData
+{
+	mat4 M;
+	mat4 N;
+	int animationMode; // 0 - no animation, 1 - vertex skinning, 2 - morph targets
+};
+
+layout(std140, binding = 2) uniform ModelUBO
+{
+	ModelData model;
+};
+
+#include "Utils.glsl"
+#include "Material.glsl"
+#include "Light.glsl"
 
 layout(location = 0) in vec3 wPosition;
 layout(location = 1) in vec2 fTexCoord0;

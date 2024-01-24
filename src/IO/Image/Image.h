@@ -43,7 +43,7 @@ namespace IO
 		void setFromMemory(const DataType* src, uint32 size)
 		{
 			assert(this->size == size);
-			if (size != size)
+			if (this->size != size)
 				std::cerr << "image has wrong size, please resize or recreate image!" << std::endl;
 			std::memcpy(data.get(), src, size * sizeof(DataType));
 		}
@@ -143,8 +143,8 @@ namespace IO
 				{
 					switch (channels)
 					{
-					case 3: format = GL::RGB32F; break;
-					case 4: format = GL::RGBA32F; break;
+					case 3: format = GL::RGB16F; break;
+					case 4: format = GL::RGBA16F; break;
 					default:
 						std::cout << "error: no format for " << channels << " channels" << std::endl;
 						return nullptr;
@@ -184,7 +184,7 @@ namespace IO
 	typedef Image<uint16> ImageUI16;
 	typedef Image<uint32> ImageUI32;
 	typedef Image<float> ImageF32;
-	typedef Image<half> ImageF16;
+	//typedef Image<half> ImageF16;
 }
 
 #endif // INCLUDED_IMAGE

@@ -129,6 +129,109 @@ namespace IO
 			}
 		}
 
+		void setFromFaces(std::shared_ptr<ImageType> image)
+		{
+			for (int f = 0; f < (int)Face::NUM_FACES; f++)
+			{
+				for (uint32_t y = 0; y < faceSize; y++)
+				{
+					for (uint32_t x = 0; x < faceSize; x++)
+					{
+						auto rgba = image->getPixel(f * faceSize + x, y);
+						std::vector<float> color;
+						for (int i = 0; i < 3; i++)
+							color.push_back(rgba[i]);
+						faces[f]->setPixel(color, x, y);
+					}
+				}
+			}
+		}
+
+		struct Address {
+			Face face;
+			float s = 0;
+			float t = 0;
+		};
+
+		Address getAddressFor(glm::vec3 r) {
+			Address addr;
+			float sc, tc, ma;
+			const float rx = std::abs(r.x);
+			const float ry = std::abs(r.y);
+			const float rz = std::abs(r.z);
+			if (rx >= ry && rx >= rz) {
+				ma = 1.0f / rx;
+				if (r.x >= 0) {
+					addr.face = Face::POS_X;
+					sc = -r.z;
+					tc = -r.y;
+				}
+				else {
+					addr.face = Face::NEG_X;
+					sc = r.z;
+					tc = -r.y;
+				}
+			}
+			else if (ry >= rx && ry >= rz) {
+				ma = 1.0f / ry;
+				if (r.y >= 0) {
+					addr.face = Face::POS_Y;
+					sc = r.x;
+					tc = r.z;
+				}
+				else {
+					addr.face = Face::NEG_Y;
+					sc = r.x;
+					tc = -r.z;
+				}
+			}
+			else {
+				ma = 1.0f / rz;
+				if (r.z >= 0) {
+					addr.face = Face::POS_Z;
+					sc = r.x;
+					tc = -r.y;
+				}
+				else {
+					addr.face = Face::NEG_Z;
+					sc = -r.x;
+					tc = -r.y;
+				}
+			}
+			// ma is guaranteed to be >= sc and tc
+			addr.s = (sc * ma + 1.0f) * 0.5f;
+			addr.t = (tc * ma + 1.0f) * 0.5f;
+			return addr;
+		}
+
+		void mirror(std::shared_ptr<CubemapType> cm)
+		{
+			float upperBound = std::nextafter((float)faceSize, 0.0f);
+			// TODO: bilinear interpolation
+			for (int f = 0; f < (int)Face::NUM_FACES; f++)
+			{
+				for (uint32_t y = 0; y < faceSize; y++)
+				{
+					for (uint32_t x = 0; x < faceSize; x++)
+					{
+						glm::vec3 dir = getCubeDirection(Face(f), x + 0.5f, y + 0.5f);
+						dir.x = -dir.x;
+						Address addr = getAddressFor(dir);
+						const uint32_t cx = std::min(uint32_t(addr.s * faceSize), faceSize - 1);
+						const uint32_t cy = std::min(uint32_t(addr.t * faceSize), faceSize - 1);
+						auto faceImg = cm->getFaceImage(Face(addr.face));
+						auto pixel = faceImg->getPixel(cx, cy);
+						faces[f]->setPixel(pixel, x, y);
+					}
+				}
+			}
+		}
+
+		std::shared_ptr<ImageType> getFaceImage(Face f)
+		{
+			return faces[f];
+		}
+
 		TextureCubeMap::Ptr upload()
 		{
 			//GL::TextureFormat format = GL::RGB8;
@@ -144,7 +247,7 @@ namespace IO
 			//	break;
 			//}
 
-			auto cm = TextureCubeMap::create(faceSize, faceSize, GL::RGB32F);
+			auto cm = TextureCubeMap::create(faceSize, faceSize, GL::RGB16F);
 			for (int f = POS_X; f < NUM_FACES; f++)
 				cm->uploadFace(GL::CupeMapFace(f), faces[f]->getRawPtr());
 			return cm;
@@ -161,7 +264,7 @@ namespace IO
 	typedef Cubemap<uint16> CubemapUI16;
 	typedef Cubemap<uint32> CubemapUI32;
 	typedef Cubemap<float> CubemapF32;
-	typedef Cubemap<half> CubemapF16;
+	//typedef Cubemap<half> CubemapF16;
 }
 
 #endif // INCLUDED_CUBEMAP

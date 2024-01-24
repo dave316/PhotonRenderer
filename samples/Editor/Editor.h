@@ -35,6 +35,8 @@ public:
 	bool init();
 	void setupInput();
 	void addTreeNode(Entity::Ptr entity);
+	bool loadModelASSIMP(std::string name, std::string path);
+	bool loadGLTFModel(const std::string& name, const std::string& fullpath);
 	void handleDrop(int count, const char** paths);
 	void selectModel();
 	void initCamera();

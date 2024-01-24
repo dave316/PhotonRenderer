@@ -10,6 +10,7 @@ Transform::Transform() :
 	localTransform(1.0f),
 	position(0.0f),
 	rotation(1.0f, 0.0f, 0.0f, 0.0f),
+	scale(1.0f),
 	transform(1.0f),
 	normalTransform(1.0f)
 {}
@@ -44,6 +45,7 @@ void Transform::setLocalTransform(glm::mat4 M)
 	glm::vec3 skew;
 	glm::vec4 persp;
 	glm::decompose(M, localScale, localRotation, localPosition, skew, persp);
+	updateLocalTransform();
 }
 
 void Transform::updateLocalTransform()
@@ -59,7 +61,6 @@ void Transform::update(glm::mat4 parentTransform)
 	transform = parentTransform * localTransform;
 	normalTransform = glm::inverseTranspose(glm::mat3(transform));
 
-	glm::vec3 scale;
 	glm::vec3 skew;
 	glm::vec4 persp;
 	glm::decompose(transform, scale, rotation, position, skew, persp);
@@ -83,12 +84,12 @@ void Transform::rotate(float angle, glm::vec3 axis)
 	updateLocalTransform();
 }
 
-void Transform::setBounds(AABB& aabb)
+void Transform::setBounds(Box& aabb)
 {
 	boundingBox = aabb;
 }
 
-AABB Transform::getBounds()
+Box Transform::getBounds()
 {
 	return boundingBox;
 }
@@ -96,6 +97,11 @@ AABB Transform::getBounds()
 glm::mat4 Transform::getTransform()
 {
 	return transform;
+}
+
+glm::mat3 Transform::getNormalMatrix()
+{
+	return normalTransform;
 }
 
 glm::vec3 Transform::getLocalPosition()
@@ -126,4 +132,9 @@ glm::vec3 Transform::getPosition()
 glm::quat Transform::getRotation()
 {
 	return rotation;
+}
+
+glm::vec3 Transform::getScale()
+{
+	return scale;
 }

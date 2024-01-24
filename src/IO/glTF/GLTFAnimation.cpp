@@ -6,6 +6,34 @@ namespace IO
 {
 	namespace glTF
 	{
+		template<>
+		IChannel::Ptr loadChannel<glm::quat>(BinaryData& data, AnimationSampler& sampler, AnimAttribute attribute, unsigned int targetIndex)
+		{
+			std::vector<float> times;
+			std::vector<glm::quat> values;
+			data.loadData(sampler.input, times);
+			data.loadData(sampler.output, values);
+
+			auto channel = Channel<glm::quat>::create(sampler.interpolation, attribute, targetIndex);
+			int numValues = values.size() / times.size();
+			for (int i = 0; i < times.size(); i++)
+			{
+				std::vector<glm::quat> allValues;
+				for (int j = 0; j < numValues; j++)
+				{
+					int index = i * numValues + j;
+					glm::quat q;
+					q.x = values[index].x;
+					q.y = values[index].y;
+					q.z = values[index].z;
+					q.w = values[index].w;
+					allValues.push_back(q);
+				}
+				channel->addValue(times[i], allValues);
+			}
+			return channel;
+		}
+
 		Skin::Ptr loadSkin(const json::Value& skinNode, BinaryData& data)
 		{
 			std::vector<int> boneJoints;
@@ -111,7 +139,11 @@ namespace IO
 					animation->addChannel(channel);
 				}
 			}
+			//float offset = duration * double(rand()) / double(RAND_MAX);
+			//animation->setOffset(offset);
 			animation->setDuration(duration);
+
+			std::cout << "animation duration: " << duration << std::endl;
 			return animation;
 		}
 
@@ -165,8 +197,8 @@ namespace IO
 				{
 					int lightIndex = std::stoi(elements[3]);
 					std::string attribute = elements[4];
-					if (attribute.compare("color") == 0) // TODO: colors are always vec4???
-						return loadChannel<glm::vec4>(data, sampler, AnimAttribute::LIGHT_COLOR, lightIndex);
+					if (attribute.compare("color") == 0)
+						return loadChannel<glm::vec3>(data, sampler, AnimAttribute::LIGHT_COLOR, lightIndex);
 					else if (attribute.compare("intensity") == 0)
 						return loadChannel<float>(data, sampler, AnimAttribute::LIGHT_INTENSITY, lightIndex);
 					else if (attribute.compare("range") == 0)
@@ -211,7 +243,7 @@ namespace IO
 						else if (extAttribute.compare("attenuationDistance") == 0)
 							return loadChannel<float>(data, sampler, AnimAttribute::MATERIAL_ATTENUATION_DISTANCE, matIndex);
 						else if (extAttribute.compare("attenuationColor") == 0)
-							return loadChannel<glm::vec4>(data, sampler, AnimAttribute::MATERIAL_ATTENUATION_COLOR, matIndex);
+							return loadChannel<glm::vec3>(data, sampler, AnimAttribute::MATERIAL_ATTENUATION_COLOR, matIndex);
 					}
 					else if (extension.compare("KHR_materials_iridescence") == 0)
 					{
@@ -247,7 +279,7 @@ namespace IO
 				else if (matType.compare("alphaCutoff") == 0)
 					return loadChannel<float>(data, sampler, AnimAttribute::MATERIAL_ALPHA_CUTOFF, matIndex);
 				else if (matType.compare("emissiveFactor") == 0)
-					return loadChannel<glm::vec4>(data, sampler, AnimAttribute::MATERIAL_EMISSIVE_FACTOR, matIndex);
+					return loadChannel<glm::vec3>(data, sampler, AnimAttribute::MATERIAL_EMISSIVE_FACTOR, matIndex);
 				else if (matType.compare("emissiveTexture") == 0)
 				{
 					std::string extension = elements[4];

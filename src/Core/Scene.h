@@ -3,22 +3,39 @@
 
 #pragma once
 
-#include <Graphics/EnvironmentMap.h>
-#include <Graphics/Framebuffer.h>
-
+#include <Core/Animator.h>
 #include <Core/Camera.h>
-#include <Core/Light.h>
 #include <Core/Entity.h>
+#include <Core/Renderable.h>
+#include <Core/Volume.h>
+#include <Core/Collider.h>
 
-struct CameraInfo
+#include <Graphics/FPSCamera.h>
+
+#include <IO/Unity/LightData.h>
+
+struct ReflectionProbe
 {
-	glm::mat4 P;
-	glm::mat4 V;
-	glm::vec3 pos;
-	CameraInfo() {}
-	CameraInfo(glm::mat4 P, glm::mat4 V, glm::vec3 pos) :
-		P(P), V(V), pos(pos)
-	{}
+	glm::vec4 position;
+	glm::vec4 boxMin;
+	glm::vec3 boxMax;
+	int index;
+};
+
+struct SHLightProbes
+{
+	std::vector<IO::Unity::Tetrahedron> tetrahedras;
+	std::vector<IO::Unity::SH9> coeffs;
+	std::vector<glm::vec3> positions;
+};
+
+struct Skybox
+{
+	Texture2D::Ptr texture = nullptr;
+	float exposure = 1.0f;
+	float rotation = 0.0f;
+	glm::vec4 color = glm::vec4(1);
+	glm::vec3 tint = glm::vec4(1);
 };
 
 class Scene
@@ -27,86 +44,63 @@ private:
 	std::string name;
 	std::map<std::string, Entity::Ptr> rootEntities;
 	std::map<int, Entity::Ptr> allEntities;
-	GL::UniformBuffer<Light::UniformData> lightUBO;
-	std::vector<Framebuffer::Ptr> shadowFBOs;
-	std::vector<std::vector<glm::mat4>> views;
-	std::map<std::string, CameraInfo> cameras;
-	std::map<std::string, int> modelInfo;
-	std::map<std::string, int> renderInfo;
+	std::map<int, Component::Ptr> allComponents;
+	Entity::Ptr selectedModel;
 	std::string currentModel;
 
-	std::vector<Primitive::Ptr> boundingBoxes;
-	std::vector<glm::mat4> boxMat;
-	Entity::Ptr selectedModel;
+	GL::ShaderStorageBuffer<IBLUniformData> iblUBO;
 
-	Primitive::Ptr screenQuad;
-	Primitive::Ptr unitCube;
-
-	EnvironmentMap::Ptr skybox;
-	EnvironmentMap::Ptr irradianceMap;
-	EnvironmentMap::Ptr specularMapGGX;
-	EnvironmentMap::Ptr specularMapCharlie;
-
-	EnvironmentMap::Ptr reflectionProbe = nullptr;
-	EnvironmentMap::Ptr irradianceProbe;
-	EnvironmentMap::Ptr specularProbe;
-
-	bool useTransmission = false;
-	bool usePerceptualQuantization = false;
+	Skybox skybox;
+	Texture2DArray::Ptr lightMaps = nullptr;
+	Texture2DArray::Ptr directionMaps = nullptr;
+	Texture2DArray::Ptr iesProfiles = nullptr;
+	SHLightProbes lightProbes;
 	
+	int numLights = 0;
+	bool useTransmission = false;
+
 	Scene(const Scene&) = delete;
 	Scene& operator=(const Scene&) = delete;
 public:
 	Scene(const std::string& name);
 	~Scene();
 
-	void initEnvMaps(std::string fn, std::map<std::string, Shader::Ptr>& shaders);
-	void initLightProbe(EnvironmentMap::Ptr lightProbe, std::map<std::string, Shader::Ptr>& shaders);
-	void initLights(std::map<std::string, Shader::Ptr>& shaders);
-	void initShadowMaps();
-#ifdef WITH_ASSIMP
-	bool loadModelASSIMP(std::string name, std::string path);
-#endif
-	bool loadModelGLTF(std::string name, std::string path);
-	void addEntity(std::string name, Entity::Ptr entity);
-	void addLight(std::string name);
+	void addRootEntity(std::string name, Entity::Ptr entity);
+	void addRootEntity(Entity::Ptr entity);
+	void addLightMaps(Texture2DArray::Ptr lightmaps);
+	void addDirectionMaps(Texture2DArray::Ptr dirMaps);
+	void setIESProfile(Texture2DArray::Ptr iesProfiles);
+	void setSkybox(Skybox& skybox);
+	void setLightProbes(SHLightProbes& lightProbes);
 	void removeRootEntity(std::string name);
+	bool hasTransmission();
+	void checkWindingOrder();
 	void updateAnimations(float dt);
 	void updateAnimationState(float dt);
 	void playAnimations();
 	void stopAnimations();
 	void switchAnimations(int index);
-	void switchVariant(int idx);
-	void nextMaterial();
-	void renderBoxes(Shader::Ptr shader);
-	void useIBL();
-	void useSkybox();
-	void clear();
-	void updateBoxes();
-	void selectBox(Entity::Ptr e);
+	void switchVariant(int index);
+	void select(Entity::Ptr e);
 	void unselect();
-	bool hasTransmission();
-	int numLights();
-	std::map<std::string, int> getModelInfo();
-	std::map<std::string, int> getRenderInfo();
-	CameraInfo getCameraInfo(std::string name);
-	std::map<std::string, Entity::Ptr>& getEntities();
-	std::vector<Framebuffer::Ptr>& getShadwoFBOs();
-	std::vector<std::vector<glm::mat4>>& getViews();
-	std::vector<std::string> getCameraNames();
-	std::vector<std::string> getVariantNames();
+	int getNumLights();
+	void clear();
 	std::vector<std::string> getAnimations();
-	AABB getBoundingBox();
-	Entity::Ptr getRootNode(std::string name);
-	Entity::Ptr getCurrentModel();
-	Entity::Ptr getNode(int id);
-	Entity::Ptr selectModelRaycast(glm::vec3 start, glm::vec3 end);
-	// Returns all hit entities sorted by distance to camera
-	std::vector<Entity::Ptr> selectModelsRaycast(glm::vec3 start, glm::vec3 end); 
 	std::map<std::string, Entity::Ptr> getRootEntities();
-	std::map<std::string, std::vector<Entity::Ptr>> getOpaqueEntities();
-	std::map<std::string, std::vector<Entity::Ptr>> getTransparentEntities();
-
+	std::map<std::string, std::vector<Renderable::Ptr>> batchOpaqueInstances();
+	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> getOpaqueEntitiesCullFrustrum(FPSCamera& camera);
+	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> getOpaqueEntities();
+	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> getTransparentEntities();
+	std::vector<Entity::Ptr> selectModelsRaycast(glm::vec3 start, glm::vec3 end);
+	Entity::Ptr getNode(int id);
+	Entity::Ptr getCurrentModel();
+	PostProcessParameters getCurrentProfile(glm::vec3 cameraPosition);
+	Texture2DArray::Ptr getLightMaps();
+	Texture2DArray::Ptr getDirectionMaps();
+	Texture2DArray::Ptr getIESProfiles();
+	SHLightProbes& getLightProbes();
+	Skybox& getSkybox();
+	Box getBoundingBox();
 	typedef std::shared_ptr<Scene> Ptr;
 	static Ptr create(const std::string& name)
 	{

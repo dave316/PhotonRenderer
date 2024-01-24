@@ -1,6 +1,13 @@
 #include "Editor.h"
 
+#include <Graphics/MeshPrimitives.h>
+
 #include <IO/SceneExporter.h>
+#include <IO/AssimpImporter.h>
+#include <IO/GLTFImporter.h>
+#include <IO/Unity/UnityImporter.h>
+#include <IO/Image/ImageDecoder.h>
+#include <Utils/Color.h>
 
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -10,6 +17,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <algorithm>
 #include <sstream>
+#include <stack>
 
 using namespace std::placeholders;
 
@@ -18,6 +26,81 @@ Editor::Editor(const char* title, unsigned int width, unsigned int height) :
 	renderer(width, height)
 {
 	camera.setAspect((float)width / (float)height);
+}
+
+class EditCommand
+{
+public:
+	virtual void redo() = 0;
+	virtual void undo() = 0;
+	typedef std::shared_ptr<EditCommand> Ptr;
+};
+
+class TranslateCommand : public EditCommand
+{
+private:
+	std::vector<Transform::Ptr> targetTransforms;
+	glm::vec3 offset;
+	glm::vec3 invOffset;
+public:
+	TranslateCommand(std::vector<Transform::Ptr>& transforms, glm::vec3 offset) :
+		targetTransforms(transforms),
+		offset(offset),
+		invOffset(-offset)
+	{
+	}
+	void redo()
+	{
+		for (auto t : targetTransforms)
+			t->translate(offset);
+	}
+	void undo()
+	{
+		for (auto t : targetTransforms)
+			t->translate(invOffset);
+	}
+
+	typedef std::shared_ptr<TranslateCommand> Ptr;
+	static Ptr create(std::vector<Transform::Ptr>& transforms, glm::vec3 offset)
+	{
+		return std::make_shared<TranslateCommand>(transforms, offset);
+	}
+};
+
+void testUndoRedo(std::vector<Transform::Ptr> transforms)
+{
+	std::vector<EditCommand::Ptr> undoCommands;
+	std::vector<EditCommand::Ptr> redoCommands;
+
+	// user edits object (fills undo stack)
+	undoCommands.push_back(TranslateCommand::create(transforms, glm::vec3(0, 1, 0)));
+	undoCommands.push_back(TranslateCommand::create(transforms, glm::vec3(1, 0, 0)));
+	undoCommands.push_back(TranslateCommand::create(transforms, glm::vec3(0, 0, 1)));
+	undoCommands.push_back(TranslateCommand::create(transforms, glm::vec3(0, 2, 0)));
+	undoCommands.push_back(TranslateCommand::create(transforms, glm::vec3(0, -1, 0)));
+
+	// user pressed ctrl+z twice
+	for (int i = 0; i < 2; i++)
+	{
+		auto cmd = undoCommands.back();
+		cmd->undo();
+		redoCommands.push_back(cmd);
+		undoCommands.pop_back();
+	}
+
+	// user pressed ctrl+y once
+	auto cmd = redoCommands.back();
+	cmd->redo();
+	undoCommands.push_back(cmd);
+	redoCommands.pop_back();
+
+	// user does a new edit (redo stack is cleared)
+	undoCommands.push_back(TranslateCommand::create(transforms, glm::vec3(0, 0, -1)));
+	redoCommands.clear();
+
+	// user leaves application (both stacks are cleared)
+	undoCommands.clear();
+	redoCommands.clear();
 }
 
 bool Editor::init()
@@ -43,20 +126,21 @@ bool Editor::init()
 	if (!renderer.init())
 		return false;
 
-	scene = Scene::create("scene");
-	//scene = IO::loadScene("scene.json");
-
-	//std::string assetPath = "../../../../assets";
-	//std::string gltfPath = assetPath + "/glTF-Sample-Models_/2.0";
-	//std::string name = "MetalRoughSpheres";
-	//scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//scene->updateAnimations(0.0f);
+	scene = Scene::create("Scene");
 
 	std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
-	renderer.initEnv(envFn, scene);
-	renderer.initLights(scene);
-	scene->initShadowMaps();
-	renderer.updateShadows(scene);
+	auto panoImg = IO::decodeHDRFromFile(envFn, true);
+
+	Skybox skybox;
+	skybox.texture = panoImg->upload(false);
+	scene->setSkybox(skybox);
+
+	renderer.setIBL(true);
+	renderer.setBloom(false);
+	renderer.setTonemappingOp(0);
+
+	renderer.updateCamera(camera);
+	renderer.prepare(scene);
 
 	setupInput();
 
@@ -104,7 +188,6 @@ void Editor::setupInput()
 	input.setMouseWheelCallback(std::bind(&FPSCamera::updateSpeed, &camera, _1, _2));
 	input.addKeyCallback(GLFW_MOUSE_BUTTON_1, GLFW_RELEASE, std::bind(&Editor::selectModel, this));
 
-	//input.addKeyCallback(GLFW_KEY_M, GLFW_PRESS, std::bind(&Renderer::nextMaterial, &renderer));
 	input.addKeyCallback(GLFW_KEY_SPACE, GLFW_PRESS, [&] {animate = !animate; });
 
 	input.addKeyCallback(GLFW_KEY_E, GLFW_PRESS, [&] { op = ImGuizmo::TRANSLATE;  });
@@ -112,6 +195,28 @@ void Editor::setupInput()
 	input.addKeyCallback(GLFW_KEY_T, GLFW_PRESS, [&] { op = ImGuizmo::SCALE;  });
 
 	input.setDropCallback(std::bind(&Editor::handleDrop, this, _1, _2));
+}
+
+bool Editor::loadGLTFModel(const std::string& name, const std::string& fullpath)
+{
+	IO::glTF::Importer importer;
+	auto rootEntity = importer.importModel(fullpath);
+	if (rootEntity)
+	{
+		scene->addRootEntity(name, rootEntity);
+		return true;
+	}
+	return false;
+}
+
+bool Editor::loadModelASSIMP(std::string name, std::string path)
+{
+	IO::AssimpImporter importer;
+	auto model = importer.importModel(path);
+	if (model == nullptr)
+		return false;
+	scene->addRootEntity(name, model);
+	return true;
 }
 
 void Editor::handleDrop(int count, const char** paths)
@@ -135,21 +240,23 @@ void Editor::handleDrop(int count, const char** paths)
 		std::string ext = filename.substr(extIndex, filename.length() - extIndex);
 
 		if (ext.compare("gltf") == 0 || ext.compare("glb") == 0)
-			scene->loadModelGLTF(name, fullPath);
+			loadGLTFModel(name, fullPath);
 		else
 #ifdef WITH_ASSIMP
-			scene->loadModelASSIMP(name, fullPath);
+			loadModelASSIMP(name, fullPath);
 #else
 			std::cout << "not supported file extension: " << ext << std::endl;
 #endif
 	}
 
-	renderer.initLights(scene);
-	scene->initShadowMaps();
+	renderer.updateCamera(camera);
+	renderer.prepare(scene);
+
 	if (animate)
 		scene->playAnimations();
 	else
 		scene->stopAnimations();
+
 	initCamera();
 }
 
@@ -172,7 +279,6 @@ void Editor::selectModel()
 		glm::vec3 end = glm::vec3(mouseX, windowSize.y - mouseY, 1.0f);
 		glm::vec3 startWorld = glm::unProject(start, V, P, vp);
 		glm::vec3 endWorld = glm::unProject(end, V, P, vp);
-		//selectedModel = scene->selectModelRaycast(startWorld, endWorld);
 		auto hitModels = scene->selectModelsRaycast(startWorld, endWorld);
 
 		if (hitModels.empty())
@@ -317,15 +423,19 @@ void Editor::gui()
 			if (ImGui::MenuItem("Load Scene"))
 			{
 				scene = IO::loadScene("scene.json");
-				scene->updateAnimations(0.0f);
 
-				std::string assetPath = "../../../../assets";
-				std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
-				renderer.initEnv(envFn, scene);
-				renderer.initLights(scene);
-				renderer.setLights(scene->numLights());
-				scene->initShadowMaps();
-				renderer.updateShadows(scene);
+				std::string envFn = "../../../../assets/Footprint_Court/Footprint_Court_2k.hdr";
+				auto panoImg = IO::decodeHDRFromFile(envFn, true);
+
+				Skybox skybox;
+				skybox.texture = panoImg->upload(false);
+				skybox.exposure = 1.0f;
+				skybox.rotation = 0.0f;
+				scene->setSkybox(skybox);
+
+				scene->updateAnimations(0.0f);
+				renderer.updateCamera(camera);
+				renderer.prepare(scene);
 			}				
 			ImGui::EndMenu();
 		}
@@ -333,17 +443,39 @@ void Editor::gui()
 		if (ImGui::BeginMenu("Entity"))
 		{
 			if (ImGui::MenuItem("Empty"))
-				scene->addEntity("Empty", Entity::create("Empty", nullptr));
+				scene->addRootEntity("Empty", Entity::create("Empty", nullptr));
 			if (ImGui::MenuItem("Model"))
 			{
 				// TODO: add primitive geometry
 			}
 			if (ImGui::MenuItem("Light"))
 			{
-				scene->addLight("light_01");
-				renderer.initLights(scene);
-				renderer.setLights(scene->numLights());
-				scene->initShadowMaps();
+				glm::vec3 lightColor = glm::vec3(1.0f);
+
+				auto entity = Entity::create("light", nullptr);
+				entity->addComponent(Light::create(LightType::POINT, lightColor, 50.0f, 100.0f));
+
+				auto r = Renderable::create();
+				float radius = 0.005f;
+				auto prim = MeshPrimitives::createUVSphere(glm::vec3(0), radius, 32, 32);
+				prim->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
+				auto mat = getDefaultMaterial();
+				mat->addProperty("material.baseColorFactor", glm::vec4(lightColor, 1.0));
+				mat->addProperty("material.unlit", true);
+
+				SubMesh s;
+				s.primitive = prim;
+				s.material = mat;
+
+				auto mesh = Mesh::create("Sphere");
+				mesh->addSubMesh(s);
+				r->setMesh(mesh);
+				entity->addComponent(r);
+
+				scene->addRootEntity("light", entity);
+
+				renderer.initLights(scene, camera);
+				renderer.initShadows(scene);
 			}			
 
 			ImGui::EndMenu();
@@ -410,7 +542,7 @@ void Editor::gui()
 			auto r = selectedModel->getComponent<Renderable>();
 			if (r != nullptr)
 			{
-				AABB bbox = r->getBoundingBox();
+				Box bbox = r->getBoundingBox();
 				glm::vec3 gizmoPos = bbox.getCenter();
 				T = glm::translate(glm::mat4(1.0f), gizmoPos);
 				modelMatrix = modelMatrix * T;
@@ -420,12 +552,12 @@ void Editor::gui()
 				if (op == ImGuizmo::TRANSLATE)
 				{
 					auto renderEntities = selectedModel->getChildrenWithComponent<Renderable>();
-					AABB selectedBox;
+					Box selectedBox;
 					for (auto e : renderEntities)
 					{
 						auto t = e->getComponent<Transform>();
 						auto r = e->getComponent<Renderable>();
-						AABB bbox = r->getBoundingBox();
+						Box bbox = r->getBoundingBox();
 						glm::mat4 local2world = t->getTransform();
 						glm::vec3 minPoint = glm::vec3(local2world * glm::vec4(bbox.getMinPoint(), 1.0f));
 						glm::vec3 maxPoint = glm::vec3(local2world * glm::vec4(bbox.getMaxPoint(), 1.0f));
@@ -459,11 +591,10 @@ void Editor::gui()
 			t->setLocalTransform(localTransform);
 
 			selectedModel->update(parentTransform);
-			renderer.initLights(scene);
-			renderer.setLights(scene->numLights());
+			renderer.initLights(scene, camera);
 			renderer.updateShadows(scene);
-			//scene->updateBoxes();
-			scene->selectBox(selectedModel);
+			renderer.setLights(scene->getNumLights());
+			scene->select(selectedModel);
 		}
 		
 		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
@@ -480,9 +611,85 @@ void Editor::gui()
 
 	if (ImGui::Begin("Scene"))
 	{
-		auto entities = scene->getEntities();
+		auto entities = scene->getRootEntities();
 		for(auto [name, entity] : entities)
 			addTreeNode(entity);
+	}
+	ImGui::End();
+
+	if (ImGui::Begin("Properties"))
+	{
+		if (selectedModel)
+		{
+			auto t = selectedModel->getComponent<Transform>();
+			if (t)
+			{
+				if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					auto pos = t->getLocalPosition();
+					auto rot = t->getLocalRotation();
+					auto rotEuler = glm::degrees(glm::eulerAngles(rot));
+					auto scale = t->getLocalScale();
+					ImGui::InputFloat3("Position", &pos[0]);
+					ImGui::InputFloat3("Rotation", &rotEuler[0]);
+					ImGui::InputFloat3("Scale", &scale[0]);
+					glm::quat q = glm::quat(glm::radians(rotEuler));
+					t->setLocalPosition(pos);
+					t->setLocalRotation(q);
+					t->setLocalScale(scale);
+				}
+			}
+
+			auto l = selectedModel->getComponent<Light>();
+			if (l)
+			{
+				if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+				{
+					static int currentType = (int)l->getType();
+					static int prevType = currentType;
+					std::vector<std::string> types = { "Directional", "Point", "Spot", "Area" };
+					std::string typeStr = types[currentType];
+					if (ImGui::BeginCombo("Type", typeStr.c_str(), 0))
+					{
+						for (int i = 0; i < types.size(); i++)
+						{
+							const bool isSelected = (currentType == i);
+							if (ImGui::Selectable(types[i].c_str(), isSelected))
+								currentType = i;
+							if (isSelected)
+								ImGui::SetItemDefaultFocus();
+						}
+
+						l->setType((LightType)currentType);
+
+						ImGui::EndCombo();
+					}
+
+					static bool useColorTemp = false;
+					if (useColorTemp)
+					{
+						static int temp = 6500;
+						ImGui::SliderInt("Color temperature", &temp, 1000, 15000);
+						l->setColorTemp(temp);
+					}
+					else
+					{
+						auto col = Color::linearToSRGB(l->getColor());
+						ImGui::ColorEdit3("Color", &col[0], ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoAlpha);
+						l->setColorSRGB(col);
+					}
+					ImGui::Checkbox("Use color temperature", &useColorTemp);
+
+					float intensity = l->getIntensity();
+					ImGui::SliderFloat("Intensity", &intensity, 0, 100);
+					l->setLuminousIntensity(intensity);
+
+					float range = l->getRange();
+					ImGui::SliderFloat("Range", &range, 0, 100);
+					l->setRange(range);
+				}
+			}
+		}
 	}
 	ImGui::End();
 
@@ -496,11 +703,12 @@ void Editor::gui()
 			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
 			std::string fileName = ImGuiFileDialog::Instance()->GetCurrentFileName();
 			std::string name = fileName.substr(0, fileName.find_last_of("."));
-			scene->loadModelGLTF(name, filePathName);
-			renderer.initLights(scene);
-			renderer.setLights(scene->numLights());
-			scene->initShadowMaps();
-			//renderer.updateShadows(scene);
+			
+			loadGLTFModel(name, filePathName);
+
+			renderer.updateCamera(camera);
+			renderer.prepare(scene);
+
 			initCamera();
 		}
 		ImGuiFileDialog::Instance()->Close();
@@ -543,11 +751,8 @@ void Editor::loop()
 			{
 				scene->updateAnimations(animTime);
 				scene->updateAnimationState(animTime);
+				renderer.initLights(scene, camera);
 				renderer.updateShadows(scene);
-
-				//renderer.updateAnimations(animTime);
-				//renderer.updateAnimationState(animTime);
-				//renderer.updateShadows();
 			}	
 			animTime = 0.0f;
 		}
@@ -556,7 +761,6 @@ void Editor::loop()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		gui();
-		//renderer.renderToTexture(scene);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

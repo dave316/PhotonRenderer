@@ -20,6 +20,7 @@ private:
 	std::map<std::type_index, Component::Ptr> components;
 	std::vector<std::shared_ptr<Entity>> children;
 
+	bool active = true;
 	unsigned int id;
 
 	static unsigned int globalIDCount;
@@ -31,11 +32,13 @@ public:
 		addComponent(t);
 		id = globalIDCount;
 		globalIDCount++;
+
+		//std::cout << "Entity " << name << " created" << std::endl;
 	}
 
 	~Entity()
 	{
-		std::cout << "Entity " << name << " destroyed" << std::endl;
+		//std::cout << "Entity " << name << " destroyed" << std::endl;
 	}
 
 	void setURI(const std::string& uri)
@@ -54,11 +57,11 @@ public:
 	template<typename T>
 	void addComponent(std::shared_ptr<T> component)
 	{
-		if (components.find(typeid(T)) != components.end())
-		{
-			std::cout << "warning component " << typeid(T).name() << " already exists, and is NOT replaced! (TODO allow to replace it)" << std::endl;
-			return;
-		}
+		//if (components.find(typeid(T)) != components.end())
+		//{
+		//	std::cout << "warning component " << typeid(T).name() << " already exists, and is NOT replaced! (TODO allow to replace it)" << std::endl;
+		//	return;
+		//}
 		components[typeid(T)] = component;
 	}
 
@@ -145,6 +148,11 @@ public:
 			c->update(T);
 	}
 
+	void setName(const std::string& name)
+	{
+		this->name = name;
+	}
+
 	std::string getName() const
 	{
 		return name;
@@ -200,6 +208,17 @@ public:
 	unsigned int getID()
 	{
 		return id;
+	}
+
+	// TODO: set subtree aswell...
+	void setActive(bool active)
+	{
+		this->active = active;
+	}
+
+	bool isActive()
+	{
+		return active;
 	}
 
 	typedef std::shared_ptr<Entity> Ptr;

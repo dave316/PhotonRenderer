@@ -5,7 +5,7 @@
 
 #ifdef WITH_KTX
 #include <ktx.h>
-#include <vkformat_enum.h>
+#include <vulkan/vulkan_core.h>
 #endif
 
 namespace IO

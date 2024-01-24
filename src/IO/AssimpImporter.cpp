@@ -23,21 +23,38 @@ namespace IO
 
 	}
 
-	Entity::Ptr AssimpImporter::importModel(const std::string& fullPath)
+	Entity::Ptr AssimpImporter::importModel(const std::string& fullPath, float globalScale, bool useUnitScale)
 	{
 		auto p = fs::path(fullPath);
 		path = p.parent_path().string();
 		auto filename = p.filename().string();
 		auto extension = p.extension().string();
-
+		
 		Assimp::Importer importer;
-		importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false); // THIS HERE FINALLY FIXED FBX ANIMATION! OF COURSE
+		importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, true); // THIS HERE FINALLY FIXED FBX ANIMATION! OF COURSE
 		const aiScene* pScene = importer.ReadFile(fullPath.c_str(), aiFlags);
-
+		
 		if (!pScene || pScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
 		{
 			std::cout << "assimp error: " << importer.GetErrorString() << std::endl;
 			return nullptr;
+		}
+
+		scaleFactor = globalScale;
+		if (useUnitScale)
+		{
+			for (int i = 0; i < pScene->mMetaData->mNumProperties; i++)
+			{
+				std::string key = pScene->mMetaData->mKeys[i].C_Str();
+				if (key.compare("UnitScaleFactor") == 0)
+				{
+					float unitScale = 1.0f;
+					pScene->mMetaData->Get("UnitScaleFactor", unitScale);
+					scaleFactor = globalScale * unitScale * 0.01f;
+					//std::cout << "assimp unit scale factor: " << unitScale << std::endl;
+				}
+				//std::cout << pScene->mMetaData->mKeys[i].C_Str() << std::endl;
+			}
 		}
 
 		// workaroung for collada sometimes putting a prefix on channel names but not on bones...
@@ -59,6 +76,7 @@ namespace IO
 		loadAnimations(pScene);
 		loadSkins(pScene);
 		//loadTextures(pScene);
+		//if(materials.empty())
 		loadMaterials(pScene);
 		loadMeshes(pScene);		
 
@@ -76,6 +94,11 @@ namespace IO
 		root->setURI(fullPath);
 
 		return root;
+	}
+
+	void AssimpImporter::setExternalMaterials(std::vector<Material::Ptr>& materials)
+	{
+		this->materials = materials;
 	}
 
 	std::string getStringFromMaterial(const aiMaterial* pMaterial, const char* pKey, unsigned int type, unsigned idx)
@@ -181,10 +204,6 @@ namespace IO
 					std::vector<glm::vec3> positions;
 					positions.push_back(position);
 					translationChannel->addValue(time, positions);
-
-					//std::vector<glm::vec3> translationValues;
-					//translationValues.push_back(toVec3(pNodeAnim->mPositionKeys[k].mValue));
-					//channel.positions.push_back(std::make_pair(time, translationValues));
 				}
 
 				auto rotationChannel = Channel<glm::quat>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_ROTATION, targetNodeIndex);
@@ -195,11 +214,6 @@ namespace IO
 					std::vector<glm::quat> rotations;
 					rotations.push_back(rotation);
 					rotationChannel->addValue(time, rotations);
-
-					//float time = pNodeAnim->mRotationKeys[k].mTime / ticks;
-					//std::vector<glm::quat> rotationValues;
-					//rotationValues.push_back(toQuat(pNodeAnim->mRotationKeys[k].mValue));
-					//channel.rotations.push_back(std::make_pair(time, rotationValues));
 				}
 
 				auto scaleChannel = Channel<glm::vec3>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_SCALE, targetNodeIndex);
@@ -210,14 +224,7 @@ namespace IO
 					std::vector<glm::vec3> scales;
 					scales.push_back(scale);
 					scaleChannel->addValue(time, scales);
-
-					//std::vector<glm::vec3> scales;
-					//scales.push_back(toVec3(pNodeAnim->mScalingKeys[k].mValue));
-					//channel.scales.push_back(std::make_pair(time, scales));
 				}
-
-				//unsigned int targetNodeIndex = nodeIndices[nodeName];
-				//animation->addChannel(targetNodeIndex, channel);
 
 				animation->addChannel(translationChannel);
 				animation->addChannel(rotationChannel);
@@ -241,7 +248,7 @@ namespace IO
 			{
 				const aiBone* pBone = pMesh->mBones[j];
 
-				// TODO: check if scene node and amarture are presents
+				// TODO: check if OLDScene node and amarture are presents
 				std::string boneName(pBone->mName.C_Str());
 				std::string nodeName = boneName;
 				if (!rigPrefix.empty())
@@ -320,6 +327,11 @@ namespace IO
 
 	void AssimpImporter::loadMaterials(const aiScene* pScene)
 	{
+		//std::cout << "set materials: " << materials.size() << ", scene materials: " << pScene->mNumMaterials << std::endl;
+
+		if (materials.empty())
+			materials.resize(pScene->mNumMaterials);
+
 		for (uint32_t i = 0; i < pScene->mNumMaterials; i++)
 		{
 			const aiMaterial* pMaterial = pScene->mMaterials[i];
@@ -394,8 +406,8 @@ namespace IO
 				//std::cout << "shininessStrength: " << shininessStrength << std::endl;
 				//std::cout << "specularColor: " << specularColor.x << " " << specularColor.y << " " << specularColor.z << std::endl;
 
-				setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "diffuseTex", true);
-				setTextureInfo(pScene, pMaterial, aiTextureType_SPECULAR, material, "specGlossTex", true);
+				//setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "diffuseTex", true);
+				//setTextureInfo(pScene, pMaterial, aiTextureType_SPECULAR, material, "specGlossTex", true);
 
 				material->setShader("Default_SPECGLOSS");
 			}
@@ -413,7 +425,8 @@ namespace IO
 			//		<< "semantic: " << pMaterial->mProperties[i]->mSemantic << std::endl;
 			//}
 
-			materials.push_back(material);
+			if (materials[i] == nullptr)
+				materials[i] = material;
 		}
 	}	
 	
@@ -447,9 +460,9 @@ namespace IO
 
 	void AssimpImporter::loadMeshes(const aiScene* pScene)
 	{
-		AABB boundingBox;
 		for (uint32_t i = 0; i < pScene->mNumMeshes; i++)
 		{
+			Box boundingBox;
 			const aiMesh* pMesh = pScene->mMeshes[i];
 
 			TriangleSurface surface;
@@ -457,7 +470,7 @@ namespace IO
 			{
 				Vertex v;
 				if (pMesh->HasPositions())
-					v.position = toVec3(pMesh->mVertices[j]);
+					v.position = toVec3(pMesh->mVertices[j]) * scaleFactor;
 				if (pMesh->HasVertexColors(0))
 					v.color = toVec4(pMesh->mColors[0][j]);
 				if (pMesh->HasNormals())
@@ -466,13 +479,16 @@ namespace IO
 					v.texCoord0 = toVec2(pMesh->mTextureCoords[0][j]);
 				if (pMesh->HasTextureCoords(1))
 					v.texCoord1 = toVec2(pMesh->mTextureCoords[1][j]);
+				else
+					v.texCoord1 = v.texCoord0;
+					
 				if (pMesh->HasTangentsAndBitangents())
 				{
 					glm::vec3 t = toVec3(pMesh->mTangents[j]);
-					//glm::vec3 b = toVec3(pMesh->mBitangents[j]);
-					//glm::vec3 n = v.normal;
-					//float handeness = glm::sign(glm::dot(n, glm::cross(t, b)));
-					v.tangent = glm::vec4(t, 1.0f);
+					glm::vec3 b = toVec3(pMesh->mBitangents[j]);
+					glm::vec3 n = v.normal;
+					float handeness = glm::sign(glm::dot(n, glm::cross(t, b)));
+					v.tangent = glm::vec4(t, handeness);
 				}
 
 				boundingBox.expand(v.position); // TODO: assimp has a AABB stored, check this first
@@ -520,7 +536,7 @@ namespace IO
 							}
 						}
 					}
-				}		
+				}
 				for (int j = 0; j < surface.vertices.size(); j++)
 				{
 					float weightSum = 0.0f;
@@ -535,14 +551,33 @@ namespace IO
 			if (!pMesh->HasTangentsAndBitangents())
 				surface.calcTangentSpace();
 
-			auto mat = getDefaultMaterial();
-			if (pMesh->mMaterialIndex < materials.size())
-				mat = materials[pMesh->mMaterialIndex];
+			//auto mat = getDefaultMaterial();
+			//if (pMesh->mMaterialIndex < materials.size())
+			//	mat = materials[pMesh->mMaterialIndex];
 
-			auto prim = Primitive::create(pMesh->mName.C_Str(), surface, 4, mat);
+			std::string name(pMesh->mName.C_Str());
+			//std::cout << "mesh: " << name << " has " << pMesh->mNumVertices << " vertices, and " << pMesh->mNumFaces << " faces" << std::endl;
+			auto prim = Primitive::create(name, surface, 4);
 			prim->setBoundingBox(boundingBox.getMinPoint(), boundingBox.getMaxPoint());
 			meshes.push_back(prim);
-		}		
+			matIndices.push_back(pMesh->mMaterialIndex);
+		}
+	}
+
+	Entity::Ptr AssimpImporter::collapse(Entity::Ptr node)
+	{
+		if (node->numChildren() == 1 && node->getComponent<Transform>()->getLocalTransform() == glm::mat4(1.0f))
+		{
+			auto c = node->getChild(0);
+			c->setParent(node->getParent());
+			return collapse(c);
+		}
+		else
+		{
+			for (int i = 0; i < node->numChildren(); i++)
+				collapse(node->getChild(i));
+		}
+		return node;
 	}
 
 	void AssimpImporter::traverse(const aiNode* pNode, unsigned int& index)
@@ -553,15 +588,17 @@ namespace IO
 		{
 			index++;
 			traverse(pNode->mChildren[i], index);
-		}			
+		}
 	}
 
 	Entity::Ptr AssimpImporter::traverse(const aiNode* pNode, Entity::Ptr parent)
 	{
 		std::string name(pNode->mName.C_Str());
+		glm::mat4 localTransform = toMat4(pNode->mTransformation);
+
 		auto entity = Entity::create(name, parent);
 		auto t = entity->getComponent<Transform>();
-		t->setLocalTransform(toMat4(pNode->mTransformation));
+		t->setLocalTransform(localTransform);
 
 		std::vector<Primitive::Ptr> nodeMeshes;
 		for (int i = 0; i < pNode->mNumMeshes; i++)
@@ -573,13 +610,10 @@ namespace IO
 		if (!nodeMeshes.empty())
 		{
 			auto r = Renderable::create();
-			for (auto prim : nodeMeshes)
-			{
-				auto mesh = Mesh::create("");
-				mesh->addPrimitive(prim);
-				//mesh->addMaterial(materials[prim->getMaterialIndex()]);
-				r->setMesh(mesh);
-			}
+			auto mesh = Mesh::create("");
+			//for (auto prim : nodeMeshes)
+			//	mesh->addPrimitive(prim);
+			r->setMesh(mesh);
 
 			if (skins.size() > 0)
 				r->setSkin(skins[0]); // TODO: multiple skins...
@@ -597,12 +631,124 @@ namespace IO
 
 		return entity;
 	}
+	Entity::Ptr AssimpImporter::traversePretransform(const aiNode* pNode, Entity::Ptr parent, glm::mat4 nodeTransform, glm::mat4 meshTransform)
+	{
+		std::string nodeName(pNode->mName.C_Str());
+		glm::mat4 localNodeTransform = nodeTransform;
+		glm::mat4 localMeshTransform = meshTransform;
+		glm::mat4 localTransform = toMat4(pNode->mTransformation);
+		localTransform[3][0] *= scaleFactor;
+		localTransform[3][1] *= scaleFactor;
+		localTransform[3][2] *= scaleFactor;
+
+		if (nodeName.find("$AssimpFbx$") != std::string::npos)
+		{
+			auto idx = nodeName.find_last_of('_') + 1;
+			std::string transformType = nodeName.substr(idx, nodeName.length() - idx);
+			//std::cout << "found pivot node type: " << transformType << std::endl;
+			if (transformType.compare("Translation") == 0 ||
+				transformType.compare("PreRotation") == 0 ||
+				transformType.compare("Rotation") == 0 ||
+				transformType.compare("Scaling") == 0)
+			{
+				localNodeTransform = nodeTransform * localTransform;
+			}				
+			else if (transformType.compare("GeometricTranslation") == 0 ||
+					 transformType.compare("GeometricRotation") == 0)
+			{
+				localMeshTransform = meshTransform * localTransform;
+			}				
+			else
+			{
+				localNodeTransform = nodeTransform;
+				localMeshTransform = meshTransform;
+				//std::cout << "transform type " << transformType << " not supported!" << std::endl;
+			}
+
+			std::vector<Entity::Ptr> children;
+			for (uint32_t i = 0; i < pNode->mNumChildren; i++)
+			{
+				children.push_back(traversePretransform(pNode->mChildren[i], parent, localNodeTransform, localMeshTransform));
+			}
+			return children[0];
+		}
+		else
+		{
+			if(pNode->mNumChildren == 1 && pNode->mNumMeshes == 0 && localNodeTransform == glm::mat4(1.0f))
+				return traversePretransform(pNode->mChildren[0], parent, nodeTransform, meshTransform);
+
+			if (nodeNames.find(nodeName) == nodeNames.end())
+			{
+				nodeNames.insert(std::make_pair(nodeName, 0));
+			}				
+			else
+			{
+				nodeNames[nodeName]++;
+				nodeName = nodeName + " " + std::to_string(nodeNames[nodeName]);
+			}
+
+			auto entity = Entity::create(nodeName, parent);
+			auto t = entity->getComponent<Transform>();
+			t->setLocalTransform(localNodeTransform);
+
+			std::vector<Primitive::Ptr> nodeMeshes;
+			std::vector<Material::Ptr> nodeMats;
+			for (int i = 0; i < pNode->mNumMeshes; i++)
+			{
+				auto mesh = meshes[pNode->mMeshes[i]];
+				auto mat = materials[matIndices[pNode->mMeshes[i]]];
+				//std::cout << "node: " << nodeName << " mesh name: " << mesh->getName() << " v: " << mesh->numVertices() << " t: " << mesh->numTriangles() << std::endl;
+				nodeMeshes.push_back(mesh);
+				nodeMats.push_back(mat);
+			}
+
+			if (!nodeMeshes.empty())
+			{
+				auto r = Renderable::create();
+				auto mesh = Mesh::create("");
+				//std::cout << "node " << name << " submeshes: " << nodeMeshes.size() << std::endl;
+				for (int i = 0; i < nodeMeshes.size(); i++)
+				{
+					auto prim = nodeMeshes[i];
+					auto mat = nodeMats[i];
+					auto meshName = prim->getName();
+					auto surf = prim->getSurface();
+					auto bbox = prim->getBoundingBox();
+
+					//std::cout << "node: " << nodeName << " mesh name: " << meshName << std::endl;
+					SubMesh s;
+					s.primitive = Primitive::create(meshName, surf, 4);
+					s.primitive->preTransform(localMeshTransform);
+					//s.primitive->setBoundingBox(bbox);
+					s.material = mat;
+					mesh->addSubMesh(s);
+				}
+				r->setMesh(mesh);
+
+				if (skins.size() > 0)
+					r->setSkin(skins[0]); // TODO: multiple skins...
+
+				entity->addComponent(r);
+			}
+
+			entities.push_back(entity);
+
+			for (uint32_t i = 0; i < pNode->mNumChildren; i++)
+			{
+				glm::mat4 I = glm::mat4(1.0f);
+				auto child = traversePretransform(pNode->mChildren[i], entity, glm::mat4(1.0f), glm::mat4(1.0f));
+				entity->addChild(child);
+			}
+
+			return entity;
+		}
+	}
 
 	Entity::Ptr AssimpImporter::loadScene(const aiScene* pScene)
 	{
 		// TODO: load other stuff (lights, cameras,...)
 
-		return traverse(pScene->mRootNode, nullptr);
+		return traversePretransform(pScene->mRootNode, nullptr, glm::mat4(1.0f), glm::mat4(1.0f));
 	}
 }
 

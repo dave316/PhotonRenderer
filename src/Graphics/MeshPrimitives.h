@@ -16,6 +16,8 @@ namespace MeshPrimitives
 	Primitive::Ptr createBox(glm::vec3 position, glm::vec3 size);
 	Primitive::Ptr createLineBox(glm::vec3 position, glm::vec3 size);
 	Primitive::Ptr createQuad(glm::vec3 position, float edgeLength);
+	Primitive::Ptr createQuadInv(glm::vec3 position, float edgeLength);
+	Primitive::Ptr createPlane(glm::vec3 position, float edgeLength);
 }
 
 #endif // INCLUDED_MESHPRIMITIVES

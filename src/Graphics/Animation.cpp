@@ -58,16 +58,16 @@ void Animation::setLightProperty(IChannel::Ptr iChannel, Light::Ptr light, AnimA
 	{
 		case AnimAttribute::LIGHT_COLOR:
 		{
-			auto channel = std::dynamic_pointer_cast<Channel<glm::vec4>>(iChannel);
+			auto channel = std::dynamic_pointer_cast<Channel<glm::vec3>>(iChannel);
 			glm::vec3 lightColor = channel->interpolate(currentTime);
-			light->setColor(lightColor);
+			light->setColorLinear(lightColor);
 			break;
 		}
 		case AnimAttribute::LIGHT_INTENSITY:
 		{
 			auto channel = std::dynamic_pointer_cast<Channel<float>>(iChannel);
 			float lightIntensity = channel->interpolate(currentTime);
-			light->setIntensity(lightIntensity);
+			light->setLuminousIntensity(lightIntensity);
 			break;
 		}
 		case AnimAttribute::LIGHT_RANGE:
@@ -130,20 +130,13 @@ void Animation::setTransformProperty(IChannel::Ptr iChannel, Transform::Ptr tran
 
 void Animation::setMaterialProperty(IChannel::Ptr channel, Material::Ptr material, AnimAttribute attribute)
 {
-	// TODO: cast to correct value type before creating the channel
 	AnimAttribute attr = static_cast<AnimAttribute>(attribute & AnimAttribute::MATERIAL_MASK);
 	switch (attr)
 	{
 		case AnimAttribute::MATERIAL_BASECOLOR: setPropertyValue<glm::vec4>(channel, material, "material.baseColorFactor"); break;
 		case AnimAttribute::MATERIAL_ROUGHNESS: setPropertyValue<float>(channel, material, "material.roughnessFactor"); break;
 		case AnimAttribute::MATERIAL_METALLIC: setPropertyValue<float>(channel, material, "material.metallicFactor"); break;
-		case AnimAttribute::MATERIAL_EMISSIVE_FACTOR: //setPropertyValue<glm::vec4>(channel, material, "material.emissiveFactor"); break;
-		{
-			auto ch = std::dynamic_pointer_cast<Channel<glm::vec4>>(channel);
-			glm::vec3 emissiveColor = ch->interpolate(currentTime);
-			material->addProperty("material.emissiveFactor", emissiveColor);
-			break;
-		}
+		case AnimAttribute::MATERIAL_EMISSIVE_FACTOR: setPropertyValue<glm::vec3>(channel, material, "material.emissiveFactor"); break;
 		case AnimAttribute::MATERIAL_EMISSIVE_STRENGTH: setPropertyValue<float>(channel, material, "material.emissiveStrength"); break;
 		case AnimAttribute::MATERIAL_ALPHA_CUTOFF: setPropertyValue<float>(channel, material, "material.alphaCutOff"); break;
 		case AnimAttribute::MATERIAL_BASECOLORTEXTURE: setTextureTransform(channel, material, attribute, "baseColorTex"); break;
@@ -154,14 +147,7 @@ void Animation::setMaterialProperty(IChannel::Ptr channel, Material::Ptr materia
 		case AnimAttribute::MATERIAL_TRANSMISSION_FACTOR: setPropertyValue<float>(channel, material, "material.transmissionFactor"); break;
 		case AnimAttribute::MATERIAL_THICKNESS_FACTOR: setPropertyValue<float>(channel, material, "material.thicknessFactor"); break;
 		case AnimAttribute::MATERIAL_ATTENUATION_DISTANCE: setPropertyValue<float>(channel, material, "material.attenuationDistance"); break;
-		case AnimAttribute::MATERIAL_ATTENUATION_COLOR:// setPropertyValue<glm::vec4>(channel, material, "material.attenuationColor"); break;
-		{
-			auto ch = std::dynamic_pointer_cast<Channel<glm::vec4>>(channel);
-			glm::vec3 color = ch->interpolate(currentTime);
-			auto mat = material;
-			mat->addProperty("material.attenuationColor", color);
-			break;
-		}
+		case AnimAttribute::MATERIAL_ATTENUATION_COLOR: setPropertyValue<glm::vec3>(channel, material, "material.attenuationColor"); break;
 		case AnimAttribute::MATERIAL_IRIDESCENCE_FACTOR: setPropertyValue<float>(channel, material, "material.iridescenceFactor"); break;
 		case AnimAttribute::MATERIAL_IRIDESCENCE_IOR: setPropertyValue<float>(channel, material, "material.iridescenceIor"); break;
 		case AnimAttribute::MATERIAL_IRIDESCENCE_THICKNESS_MAXIMUM: setPropertyValue<float>(channel, material, "material.iridescenceThicknessMax"); break;
@@ -200,6 +186,7 @@ void Animation::setTextureTransform(IChannel::Ptr iChannel, Material::Ptr materi
 // TODO: add all specified animateable properties from KHR_animation_pointer
 void Animation::update(float dt, std::vector<Entity::Ptr>& nodes, std::vector<Material::Ptr>& materials, std::vector<Light::Ptr>& lights, std::vector<Camera::Ptr>& cameras)
 {
+	//std::cout << "duration: " << duration << std::endl;
 	// TODO: update the animation to the last keyframe
 	currentTime += dt;
 	if (currentTime > duration)
@@ -226,7 +213,7 @@ void Animation::update(float dt, std::vector<Entity::Ptr>& nodes, std::vector<Ma
 
 void Animation::reset()
 {
-	currentTime = 0.0f;
+	currentTime = offset;
 	finished = false;
 }
 

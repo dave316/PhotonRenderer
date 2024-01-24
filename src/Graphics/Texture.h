@@ -51,6 +51,38 @@ public:
 	}
 };
 
+class Texture3D : public Texture
+{
+	GL::Texture3D texture;
+	GL::TextureFormat format;
+	unsigned int width;
+	unsigned int height;
+	unsigned int depth;
+
+	//// uv transform
+	//glm::mat3 uvTransform;
+	//glm::vec2 offset;
+	//glm::vec2 scale;
+	//float rotation;
+
+public:
+	Texture3D(unsigned int width, unsigned int height, unsigned int depth, GL::TextureFormat format);
+	void upload(void* data);
+	void download(void* data);
+	void setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter);
+	void setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR);
+	void generateMipmaps();
+	void bind();
+	void use(GLuint unit);
+	GLuint getID();
+
+	typedef std::shared_ptr<Texture3D> Ptr;
+	static Ptr create(unsigned int width, unsigned int height, unsigned int depth, GL::TextureFormat format)
+	{
+		return std::make_shared<Texture3D>(width, height, depth, format);
+	}
+};
+
 class TextureCubeMap : public Texture
 {
 	GL::TextureCubeMap texture;
@@ -103,6 +135,32 @@ public:
 	static Ptr create(unsigned int width, unsigned int height, unsigned int layers, GL::TextureFormat format)
 	{
 		return std::make_shared<Texture2DArray>(width, height, layers, format);
+	}
+};
+
+class TextureCubeMapArray : public Texture
+{
+	GL::TextureCubeMapArray texture;
+	GL::TextureFormat format;
+	unsigned int width;
+	unsigned int height;
+	unsigned int layers;
+
+public:
+	TextureCubeMapArray(unsigned int width, unsigned int height, unsigned int layers, GL::TextureFormat format);
+	void upload(void* data);
+	void setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter);
+	void setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR);
+	void setCompareMode();
+	void generateMipmaps();
+	void bind();
+	void use(GLuint unit);
+	GLuint getID();
+
+	typedef std::shared_ptr<TextureCubeMapArray> Ptr;
+	static Ptr create(unsigned int width, unsigned int height, unsigned int layers, GL::TextureFormat format)
+	{
+		return std::make_shared<TextureCubeMapArray>(width, height, layers, format);
 	}
 };
 

@@ -21,8 +21,11 @@ namespace GL
 		DEPTH32,
 		DEPTH32F,
 		D24_S8,
+		R32F,
+		RG32F,
 		RGB32F,
 		RGBA32F,
+		R16F,
 		RG16F,
 		RGB16F,
 		RGBA16F,
@@ -72,10 +75,14 @@ namespace GL
 		case DEPTH32:	internalFormat = GL_DEPTH_COMPONENT32; break;
 		case DEPTH32F:	internalFormat = GL_DEPTH_COMPONENT32F; break;
 		case D24_S8:	internalFormat = GL_DEPTH24_STENCIL8; break;
+		case R32F:		internalFormat = GL_R32F; break;
+		case RG32F:		internalFormat = GL_RG32F; break;
 		case RGB32F:	internalFormat = GL_RGB32F; break;
 		case RGBA32F:	internalFormat = GL_RGBA32F; break;
-		case RGB16F:	internalFormat = GL_RGB16F; break;
+		case R16F:		internalFormat = GL_R16F; break;
 		case RG16F:		internalFormat = GL_RG16F; break;
+		case RGB16F:	internalFormat = GL_RGB16F; break;
+		case RGBA16F:	internalFormat = GL_RGBA16F; break;
 		default:		internalFormat = GL_RGBA8; break;
 		}
 		return internalFormat;
@@ -87,10 +94,13 @@ namespace GL
 		switch (format)
 		{
 		case R8:
+		case R16F:
+		case R32F:
 			dataFormat = GL_RED;
 			break;
 		case RG8:
 		case RG16F:
+		case RG32F:
 			dataFormat = GL_RG;
 			break;
 		case RGB8:
@@ -134,12 +144,15 @@ namespace GL
 		case SRGBA8:
 			dataType = GL_UNSIGNED_BYTE;
 			break;
+		case R16F:
 		case RG16F:
 		case RGB16F:
 		case RGBA16F:
 		case DEPTH16:
-			dataType = GL_HALF_FLOAT;
+			dataType = GL_FLOAT;
 			break;
+		case R32F:
+		case RG32F:
 		case RGB32F:
 		case RGBA32F:
 		case DEPTH24:
@@ -334,6 +347,26 @@ namespace GL
 	}
 
 	template<>
+	void Texture3D::setWrap(TextureWrap wrapS, TextureWrap wrapT, TextureWrap wrapR)
+	{
+		//GLint wrapMode = GL_REPEAT;
+
+		//switch (wrap)
+		//{
+		//case TextureWrap::REPEAT: wrapMode = GL_REPEAT;	break;
+		//case TextureWrap::MIRRORED_REPEAT: wrapMode = GL_MIRRORED_REPEAT; break;
+		//case TextureWrap::CLAMP_TO_EDGE: wrapMode = GL_CLAMP_TO_EDGE; break;
+		//case TextureWrap::CLAMP_TO_BORDER: wrapMode = GL_CLAMP_TO_BORDER; break;
+		//}
+
+		glBindTexture(GL_TEXTURE_3D, id);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, wrapR);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, wrapS);
+		glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, wrapT);
+		glBindTexture(GL_TEXTURE_3D, 0);
+	}
+
+	template<>
 	void TextureCubeMap::setWrap(TextureWrap wrapS, TextureWrap wrapT, TextureWrap wrapR)
 	{
 		//GLint wrapMode;
@@ -360,6 +393,16 @@ namespace GL
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapS);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapT);
 		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	template<>
+	void TextureCubeMapArray::setWrap(TextureWrap wrapS, TextureWrap wrapT, TextureWrap wrapR)
+	{
+		glBindTexture(GL_TEXTURE_CUBE_MAP, id);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, wrapR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, wrapS);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, wrapT);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 	}
 }
 

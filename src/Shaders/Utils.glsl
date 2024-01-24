@@ -21,14 +21,29 @@ float saturate(float value)
 	return clamp(value, 0.0, 1.0);
 }
 
+vec2 saturate(vec2 value)
+{
+	return clamp(value, 0.0, 1.0);
+}
+
 float clampDot(vec3 v, vec3 w)
 {
 	return saturate(dot(v, w));
 }
 
+float max2(vec2 v)
+{
+	return max(v.x, v.y);
+}
+
 float max3(vec3 v)
 {
 	return max(max(v.x, v.y), v.z);
+}
+
+float max4(vec4 v)
+{
+	return max(max(v.x, v.y), max(v.z, v.w));
 }
 
 float sq(float t)

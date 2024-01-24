@@ -46,6 +46,13 @@ namespace GL
 			unbind();
 		}
 
+		void uploadSubData(const GLvoid* data, GLint offset, GLsizei count)
+		{
+			bind();
+			glBufferSubData(Target, offset * sizeof(DataType), count * sizeof(DataType), data);
+			unbind();
+		}
+
 		void bindBase(GLuint index)
 		{
 			glBindBufferBase(Target, index, id);
@@ -80,6 +87,9 @@ namespace GL
 
 	template<typename DataType>
 	using UniformBuffer = Buffer<GL_UNIFORM_BUFFER, typename DataType>;
+
+	template<typename DataType>
+	using ShaderStorageBuffer = Buffer<GL_SHADER_STORAGE_BUFFER, typename DataType>;
 }
 
 #endif // INCLUDED_GLBUFFER

@@ -600,7 +600,7 @@ namespace IO
 					morphTex = createMorphTexture(morphTargets);
 
 				auto defaultMaterial = getDefaultMaterial();
-				if (mode != 4 && surface.calcNormals) // TODO: check outher triangle topologies
+				if (mode != 4 && surface.calcNormals) // TODO: check other triangle topologies
 					defaultMaterial->addProperty("material.unlit", true);
 
 				Material::Ptr mat = defaultMaterial;
@@ -618,19 +618,23 @@ namespace IO
 					}
 				}
 
-				auto prim = Primitive::create(name, surface, mode, mat);
-				for (auto [varIdx, matIdx] : variantMapping)
-				{
-					if (matIdx < materials.size())
-						prim->addVariant(varIdx, materials[matIdx]);
-				}
-
+				auto prim = Primitive::create(name, surface, mode);
 				if (!morphTargets.empty())
 					prim->setMorphTarget(morphTex);
 
 				prim->setBoundingBox(surface.minPoint, surface.maxPoint);
 				prim->setFlatNormals(surface.computeFlatNormals);
-				mesh->addPrimitive(prim);
+
+				SubMesh s;
+				s.primitive = prim;
+				s.material = mat;
+				for (auto [varIdx, matIdx] : variantMapping)
+				{
+					if (matIdx < materials.size())
+						s.variants.push_back(materials[matIdx]);
+				}
+
+				mesh->addSubMesh(s);
 			}
 			return mesh;
 		}

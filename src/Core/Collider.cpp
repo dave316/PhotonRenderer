@@ -1,8 +1,8 @@
 #include "Collider.h"
 
-#include <Physics/Intersection.h>
+#include <Math/Intersection.h>
 
-BoxCollider::BoxCollider(AABB& bbox)
+BoxCollider::BoxCollider(Box& bbox)
 {
 	this->boundingBox = bbox;
 }
@@ -10,6 +10,11 @@ BoxCollider::BoxCollider(AABB& bbox)
 bool BoxCollider::rayTest(Ray& ray, glm::vec3& hitpoint)
 {
 	return Intersection::rayBoxIntersection(ray, boundingBox, hitpoint);
+}
+
+Box BoxCollider::getAABB()
+{
+	return boundingBox;
 }
 
 SphereCollider::SphereCollider(Sphere& sphere)

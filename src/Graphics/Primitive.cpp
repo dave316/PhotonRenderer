@@ -1,11 +1,15 @@
 #include "Primitive.h"
 
+#include <glm/gtc/matrix_inverse.hpp>
 #include <iostream>
-
-Primitive::Primitive(const std::string& name, TriangleSurface& surface, GLenum topology, Material::Ptr material) : //unsigned int materialIndex) :
-	name(name), topology(topology), material(material) // materialIndex(materialIndex)
+unsigned int Primitive::globalIDCount = 0;
+Primitive::Primitive(const std::string& name, TriangleSurface& surface, GLenum topology) : 
+	name(name), topology(topology)
 {
 	updatGeometry(surface);
+
+	id = globalIDCount;
+	globalIDCount++;
 }
 
 Primitive::~Primitive()
@@ -48,19 +52,24 @@ void Primitive::updatGeometry(TriangleSurface& surface)
 	vao.unbind();
 }
 
-void Primitive::setMaterial(Material::Ptr material)
+void Primitive::preTransform(const glm::mat4& T)
 {
-	this->material = material;
+	glm::mat3 N = glm::mat3(glm::inverseTranspose(T));
+
+	boundingBox = Box();
+	for (auto& v : surface.vertices)
+	{
+		v.position = glm::vec3(T * glm::vec4(v.position, 1.0f));
+		v.normal = N * v.normal;
+		boundingBox.expand(v.position);
+	}
+
+	updatGeometry(surface);
 }
 
 void Primitive::setMorphTarget(Texture2DArray::Ptr morphTex)
 {
 	this->morphTex = morphTex;
-}
-
-void Primitive::addVariant(int index, Material::Ptr material)
-{
-	variants.insert(std::make_pair(index, material));
 }
 
 void Primitive::setFlatNormals(bool flatNormals)
@@ -70,30 +79,59 @@ void Primitive::setFlatNormals(bool flatNormals)
 
 void Primitive::setBoundingBox(glm::vec3& minPoint, glm::vec3& maxPoint)
 {
-	boundingBox = AABB(minPoint, maxPoint);
+	boundingBox = Box(minPoint, maxPoint);
 }
 
-void Primitive::switchVariant(int index)
+void Primitive::setBoundingBox(Box& boundingBox)
 {
-	if (variants.find(index) != variants.end())
-		material = variants[index];
+	this->boundingBox = boundingBox;
+}
+
+void Primitive::setInstances(unsigned int num)
+{
+	this->isInstanced = true;
+	this->numInstances = num;
 }
 
 void Primitive::draw()
 {
+	numDrawCalls++;
+
 	if(morphTex)
 		morphTex->use(20);
 	vao.bind();
-	if (indexBuffer.size() > 0)
-		glDrawElements(topology, indexBuffer.size(), GL_UNSIGNED_INT, 0);
+
+	if (isInstanced)
+		glDrawElementsInstanced(topology, indexBuffer.size(), GL_UNSIGNED_INT, 0, numInstances);
 	else
-		glDrawArrays(topology, 0, vertexBuffer.size());
+	{
+		if (indexBuffer.size() > 0)
+			glDrawElements(topology, indexBuffer.size(), GL_UNSIGNED_INT, 0);
+		else
+			glDrawArrays(topology, 0, vertexBuffer.size());
+	}
+
 	vao.unbind();
+}
+
+void Primitive::reset()
+{
+	numDrawCalls = 0;
 }
 
 bool Primitive::getFlatNormals()
 {
 	return computeFlatNormals;
+}
+
+bool Primitive::isUsingInstancing()
+{
+	return isInstanced;
+}
+
+int Primitive::getNumDrawCalls()
+{
+	return numDrawCalls;
 }
 
 int Primitive::numVertices()
@@ -106,12 +144,22 @@ int Primitive::numTriangles()
 	return surface.triangles.size();
 }
 
-AABB Primitive::getBoundingBox()
+Box Primitive::getBoundingBox()
 {
 	return boundingBox;
 }
 
-Material::Ptr Primitive::getMaterial()
+TriangleSurface Primitive::getSurface()
 {
-	return material;
+	return surface;
+}
+
+GLuint Primitive::getVaoID()
+{
+	return vao;
+}
+
+unsigned int Primitive::getID()
+{
+	return id;
 }

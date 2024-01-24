@@ -8,6 +8,8 @@
 
 #include "InputHandler.h"
 
+#include <string>
+
 class GLWindow
 {
 	GLFWwindow* window;

@@ -45,6 +45,11 @@ namespace GL
 		{
 			glBindVertexArray(0);
 		}
+
+		operator GLuint() const
+		{
+			return id;
+		}
 	};
 }
 

@@ -16,7 +16,7 @@ namespace IO
 
 	public:
 		ModelImporter() {}
-		virtual Entity::Ptr importModel(const std::string& filename) = 0;
+		virtual Entity::Ptr importModel(const std::string& filename, float scale) = 0;
 	};
 }
 

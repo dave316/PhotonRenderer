@@ -42,6 +42,7 @@ void Framebuffer::resize(int width, int height)
 {
 	this->width = width;
 	this->height = height;
+	fbo.setViewport(width, height);
 }
 
 void Framebuffer::bind()

@@ -35,6 +35,24 @@ namespace IO
 		return v;
 	}
 
+	glm::vec4 toVec4(const json::Value& value)
+	{
+		glm::vec4 v(0.0f);
+		if (value.IsArray() && value.Size() == 4)
+		{
+			auto array = value.GetArray();
+			v.x = array[0].GetFloat();
+			v.y = array[1].GetFloat();
+			v.z = array[2].GetFloat();
+			v.w = array[3].GetFloat();
+		}
+		else
+		{
+			std::cout << "error parsing json array to vec4" << std::endl;
+		}
+		return v;
+	}
+
 	glm::quat toQuat(const json::Value& value)
 	{
 		glm::quat q = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
@@ -66,10 +84,14 @@ namespace IO
 			json::Value entityNode;
 			entityNode.SetObject();
 
+			std::string uriStr = entity->getUri();
 			json::Value name(entityName.c_str(), allocator);
-			json::Value uri(entity->getUri().c_str(), allocator);
+			json::Value uri(uriStr.c_str(), allocator);
 			entityNode.AddMember("name", name, allocator);
 			entityNode.AddMember("filename", uri, allocator);
+
+			json::Value transformNode;
+			transformNode.SetObject();
 
 			auto t = entity->getComponent<Transform>();
 			glm::vec3 pos = t->getLocalPosition();
@@ -78,7 +100,7 @@ namespace IO
 			posList.PushBack(pos.x, allocator);
 			posList.PushBack(pos.y, allocator);
 			posList.PushBack(pos.z, allocator);
-			entityNode.AddMember("position", posList, allocator);
+			transformNode.AddMember("position", posList, allocator);
 
 			glm::quat rot = t->getLocalRotation();
 			json::Value rotList;
@@ -87,7 +109,7 @@ namespace IO
 			rotList.PushBack(rot.y, allocator);
 			rotList.PushBack(rot.z, allocator);
 			rotList.PushBack(rot.w, allocator);
-			entityNode.AddMember("rotation", rotList, allocator);
+			transformNode.AddMember("rotation", rotList, allocator);
 
 			glm::vec3 scale = t->getLocalScale();
 			json::Value scaleList;
@@ -95,7 +117,59 @@ namespace IO
 			scaleList.PushBack(scale.x, allocator);
 			scaleList.PushBack(scale.y, allocator);
 			scaleList.PushBack(scale.z, allocator);
-			entityNode.AddMember("scale", scaleList, allocator);
+			transformNode.AddMember("scale", scaleList, allocator);
+
+			entityNode.AddMember("transform", transformNode, allocator);
+
+			auto r = entity->getComponent<Renderable>();
+			auto p = fs::path(uriStr);
+			auto ext = p.extension().string();
+			if (r && ext.compare(".obj") == 0)
+			{				
+				auto& sub = r->getMesh()->getSubMeshes()[0];
+
+				auto baseColor = sub.material->getPropertyValue<glm::vec4>("material.baseColorFactor");
+				auto roughness = sub.material->getPropertyValue<float>("material.roughnessFactor");
+				auto metallic = sub.material->getPropertyValue<float>("material.metallicFactor");
+
+				json::Value materialNode;
+				materialNode.SetObject();
+
+				json::Value colList;
+				colList.SetArray();
+				colList.PushBack(baseColor.r, allocator);
+				colList.PushBack(baseColor.g, allocator);
+				colList.PushBack(baseColor.b, allocator);
+				colList.PushBack(baseColor.a, allocator);
+				materialNode.AddMember("basecolor", colList, allocator);
+				materialNode.AddMember("roughness", roughness, allocator);
+				materialNode.AddMember("metallic", metallic, allocator);
+
+				entityNode.AddMember("material", materialNode, allocator);
+			}
+			auto light = entity->getComponent<Light>();
+			if (light)
+			{
+				LightType type = light->getType();
+				glm::vec3 color = light->getColor();
+				float intensity = light->getIntensity();
+				float range = light->getRange();
+
+				json::Value lightNode;
+				lightNode.SetObject();
+				lightNode.AddMember("type", (int)type, allocator);
+
+				json::Value colList;
+				colList.SetArray();
+				colList.PushBack(color.r, allocator);
+				colList.PushBack(color.g, allocator);
+				colList.PushBack(color.b, allocator);
+				lightNode.AddMember("color", colList, allocator);
+				lightNode.AddMember("intensity", intensity, allocator);
+				lightNode.AddMember("range", range, allocator);
+
+				entityNode.AddMember("light", lightNode, allocator);
+			}
 
 			entitiesList.PushBack(entityNode, allocator);
 		}
@@ -112,6 +186,93 @@ namespace IO
 	}
 
 	Scene::Ptr loadScene(const std::string& filename)
+	{
+		json::Document doc;
+
+		std::ifstream file(filename);
+		std::stringstream ss;
+		ss << file.rdbuf();
+		std::string content = ss.str();
+		doc.Parse(content.c_str());
+
+		Scene::Ptr scene = Scene::create("");
+
+		for (auto& entityNode : doc["entities"].GetArray())
+		{
+			std::string name = entityNode["name"].GetString();
+			std::string fn = entityNode["filename"].GetString();
+			auto p = fs::path(fn);
+			auto ext = p.extension().string();
+
+			auto rootEntity = Entity::create(name, nullptr);
+			if (!fn.empty())
+			{
+				if (ext.compare(".gltf") == 0 || ext.compare(".glb") == 0)
+				{
+					IO::glTF::Importer importer;
+					rootEntity = importer.importModel(fn);
+				}
+				else
+				{
+#ifdef WITH_ASSIMP
+					IO::AssimpImporter importer;
+					rootEntity = importer.importModel(fn);
+#else
+					std::cout << "not supported file extension: " << ext << std::endl;
+#endif
+				}
+			}
+
+			if (entityNode.HasMember("transform"))
+			{
+				auto& transformNode = entityNode["transform"];
+				glm::vec3 pos = toVec3(transformNode["position"]);
+				glm::quat rot = toQuat(transformNode["rotation"]);
+				glm::vec3 scale = toVec3(transformNode["scale"]);
+				auto t = rootEntity->getComponent<Transform>();
+				t->setLocalPosition(pos);
+				t->setLocalRotation(rot);
+				t->setLocalScale(scale);
+			}
+
+			if (entityNode.HasMember("material"))
+			{
+				auto& matNode = entityNode["material"];
+				auto r = rootEntity->getComponent<Renderable>();
+				if (r)
+				{
+					auto& sub = r->getMesh()->getSubMeshes()[0];
+					sub.material = getDefaultMaterial();
+					
+					glm::vec4 basecolor = toVec4(matNode["basecolor"]);
+					float roughness = matNode["roughness"].GetFloat();
+					float metallic = matNode["metallic"].GetFloat();
+
+					sub.material->addProperty("material.baseColorFactor", basecolor);
+					sub.material->addProperty("material.roughnessFactor", roughness);
+					sub.material->addProperty("material.metallicFactor", metallic);
+				}
+			}
+
+			if (entityNode.HasMember("light"))
+			{
+				auto& lightNode = entityNode["light"];
+				LightType type = (LightType)lightNode["type"].GetInt();
+				glm::vec3 color = toVec3(lightNode["color"]);
+				float intensity = lightNode["intensity"].GetFloat();
+				float range = lightNode["range"].GetFloat();
+
+				auto light = Light::create(type, color, intensity, range);
+				rootEntity->addComponent(light);
+			}
+
+			scene->addRootEntity(name, rootEntity);
+		}
+
+		return scene;
+	}
+
+	Scene::Ptr loadSceneOLD(const std::string& filename)
 	{
 		json::Document doc;
 
@@ -160,7 +321,7 @@ namespace IO
 					glm::vec3 lightColor = glm::vec3(1.0f);
 
 					entity = Entity::create(name, nullptr);
-					entity->addComponent(Light::create(LightType::POINT, lightColor, 10.0f, 10.0f));
+					entity->addComponent(Light::create(LightType::POINT, lightColor, 0.5f, 10.0f));
 					//entity->getComponent<Light>()->setConeAngles(glm::pi<float>() / 16.0f, glm::pi<float>() / 8.0f);
 
 					auto r = Renderable::create();
@@ -170,9 +331,13 @@ namespace IO
 					auto mat = getDefaultMaterial();
 					mat->addProperty("material.baseColorFactor", glm::vec4(lightColor, 1.0));
 					mat->addProperty("material.unlit", true);
-					prim->setMaterial(mat);
+					
+					SubMesh s;
+					s.primitive = prim;
+					s.material = mat;
+
 					auto mesh = Mesh::create("Sphere");
-					mesh->addPrimitive(prim);
+					mesh->addSubMesh(s);
 					r->setMesh(mesh);
 					entity->addComponent(r);
 				}
@@ -183,7 +348,7 @@ namespace IO
 					t->setLocalPosition(pos);
 					t->setLocalRotation(rot);
 					t->setLocalScale(scale);
-					scene->addEntity(name, entity);
+					scene->addRootEntity(name, entity);
 				}
 			}
 		}

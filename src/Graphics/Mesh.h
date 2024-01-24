@@ -6,28 +6,35 @@
 #include "Primitive.h"
 #include "Material.h"
 
+struct SubMesh
+{
+	Primitive::Ptr primitive;
+	Material::Ptr material;
+	std::vector<Material::Ptr> variants;
+};
+
 class Mesh
 {
 private:
 	std::string name;
-	std::vector<Primitive::Ptr> primitives;
+	std::vector<SubMesh> subMeshes;
 	std::vector<std::string> variants;
 	std::vector<float> morphWeights;
-	AABB boundingBox;
+	Box boundingBox;
 	int numVertices = 0;
 	int numTrianlges = 0;
-
+			
 	Mesh(const Mesh&) = delete;
 	Mesh& operator=(const Mesh&) = delete;
 public:
-
+	static int numDrawCalls;
 	Mesh(const std::string& name);
 	~Mesh();
-	void addPrimitive(Primitive::Ptr primitive);
+	void addSubMesh(SubMesh subMesh);
 	void addVariant(std::string name);
 	void switchVariant(int index);
 	void setMorphWeights(std::vector<float>& weights);
-	void draw(Shader::Ptr shader);
+	void draw(Shader::Ptr shader, bool useShader = false);
 	void flipWindingOrder();
 	bool useMorphTargets();
 	bool useBlending();
@@ -35,11 +42,12 @@ public:
 	int getNumVertices();
 	int getNumTriangles();
 	int getNumPrimitives();
-	AABB getBoundingBox();
-	std::vector<Primitive::Ptr> getPrimitives();
+	void setMaterial(unsigned int index, Material::Ptr material);
+	void clear();
+	Box getBoundingBox();
+	std::vector<SubMesh>& getSubMeshes();
 	std::vector<float> getWeights();
 	std::vector<std::string> getVariants();
-	std::string getShader();
 	std::string getName()
 	{
 		return name;

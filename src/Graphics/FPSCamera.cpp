@@ -29,9 +29,29 @@ void FPSCamera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov
 
 	yaw = -90.0f;
 	pitch = 0.0f;
-	movementSpeed = 1.0f;
+	movementSpeed = 10.0f;
 	rotationSpeed = 0.1f;
 	velocity = movementSpeed * 0.1f;
+}
+
+glm::vec3 FPSCamera::getPosition()
+{
+	return position;
+}
+
+glm::vec3 FPSCamera::getForward()
+{
+	return direction;
+}
+
+glm::vec3 FPSCamera::getRight()
+{
+	return right;
+}
+
+glm::vec3 FPSCamera::getUp()
+{
+	return up;
 }
 
 glm::mat4 FPSCamera::getViewMatrix() const
@@ -125,6 +145,16 @@ float FPSCamera::getAspect()
 	return aspect;
 }
 
+float FPSCamera::getZNear()
+{
+	return zNear;
+}
+
+float FPSCamera::getZFar()
+{
+	return zFar;
+}
+
 void FPSCamera::updateRotation(float dx, float dy)
 {
 	yaw += dx * rotationSpeed;
@@ -155,7 +185,7 @@ void FPSCamera::rotate(float deltaTime)
 	right = glm::normalize(glm::cross(direction, up));
 }
 
-void FPSCamera::writeUniformData(UniformData& data)
+void FPSCamera::writeUniformData(CameraUniformData& data)
 {
 	data.V = getViewMatrix();
 	data.V_I = glm::inverse(data.V);

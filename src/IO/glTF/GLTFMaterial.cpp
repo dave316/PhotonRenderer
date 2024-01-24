@@ -288,6 +288,7 @@ namespace IO
 			material->addProperty("material.emissiveStrength", 1.0f);
 			setTextureInfo(imageData, materialNode, "emissiveTexture", material, "emissiveTex", true);
 
+			material->addProperty("material.specularWeight", 1.0f);
 			material->addProperty("material.unlit", false);
 			material->addProperty("material.ior", 1.5f);
 

@@ -1,5 +1,7 @@
 #include "Mesh.h"
 
+int Mesh::numDrawCalls = 0;
+
 Mesh::Mesh(const std::string& name) :
 	name(name)
 {
@@ -10,11 +12,11 @@ Mesh::~Mesh()
 	//std::cout << "Mesh " << name << " destroyed" << std::endl;
 }
 
-void Mesh::addPrimitive(Primitive::Ptr primitive)
+void Mesh::addSubMesh(SubMesh subMesh)
 {
-	numVertices += primitive->numVertices();
-	numTrianlges += primitive->numTriangles();
-	primitives.push_back(primitive);
+	numVertices += subMesh.primitive->numVertices();
+	numTrianlges += subMesh.primitive->numTriangles();
+	subMeshes.push_back(subMesh);
 }
 
 void Mesh::addVariant(std::string name)
@@ -24,8 +26,11 @@ void Mesh::addVariant(std::string name)
 
 void Mesh::switchVariant(int index)
 {
-	for (auto p : primitives)
-		p->switchVariant(index);
+	for (auto& s : subMeshes)
+	{ 
+		if(index < s.variants.size())
+			s.material = s.variants[index];
+	}		
 }
 
 void Mesh::setMorphWeights(std::vector<float>& weights)
@@ -35,58 +40,75 @@ void Mesh::setMorphWeights(std::vector<float>& weights)
 
 void Mesh::flipWindingOrder()
 {
-	for (auto p : primitives)
-		p->flipWindingOrder();
+	for (auto s : subMeshes)
+		s.primitive->flipWindingOrder();
 }
 
-void Mesh::draw(Shader::Ptr shader)
+void Mesh::draw(Shader::Ptr shader, bool useShader)
 {
-	for (auto primitve : primitives)
+	//auto subMesh = subMeshes[0];
+	for (auto subMesh : subMeshes)
 	{
+		auto primitve = subMesh.primitive;
+		auto material = subMesh.material;
+
 		shader->setUniform("computeFlatNormals", primitve->getFlatNormals());
-
-		auto material = primitve->getMaterial(); // materials[primitve->getMaterialIndex()];
-		if (material->isDoubleSided())
-			glDisable(GL_CULL_FACE);
-
-		if (material->useBlending())
+		
+		//auto material = primitive->getMaterial();
+		if (useShader || shader->getName().compare(material->getShader()) == 0)
 		{
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			glBlendEquationSeparate(GL_FUNC_ADD, GL_FUNC_ADD);
-			glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-		}
+			if (material->isDoubleSided())
+				glDisable(GL_CULL_FACE);
 
-		material->setUniforms(shader);
-		primitve->draw();
+			if (material->useBlending())
+			{
+				glEnable(GL_BLEND);
+				glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+				glBlendEquation(GL_FUNC_ADD);
+			}
 
-		if (material->useBlending())
-			glDisable(GL_BLEND);
+			material->setUniforms(shader);
+			numDrawCalls++;
 
-		if (material->isDoubleSided())
-		{
-			glEnable(GL_CULL_FACE);
-			glCullFace(GL_BACK);
+			bool useInstancing = primitve->isUsingInstancing();
+			shader->setUniform("useInstancing", useInstancing);
+
+			primitve->draw();
+
+			if (material->useBlending())
+				glDisable(GL_BLEND);
+
+			if (material->isDoubleSided())
+			{
+				glEnable(GL_CULL_FACE);
+				glCullFace(GL_BACK);
+			}
 		}
 	}
 }
 
-std::string Mesh::getShader()
+void Mesh::setMaterial(unsigned int index, Material::Ptr material)
 {
-	return primitives[0]->getMaterial()->getShader();
+	if (index < subMeshes.size())
+		subMeshes[index].material = material;
 }
 
-AABB Mesh::getBoundingBox()
+void Mesh::clear()
 {
-	AABB boundingBox;
-	for (auto& p : primitives)
-		boundingBox.expand(p->getBoundingBox());
+	subMeshes.clear();
+}
+
+Box Mesh::getBoundingBox()
+{
+	Box boundingBox;
+	for (auto& m : subMeshes)
+		boundingBox.expand(m.primitive->getBoundingBox());
 	return boundingBox;
 }
 
-std::vector<Primitive::Ptr> Mesh::getPrimitives()
+std::vector<SubMesh>& Mesh::getSubMeshes()
 {
-	return primitives;
+	return subMeshes;
 }
 
 std::vector<float> Mesh::getWeights()
@@ -106,9 +128,9 @@ bool Mesh::useMorphTargets()
 
 bool Mesh::useBlending()
 {
-	for (auto p : primitives)
+	for (auto m : subMeshes)
 	{
-		auto mat = p->getMaterial(); // materials[p->getMaterialIndex()];
+		auto mat = m.material;
 		if (mat->useBlending())
 			return true;
 	}
@@ -117,9 +139,9 @@ bool Mesh::useBlending()
 
 bool Mesh::isTransmissive()
 {
-	for (auto p : primitives)
+	for (auto m : subMeshes)
 	{
-		auto mat = p->getMaterial();  //materials[p->getMaterialIndex()];
+		auto mat = m.material;
 		if (mat->isTransmissive())
 			return true;
 	}
@@ -138,5 +160,5 @@ int Mesh::getNumTriangles()
 
 int Mesh::getNumPrimitives()
 {
-	return primitives.size();
+	return subMeshes.size();
 }

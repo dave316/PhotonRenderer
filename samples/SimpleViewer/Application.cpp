@@ -3,13 +3,22 @@
 #include <algorithm>
 #include <fstream>
 #include <sstream>
+#include <Core/ParticleSystem.h>
 #include <IO/AssimpImporter.h>
+#include <IO/GLTFImporter.h>
 #include <IO/Image/ImageDecoder.h>
 #include <IO/Image/Cubemap.h>
 #include <IO/SceneExporter.h>
+#include <IO/Unity/UnityImporter.h>
+#include <IO/IESProfileImporter.h>
+#include <IO/ShaderLoader.h>
+#include <Utils/Color.h>
+#include <Utils/IBL.h>
 #include <Utils/Types.h>
+#include <chrono>
 #include <random>
 
+using namespace std::chrono;
 using namespace std::placeholders;
 
 Application::Application(const char* title, unsigned int width, unsigned int height) :
@@ -31,468 +40,260 @@ bool Application::init()
 	std::string assetPath = "../../../../assets";
 	std::string srcPath = assetPath + "/glTF-Sample-Models/sourceModels";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	std::vector<std::string> names;
 
-	//names.push_back("Lights");
-	//names.push_back("Sponza");
-	//names.push_back("DamagedHelmet");
-	//names.push_back("FlightHelmet");
-	//names.push_back("SheenChair");
-	//names.push_back("GlamVelvetSofa");
-	//names.push_back("LightsPunctualLamp");
-	//names.push_back("IridescentDishWithOlives");
-	//names.push_back("IridescenceSuzanne");
-	//names.push_back("StainedGlassLamp");
-	//names.push_back("ToyCar");	
+	scene = Scene::create("Scene");
+	////initButterflyScene();
+	std::string name = "DamagedHelmet";
+	std::string fullPath = gltfPath + "/" + name + "/glTF/" + name + ".gltf";
 	
-	scene = Scene::create("scene");
+	IO::glTF::Importer importer;
+	auto rootEntity = importer.importModel(fullPath);
+	scene->addRootEntity(name, rootEntity);
 
-	//scene->addLight("light");
+	//auto updateShader = renderer.getShader("ParticleUpdate");
+	//auto updateRender = renderer.getShader("ParticleRender");
+	//auto ps = ParticleSystem::create(updateShader, updateRender);
+	//Generator gen;
+	//gen.position = glm::vec3(0.0f, 10.0f, 0.0f);
+	//gen.minVelocity = glm::vec3(-1.0f, 0.0f, -1.0f);
+	//gen.maxVelocity = glm::vec3(1.0f, 1.0f, 1.0f);
+	//gen.gravity = glm::vec3(0.0f, -0.5f, 0.0f);
+	////gen.color			= glm::vec3(0.0f, 0.5f, 1.0f);
+	//gen.color = glm::vec3(1.0f);
+	//gen.lifeMin = 5.0f;
+	//gen.lifeMax = 10.0f;
+	//gen.size = 0.05f;
+	//gen.generationTime = 0.02f;
+	//gen.numToGenerate = 5;
+	//ps->setGenerator(gen);
 
-	//std::string name = "Waterfall";
-	//scene->loadModelGLTF(name, assetPath + "/AnimationPointer/" + name + "/glTF/" + name + ".gltf");
-	//scene->loadModelGLTF(name, assetPath + "/AnimationPointer/OtherTests-glTF-Binary/SimpleRecording.glb");
-
-	//IO::AssimpImporter importer;
-	//auto model = importer.importModel(assetPath + "/plane.obj");
-	//model->getComponent<Transform>()->setLocalScale(glm::vec3(2));
-	//scene->addEntity("plane", model);
-
-	////IO::GLTFImporter importer;
-	//IO::AssimpImporter importer;
-	////auto fullPath = gltfPath + "/BrainStem/glTF/BrainStem.gltf";
-	////auto fullPath = srcPath + "/CesiumMan/CesiumMan.dae";
-	////auto fullPath = srcPath + "/BarramundiFish/BarramundiFish.fbx";
-	//auto fullPath = assetPath + "/TigerNew/tiger.dae";
-	//auto model = importer.importModel(fullPath);
-	//scene->addEntity("Tiger", model);
-
-	//importer.clear();
-
-	//std::ifstream file(assetPath + "/probe.txt");
-	//std::string line;
-	//IO::SphericalLightingProbe shProbe(9);
-	//int i = 0;
-	//while (std::getline(file, line))
-	//{
-	//	std::stringstream ss(line);
-	//	std::string strR, strG, strB;
-	//	float r = std::stof(line.substr(1, 18));
-	//	float g = std::stof(line.substr(21, 18));
-	//	float b = std::stof(line.substr(41, 18));
-	//	if(i < shProbe.coeffs.size())
-	//		shProbe.coeffs[i] = glm::vec3(r, g, b);
-	//	i++;
-	//}
-
-	//std::string fn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
-	//auto panoImgHDR = IO::decodeHDRFromFile(fn);
-
-	////{
-	////	auto panoImgHDR = IO::loadImageFromFile(fn);
-	////	uint32_t w = panoImgHDR->getWidth();
-	////	uint32_t h = panoImgHDR->getHeight();
-	////	uint32_t c = panoImgHDR->getChannels();
-	////	uint32_t size = w * h * c;
-	////	float* data = panoImgHDR->getRawPtr();
-	////	glm::vec3 avgColor(0);
-	////	for (int i = 0; i < size; i += 3)
-	////	{
-	////		avgColor.r += data[i];
-	////		avgColor.g += data[i + 1];
-	////		avgColor.b += data[i + 2];
-	////	}
-	////	avgColor /= (float)w * h;
-	////	std::cout << "avg: " << avgColor.r << " " << avgColor.g << " " << avgColor.b << std::endl;
-	////}
-
-	////std::ifstream is(fn, std::ios::binary);
-	////LinearImage linputImage = ImageDecoder::decode(is, fn);
-	////uint32_t w = linputImage.getWidth();
-	////uint32_t h = linputImage.getHeight();
-	////uint32_t c = linputImage.getChannels();
-	////auto panoImgHDR = ImageRGB32F::create(w, h);
-	////panoImgHDR->setFromMemory(linputImage.getPixelRef(), w * h * c);
-	////{
-	////	float* data = linputImage.getPixelRef();
-	////	uint32_t w = linputImage.getWidth();
-	////	uint32_t h = linputImage.getHeight();
-	////	uint32_t c = linputImage.getChannels();
-	////	uint32_t size = w * h * c;
-	////	glm::vec3 avgColor(0);
-	////	for (int i = 0; i < size; i += 3)
-	////	{
-	////		avgColor.r += data[i];
-	////		avgColor.g += data[i + 1];
-	////		avgColor.b += data[i + 2];
-	////	}
-	////	avgColor /= (float)w * h;
-	////	std::cout << "avg: " << avgColor.r << " " << avgColor.g << " " << avgColor.b << std::endl;
-	////}
-
-	//auto image = IO::ImageF32::create(1024, 1024, 3);
-	//auto pixel = image->getPixel(34, 45);
+	//auto psEnt = Entity::create("ParticleSystem", nullptr);
+	//psEnt->addComponent(ps);
+	//scene->addRootEntity("ParticleSystem", psEnt);
 	
-	//auto cm = IO::CubemapF32::create(256, 3);
-	//////auto cm = CubemapRGB32F::create(256);
-	//cm->setFromEquirectangularMap(panoImgHDR);
+	////auto light = Light::create(LightType::SPOT);
+	//auto light = Light::create(LightType::POINT);
+	////auto light = Light::create(LightType::DIRECTIONAL);
 
-	////for (int f = 0; f < 6; f++)
-	////{
-	////	auto face = cm->getFaceImage(CubemapRGB32F::Face(f));
-	////	uint32_t faceW = face->getWidth();
-	////	uint32_t faceH = face->getHeight();
-	////	//std::cout << faceW << "x" << faceH << std::endl;
-	////	uint32_t faceC = face->getChannels();
-	////	uint32_t faceSize = faceW * faceH * faceC;
-	////	float* faceData = face->getRawPtr();
-	////	glm::vec3 avgColor(0);
-	////	for (int y = 0; y < faceH; y++)
-	////	{
-	////		for (int x = 0; x < faceW; x++)
-	////		{
-	////			avgColor += face->getPixel(x, y);
-	////			//std::cout << "face " << f << " pixel " << y * w + x << " n: " << c.x << " " << c.y << " " << c.z << std::endl;
-	////		}
-	////	}
-	////	avgColor /= (float)faceW * faceH;
-	////	std::cout << "face " << f << " avg: " << avgColor.r << " " << avgColor.g << " " << avgColor.b << std::endl;
-	////}
+	//light->setColorTemp(10000);
+	//light->setLuminousPower(2500);
+	////light->setLuminousIntensity(5);
+	//light->setRange(20); 
+	////light->setConeAngles(0.1f, 0.5f);
 
-	//auto cm2 = CubemapRGB32F::create(256);
-	//cm2->mirror(cm);
+	//auto lightEntity = Entity::create("light", nullptr); 
+	//auto t = lightEntity->getComponent<Transform>();
+	//lightEntity->addComponent(light);
+	////t->setLocalPosition(glm::vec3(9, 5.5, -0.25));
+	////t->setLocalPosition(glm::vec3(6.5f, 2.0f, 0.0f));
+	//t->setLocalPosition(glm::vec3(0.0f, 5.0f, 0.0f));
+	////t->setLocalPosition(glm::vec3(-4.0f, 2.0f, 0.0f));
+	////t->setLocalRotation(glm::angleAxis(glm::radians(90 0f), glm::vec3(-1, 0, 0)));
+	////t->setLocalRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)) * glm::angleAxis(glm::radians(45.0f), glm::vec3(0, 1, 0)));
+	////t->setLocalRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(0, 1, 0)));
 
-	//for (int f = 0; f < 6; f++)
-	//{
-	//	auto face = cm2->getFaceImage(CubemapRGB32F::Face(f));
-	//	uint32_t faceW = face->getWidth();
-	//	uint32_t faceH = face->getHeight();
-	//	//std::cout << faceW << "x" << faceH << std::endl;
-	//	uint32_t faceC = face->getChannels();
-	//	uint32_t faceSize = faceW * faceH * faceC;
-	//	float* faceData = face->getRawPtr();
-	//	glm::vec3 avgColor(0);
-	//	for (int y = 0; y < faceH; y++)
-	//	{
-	//		for (int x = 0; x < faceW; x++)
-	//		{
-	//			avgColor += face->getPixel(x, y);
-	//			//std::cout << "face " << f << " pixel " << y * w + x << " n: " << c.x << " " << c.y << " " << c.z << std::endl;
-	//		}
-	//	}
-	//	avgColor /= (float)faceW * faceH;
-	//	std::cout << "face " << f << " avg: " << avgColor.r << " " << avgColor.g << " " << avgColor.b << std::endl;
-	//}
+	//float radius = 0.1f;
 
-	//auto shProbe = cm2->computeSH9();
-	//
-	////for (int i = 0; i < 6; i++)
-	////{
-	////	auto facePosX = cm->getFaceImage(CubemapRGB32F::Face(i));
-	////	IO::saveImageToFile("cm_face_" + std::to_string(i) + ".hdr", facePosX);
-	////}
-	//
-	////IO::HDRSphere hdrSphere(assetPath + "/Footprint_Court/Footprint_Court_2k.hdr");
-	////hdrSphere.convertCylindricalToSpherical(1024);
-	////auto samples = IO::generateRandomSamples(128, 5454);
-	////auto shProbe = hdrSphere.createEnvironmentProbe(samples);
-
-	////for (auto coeffs : shProbe.coeffs)
-	////	std::cout << coeffs.x << " " << coeffs.y << " " << coeffs.z << std::endl;
-	//renderer.updateSHEnv(shProbe);
-
-	//initScene();
-	//initShadowScene();
-
-	//scene->loadModel(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//for (int j = 0; j < 5; j++)
-	{
-		for (int i = 0; i < names.size(); i++)
-		{
-			std::string name = names[i];
-			std::string eName = names[i];// +"_" + std::to_string(j);
-			scene->loadModelGLTF(eName, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-
-			//auto e = scene->getRootNode(eName);
-			//if (e == nullptr)
-			//	continue;
-			//auto renderables = e->getChildrenWithComponent<Renderable>();
-
-			//AABB worldBox;
-			//for (auto e : renderables)
-			//{
-			//	auto t = e->getComponent<Transform>();
-			//	auto r = e->getComponent<Renderable>();
-			//	glm::mat4 M = t->getTransform();
-			//	AABB bbox = r->getBoundingBox();
-			//	glm::vec3 minPoint = M * glm::vec4(bbox.getMinPoint(), 1.0f);
-			//	glm::vec4 maxPoint = M * glm::vec4(bbox.getMaxPoint(), 1.0f);
-			//	worldBox.expand(minPoint);
-			//	worldBox.expand(maxPoint);
-			//}
-			//glm::vec3 center = worldBox.getCenter();
-			//glm::vec3 size = worldBox.getSize();
-
-			//auto t = e->getComponent<Transform>();
-			//t->setLocalScale(glm::vec3(1.0f / size.x));
-			//t->setLocalPosition(glm::vec3((i - 2) * 1.5f, (-center.y / size.y), 0));
-		}
-	}
-
-	std::map<std::string, int> shaderCount;
-	auto roots = scene->getRootEntities();
-	for (auto [name, entity] : roots)
-	{
-		auto renderables = entity->getComponentsInChildren<Renderable>();
-		for (auto r : renderables)
-		{
-			auto primitives = r->getMesh()->getPrimitives();
-			for (auto p : primitives)
-			{
-				std::string shaderName = p->getMaterial()->getShader();
-				if (shaderCount.find(shaderName) != shaderCount.end())
-					shaderCount[shaderName]++;
-				else
-					shaderCount.insert(std::make_pair(shaderName, 1));
-			}				
-		}
-	}
-
-	//for (auto [name, count] : shaderCount)
-	//	std::cout << "shader: " << name << ", materials: " << count << std::endl;
-	
-	//scene->addLight("light");
-
-	scene->updateAnimations(0.0f);
-		
-	std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
-	renderer.initEnv(envFn, scene);
-	renderer.initLights(scene);
-	renderer.setLights(scene->numLights());
-	scene->initShadowMaps();
-	renderer.updateShadows(scene);
-
-	//auto lightProbe = renderer.renderToCubemap(scene);
-	//renderer.initLightProbe(lightProbe, scene);
-
-	//std::string name = "DamagedHelmet";
-	//scene->loadModelGLTF(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-	//auto e = scene->getRootNode(name);
-	//e->getComponent<Transform>()->setLocalPosition(glm::vec3(0, 2, 0));
-	//e->getComponent<Transform>()->setLocalScale(glm::vec3(0.5));
-
-	//auto mat = getDefaultMaterial();
-	//mat->addProperty("material.computeFlatNormals", false);
-	//mat->addProperty("material.baseColorFactor", glm::vec4(1.0f));
-	//mat->addProperty("material.metallicFactor", 1.0f);
-	//mat->addProperty("material.roughnessFactor", 0.3f);
-	//mat->setShader("Default");
-
-	//auto prim = MeshPrimitives::createUVSphere(glm::vec3(0), 0.1f, 32, 32);
-	//prim->setBoundingBox(glm::vec3(-0.1), glm::vec3(0.1));
-	//prim->setMaterial(mat);
+	//SubMesh s;
+	//s.primitive = MeshPrimitives::createUVSphere(glm::vec3(0), radius, 32, 32);
+	//s.primitive->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
+	//s.material = getDefaultMaterial();
+	//s.material->addProperty("material.baseColorFactor", glm::vec4(light->getColor(), 1.0));
+	//s.material->addProperty("material.unlit", true);
 
 	//auto mesh = Mesh::create("Sphere");
-	//mesh->addPrimitive(prim);
+	//mesh->addSubMesh(s);
 
-	//auto e = Entity::create("Sphere", nullptr);
-	//auto r = e->addComponent<Renderable>();
+	//auto r = lightEntity->addComponent<Renderable>();
 	//r->setMesh(mesh);
-	//e->getComponent<Transform>()->setLocalPosition(glm::vec3(0,5,0));
-	//scene->addEntity("Sphere", e);
-	// 
-	//scene->updateAnimations(0.0f);
 
-	initCamera(); // TODO: dont set camera if scene is empty
+	//scene->addRootEntity("sun", lightEntity);
+
+	//glm::vec3 positions[8] = {
+	//	glm::vec3(-9,1.5,-3.5),
+	//	glm::vec3(-9,1.5,3.5),
+	//	glm::vec3(9,1.5,-3.5),
+	//	glm::vec3(9,1.5,3.5),
+	//	glm::vec3(-9,4,-3.5),
+	//	glm::vec3(-9,4,3.5),
+	//	glm::vec3(9,4,-3.5),
+	//	glm::vec3(9,4,3.5),
+	//};
+
+
+	//for (int i = 0; i < 4; i++)
+	//{
+	//	auto light = Light::create(LightType::POINT);
+	//	//auto light = Light::create(LightType::DIRECTIONAL);
+
+	//	light->setColorTemp(3000);
+	//	light->setLuminousPower(500);
+	//	//light->setLuminousIntensity(10);
+	//	light->setRange(10);
+	//	//light->setConeAngles(0.1f, 0.5f);
+
+	//	auto lightEntity = Entity::create("light", nullptr);
+	//	auto t = lightEntity->getComponent<Transform>();
+	//	lightEntity->addComponent(light);
+	//	t->setLocalPosition(positions[i]);
+
+	//	float radius = 0.1f;
+
+	//	SubMesh s;
+	//	s.primitive = MeshPrimitives::createUVSphere(glm::vec3(0), radius, 32, 32);
+	//	s.primitive->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
+	//	s.material = getDefaultMaterial();
+	//	s.material->addProperty("material.baseColorFactor", glm::vec4(light->getColor(), 1.0));
+	//	s.material->addProperty("material.unlit", true);
+
+	//	auto mesh = Mesh::create("Sphere");
+	//	mesh->addSubMesh(s);
+
+	//	auto r = lightEntity->addComponent<Renderable>();
+	//	r->setMesh(mesh);
+
+	//	scene->addRootEntity("light" + std::to_string(i), lightEntity);
+	//}
+
+	//{
+	//	SubMesh s;
+	//	s.primitive = MeshPrimitives::createUVSphere(glm::vec3(0), 0.25f, 64, 64);
+	//	auto surf = s.primitive->getSurface();
+	//	Box bbox;
+	//	for (auto& v : surf.vertices)
+	//		bbox.expand(v.position);
+
+	//	renderer.setVolumeBox(bbox.getMinPoint(), bbox.getMaxPoint());
+
+	//	s.material = getDefaultMaterial();
+	//	s.material->addProperty("material.metallicFactor", 0.0f);
+	//	s.material->addProperty("material.roughnessFactor", 1.0f);
+
+	//	auto mesh = Mesh::create("Box");
+	//	mesh->addSubMesh(s);
+
+	//	auto e = Entity::create("Box", nullptr);
+	//	auto t = e->getComponent<Transform>();
+	//	auto r = e->addComponent<Renderable>();
+	//	r->setMesh(mesh);
+
+	//	t->setLocalPosition(glm::vec3(-5.5f, 2.0f, 0.0f));
+	//	t->setLocalScale(glm::vec3(1.0f));
+
+	//	scene->addRootEntity("box", e);
+	//}
+
+	renderer.setTonemappingOp(0);
+	renderer.setIBL(true);
+	renderer.setBloom(false);
+
+	//std::string treePath = "C:/workspace/code/DeepLens/teaser/CristTreePeter3";
+	//IO::AssimpImporter importer;
+	//auto model = importer.importModel(treePath + "/CristTreePeter3.fbx");
+
+	//for (auto rendNode : model->getChildrenWithComponent<Renderable>())
+	//{
+	//	std::cout << rendNode->getName() << std::endl;
+	//	auto subMeshes = rendNode->getComponent<Renderable>()->getMesh()->getSubMeshes();
+	//	for (auto& m : subMeshes)
+	//		std::cout << "submesh: " << m.primitive->getName() << std::endl;
+	//}
+
+	//model->getComponent<Transform>()->setLocalScale(glm::vec3(0.01));
+	//scene->addRootEntity("tree", model);
+
+	//initIESTestScene();
+	//initLightTestScene();
+
+	//Light::lightForward = glm::vec3(0, 0, 1);
+
+	//std::string unityAssetPath = "C:/workspace/code/Archviz/Assets";
+	//std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
+	//std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
+
+	////std::string unityAssetPath = "C:/workspace/code/VikingVillage/Assets";
+	////std::string unityPrefabPath = unityAssetPath + "/Viking Village/Prefabs";
+	////std::string unitySceneFile = "Viking Village/Scenes/The_Viking_Village.unity";
+
+	////std::string unityAssetPath = "C:/workspace/code/Christmas/Assets";
+	////std::string unityPrefabPath = unityAssetPath + "/Christmas pack/Prefabs";
+	//
+	//IO::Unity::Importer sceneImporter(8192);
+	//scene = sceneImporter.loadScene(unityAssetPath, unitySceneFile);
+	////sceneImporter.loadMetadata(unityAssetPath);
+	////auto prefab = sceneImporter.loadPrefab(unityPrefabPath + "/TreeToy_Ball.prefab");
+	////scene->addRootEntity("TreeBall", prefab);
+	////scene->updateAnimations(0.0f);
+	//sceneImporter.clearCache();
+
+	//for (auto [name, entity] : scene->getRootEntities())
+	//{
+	//	auto models = entity->getChildrenWithComponent<Renderable>();
+	//	for (auto m : models)
+	//	{
+	//		auto r = m->getComponent<Renderable>();
+	//		if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
+	//		{
+	//			r->setType(RenderType::OPAQUE);
+	//			r->setPriority(1);
+	//		}
+	//		if (name.compare("3D HOUSE") == 0)
+	//		{
+	//			auto modelName = m->getName();
+	//			if (modelName.length() == 16)
+	//			{
+	//				auto prefix = m->getName().substr(0, 14);
+	//				if (prefix.compare("Glass_Exterior") == 0)
+	//				{
+	//					r->setType(RenderType::OPAQUE);
+	//					r->setPriority(2);
+	//				}
+	//			}
+	//			else if (modelName.length() == 23)
+	//			{
+	//				auto prefix = modelName.substr(0, 21);
+	//				if (prefix.compare("Window_Glass_Interior") == 0)
+	//				{
+	//					r->setType(RenderType::OPAQUE);
+	//					r->setPriority(2);
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
+
+	//std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
+	std::string envFn = assetPath + "/office.hdr";
+	////std::string envFn = "C:/workspace/code/VikingVillage/Assets/Viking Village/Textures/Skies/Daytime/SunsetSkyboxHDR.hdr";
+	auto panoImg = IO::decodeHDRFromFile(envFn, true);
+	//auto panoImg = IO::decodeFromFile(envFn, true);
+
+	Skybox skybox;
+	skybox.texture = panoImg->upload(false);
+	skybox.rotation = -90.0f;
+	skybox.exposure = 1.0f;
+	//glm::vec3 srgb = glm::vec3(255, 180, 107);
+	//skybox.color = glm::vec4(4.0f * glm::pow(srgb / 255.0f, glm::vec3(2.2f)), 1.0f);
+	//skybox.rotation = 45.0f;
+	scene->setSkybox(skybox);
+
+	renderer.updateCamera(camera);
+	renderer.prepare(scene);
+
+	//initCamera();
 	setupInput();
-
-	scene->playAnimations();
+	//scene->playAnimations();
 	
 	return true;
 }
 
-void Application::initScene()
-{
-	//std::string assetPath = "../../../../assets";
-	//Image2D<unsigned char> colorImage(assetPath + "/iron-rusted4/iron-rusted4_albedo.png");
-	//Image2D<unsigned char> normalImage(assetPath + "/iron-rusted4/iron-rusted4_normal.png");
-	//Image2D<unsigned char> roughImage(assetPath + "/iron-rusted4/iron-rusted4_roughness.png");
-	//Image2D<unsigned char> metalImage(assetPath + "/iron-rusted4/iron-rusted4_metallic.png");
-	//Texture2D::Ptr colorTex = colorImage.upload(true);
-	//Texture2D::Ptr normalTex = normalImage.upload(false);
-
-	//Image2D<unsigned char> ormImage(2048, 2048, 3);
-	//ormImage.addChannel(1, 0, roughImage.getDataPtr(), roughImage.getChannels());
-	//ormImage.addChannel(2, 0, metalImage.getDataPtr(), metalImage.getChannels());
-	//Texture2D::Ptr ormTex = ormImage.upload(false);
-
-	for (int i = 0; i <= 10; i++)
-	{
-		float value = (float)i / 10.0f;
-		//float value2 = (float)i / 5.0f - 1.0f;
-
-		float angle = (float)i * 36.0f;
-		float x = glm::cos(glm::radians(angle));
-		float y = glm::sin(glm::radians(angle));
-
-		glm::vec3 srgb = glm::vec3(102.0f, 51.0f, 0.0f);
-		glm::vec3 rgb = glm::pow(srgb / 255.0f, glm::vec3(2.2f));
-
-		std::string name = "sphere_" + std::to_string(i);
-		
-		auto e = Entity::create(name, nullptr);
-		auto r = e->addComponent<Renderable>();
-
-		auto prim = MeshPrimitives::createUVSphere(glm::vec3(0), 1.0f, 32, 32);
-		prim->setBoundingBox(glm::vec3(-1), glm::vec3(1));
-		
-		auto mat = getDefaultMaterial();
-		mat->addProperty("material.computeFlatNormals", false);
-		mat->addProperty("material.baseColorFactor", glm::vec4(glm::vec3(0.2,0.5,0.3f), 1.0f));
-		mat->addProperty("material.metallicFactor", 0.0f);
-		mat->addProperty("material.roughnessFactor", value);
-		//prim.materials[0]->addProperty("material.sheenColorFactor", glm::vec3(value));
-		//prim.materials[0]->addProperty("material.sheenRoughnessFactor", 0.3f);
-
-		//prim.materials[0]->addTexture("baseColorTex.tSampler", colorTex);
-		//prim.materials[0]->addProperty("baseColorTex.use", true);
-		//prim.materials[0]->addProperty("baseColorTex.uvIndex", 0); 
-		//prim.materials[0]->addProperty("baseColorTex.uvTransform", glm::mat3(1.0f));
-		 
-		//prim.materials[0]->addTexture("normalTex.tSampler", normalTex);
-		//prim.materials[0]->addProperty("normalTex.use", true);
-		//prim.materials[0]->addProperty("normalTex.uvIndex", 0);
-		//prim.materials[0]->addProperty("normalTex.uvTransform", glm::mat3(1.0f));
-		//prim.materials[0]->addProperty("material.normalScale", 1.0f);
-
-		//prim.materials[0]->addTexture("metalRoughTex.tSampler", ormTex);
-		//prim.materials[0]->addProperty("metalRoughTex.use", true);
-		//prim.materials[0]->addProperty("metalRoughTex.uvIndex", 0);
-		//prim.materials[0]->addProperty("metalRoughTex.uvTransform", glm::mat3(1.0f));
-
-		//// Translucency
-		//mat->addProperty("material.translucencyFactor", 1.0f);
-		//mat->addProperty("material.translucencyColorFactor", glm::vec3(1.0));
-
-		// Transmission
-		mat->addProperty("material.transmissionFactor", 1.0f);
-		mat->addProperty("transmissionTex.use", false);
-
-		// Volume
-		mat->addProperty("material.thicknessFactor", 0.0f);
-		mat->addProperty("material.attenuationDistance", 0.0f);
-		mat->addProperty("material.attenuationColor", glm::vec3(1.0));
-		mat->addProperty("thicknessTex.use", false);
-
-		mat->setTransmissive(true);
-
-		//prim.materials[0]->addProperty("material.clearcoatFactor", value);
-		//prim.materials[0]->addProperty("material.clearcoatRoughnessFactor", 0.0f);
-		//prim.materials[0]->addProperty("material.anisotropyFactor", 0.5f);
-		//prim.materials[0]->addProperty("material.anisotropyDirection", glm::vec3(1, 0, 0));
-		//prim.materials[0]->addProperty("anisotropyTex.use", false);
-		//prim.materials[0]->addProperty("anisotropyDirectionTex.use", false);
-		//prim.materials[0]->addProperty("material.iridescenceFactor", 1.0f);
-		//prim.materials[0]->addProperty("material.iridescenceIOR", 1.8f);
-		//prim.materials[0]->addProperty("material.iridescenceThicknessMax", 400.0f);
-		//prim.materials[0]->addProperty("iridescenceTex.use", false);
-		//prim.materials[0]->addProperty("iridescenceThicknessTex.use", false);
-		//prim.materials[0]->setShader("Default_ANISOTROPY_IRIDESCENCE");
-		//prim.materials[0]->setShader("Default_ANISOTROPY");
-		mat->setShader("Default_TRANSMISSION");
-		//mat->setShader("Default_TRANSLUCENCY");
-		//mat->setShader("Default_TRANSMISSION_TRANSLUCENCY");
-		//mat->setShader("Default");
-
-		prim->setMaterial(mat);
-
-		auto mesh = Mesh::create("Sphere");
-		mesh->addPrimitive(prim);
-		//mesh->addMaterial(mat);
-		r->setMesh(mesh);
-		e->getComponent<Transform>()->setLocalPosition(glm::vec3((i - 5) * 2.5, 0, 0));
-		scene->addEntity(name, e);
-	}
-
-	//glm::vec3 lightColor = glm::vec3(1.0f);
-	//auto lightEntity = Entity::create("light", nullptr);
-	//lightEntity->addComponent(Light::create(LightType::DIRECTIONAL, lightColor, 1.0f, 2.0f));
-	////lightEntity->getComponent<Transform>()->setScale(glm::vec3(0.05f));
-	//scene->addEntity(lightEntity->getName(), lightEntity);
-}
-
-glm::vec2 hammersley(unsigned int i, float iN)
-{
-	constexpr float tof = 0.5f / 0x80000000U;
-	uint32_t bits = i;
-	bits = (bits << 16u) | (bits >> 16u);
-	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
-	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
-	bits = ((bits & 0x0F0F0F0Fu) << 4u) | ((bits & 0xF0F0F0F0u) >> 4u);
-	bits = ((bits & 0x00FF00FFu) << 8u) | ((bits & 0xFF00FF00u) >> 8u);
-	return glm::vec2(i * iN, bits * tof);
-}
-
-void Application::initShadowScene()
-{
-#ifdef WITH_ASSIMP
-	std::string assetPath = "../../../../assets";
-	IO::AssimpImporter importer;
-	auto model = importer.importModel(assetPath + "/plane.obj");
-	model->getComponent<Transform>()->setLocalScale(glm::vec3(25));
-	scene->addEntity("plane", model);
-#else
-	std::cout << "not supported file extension" << std::endl;
-#endif
-
-	//std::string name = "IridescenceSuzanne";
-	//std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
-	//scene->loadModelGLTF(name, gltfPath + "/" + name + "/glTF/" + name + ".gltf");
-
-	std::default_random_engine gen;
-	std::uniform_real<float> dist;
-	
-	int numSamples = 10;
-	float iN = 1.0f / (float)numSamples;
-	for (int i = 0; i < numSamples; i++)
-	{
-		glm::vec2 h = hammersley(i, iN);
-
-		float x = h.x * 10.0f - 5.0f;
-		float y = 1.0f + dist(gen);
-		float z = h.y * 10.0f - 5.0f;
-		glm::vec3 pos(x, y, z);
-		glm::quat rot(1.0f, dist(gen), dist(gen), dist(gen));
-		glm::vec3 scale(0.5 + dist(gen));
-		rot = glm::normalize(rot);
-
-		auto mesh = Mesh::create("Box");
-		mesh->addPrimitive(MeshPrimitives::createBox(glm::vec3(0), glm::vec3(1)));
-
-		auto r = Renderable::create();
-		r->setMesh(mesh);
-		auto e = Entity::create("Box", nullptr);
-		e->addComponent<Renderable>(r);
-		e->getComponent<Transform>()->setLocalPosition(pos);
-		e->getComponent<Transform>()->setLocalRotation(rot);
-		e->getComponent<Transform>()->setLocalScale(scale);
-
-		scene->addEntity("box_" + std::to_string(i), e);
-	}		
-
-	scene->addLight("light");
-}
-
 void Application::initCamera()
 {
-	if (scene->getRootEntities().empty())
-		return;
-
 	auto bbox = scene->getBoundingBox();
 	glm::vec3 minPoint = bbox.getMinPoint();
 	glm::vec3 maxPoint = bbox.getMaxPoint();
 	glm::vec3 diag = maxPoint - minPoint;
-	//float maxAxisLength = glm::max(diag.x, diag.y);
+
 	float aspect = camera.getAspect();
 	float fovy = camera.getFov();
 	float fovx = fovy * aspect;
@@ -500,17 +301,304 @@ void Application::initCamera()
 	float yZoom = diag.y * 0.5 / glm::tan(fovy / 2.0f);
 	float dist = glm::max(xZoom, yZoom);
 	glm::vec3 center = bbox.getCenter();
-	center.z += dist * 1.5f;
+	center.z += dist * 2.0f;
 	camera.setPosition(center);
 
-	float longestDistance = glm::distance(minPoint, maxPoint);
-	float zNear = dist - (longestDistance * 5.0f);
-	float zFar = dist + (longestDistance * 5.0f);
+	float longestDistance = 10.0f * glm::distance(minPoint, maxPoint);
+	float zNear = dist - (longestDistance * 0.6f);
+	float zFar = dist + (longestDistance * 0.6f);
 	zNear = glm::max(zNear, zFar / 10000.0f);
+
 	//std::cout << "zNear: " << zNear << " zFar: " << zFar << std::endl;
+
 	camera.setPlanes(zNear, zFar);
-	camera.setSpeed(longestDistance);
-	camera.setVelocity(longestDistance * 0.1f);
+	camera.setSpeed(longestDistance / 10.0f);
+	camera.setVelocity(longestDistance / 100.0f);
+}
+
+void Application::initButterflyScene()
+{
+	std::string assetPath = "C:/workspace/code/PhotonRenderer/assets/nature/models/animated-flying-fluttering-butterfly-loop";
+	std::string name = "Butterfly";
+	
+	IO::glTF::Importer importer;
+	auto rootEntity = importer.importModel(assetPath + "/source/Fluttering butterfly.glb");
+	scene->addRootEntity(name, rootEntity);
+
+	auto img = IO::decodeFromFile(assetPath + "/gltf_embedded_0_blue.png", true);
+	auto tex = img->upload(true);
+
+	auto imgEmissive = IO::decodeFromFile(assetPath + "/luminosity.png", true);
+	auto texEmissive = imgEmissive->upload(true);
+		
+	auto r = rootEntity->getChildrenWithComponent<Renderable>()[0]->getComponent<Renderable>();
+	auto& sub = r->getMesh()->getSubMeshes()[0];
+	//auto oldTex = sub.material->getTexture("material.baseColorTex");
+	sub.material->replaceTexture("diffuseTex", tex);
+
+	std::string texInfoStr = "emissiveTex";
+	sub.material->addTexture(texInfoStr, texEmissive);
+	sub.material->addProperty(texInfoStr + ".use", true);
+	sub.material->addProperty(texInfoStr + ".uvIndex", 0);
+	sub.material->addProperty(texInfoStr + ".uvTransform", glm::mat3(1.0));
+
+	sub.material->addProperty("material.emissiveFactor", glm::vec3(1));
+	sub.material->addProperty("material.emissiveStrength", 5.0f);
+
+	scene->playAnimations();
+
+	//oldTex = img->upload(true);
+}
+
+void Application::initLightTestScene()
+{
+	std::string assetPath = "../../../../assets";
+	IO::AssimpImporter importer;
+	auto model = importer.importModel(assetPath + "/plane.obj");
+	model->getComponent<Transform>()->setLocalScale(glm::vec3(100));
+	scene->addRootEntity("plane", model);
+
+	std::vector<int> temps = { 1500, 3000, 6500, 9000, 12000 };
+	float x = -20.0f;
+	int index = 0;
+	for (int T : temps)
+	{
+		{
+			Light::Ptr light = nullptr; 
+			if (index == 0)
+				light = Light::create(LightType::SPOT);
+			else if (index == 1)
+			{
+				light = Light::create(LightType::AREA);
+				light->setShape(LightShape::SPHERE);
+				light->setRadius(0.5f);
+			}
+			else if (index == 2)
+			{
+				light = Light::create(LightType::AREA);
+				light->setShape(LightShape::DISC);
+				light->setRadius(1.0f);
+			}
+			else if (index == 3)
+			{
+				light = Light::create(LightType::AREA);
+				light->setShape(LightShape::TUBE);
+				light->setWidth(3.0f);
+				light->setRadius(0.5f);
+			}
+			else if (index == 4)
+			{
+				light = Light::create(LightType::AREA);
+				light->setShape(LightShape::RECTANGLE);
+				light->setWidth(3.0f);
+				light->setHeight(2.0f);
+			}
+				
+			light->setColorTemp(T);
+			light->setLuminousPower(1200);
+			light->setRange(100);
+
+			auto lightEntity = Entity::create("light", nullptr);
+			auto t = lightEntity->getComponent<Transform>();
+			lightEntity->addComponent(light);
+			t->setLocalRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)));
+			t->setLocalPosition(glm::vec3(x, 5, -1));
+
+			float radius = 0.1f;
+
+			SubMesh s;
+			s.primitive = MeshPrimitives::createUVSphere(glm::vec3(0), radius, 32, 32);
+			s.primitive->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
+			s.material = getDefaultMaterial();
+			s.material->addProperty("material.baseColorFactor", glm::vec4(light->getColor(), 1.0));
+			s.material->addProperty("material.unlit", true);
+
+			auto mesh = Mesh::create("Sphere");
+			mesh->addSubMesh(s);
+
+			auto r = lightEntity->addComponent<Renderable>();
+			r->setMesh(mesh);
+
+			scene->addRootEntity("light_" + std::to_string(index) + "_" + std::to_string(T) + "K", lightEntity);
+		}
+
+		{
+			SubMesh s;
+			s.primitive = MeshPrimitives::createBox(glm::vec3(0), glm::vec3(1));
+			s.material = getDefaultMaterial();
+			s.material->addProperty("material.metallicFactor", 0.0f);
+			s.material->addProperty("material.roughnessFactor", 1.0f);
+
+			auto mesh = Mesh::create("Box");
+			mesh->addSubMesh(s);
+
+			auto e = Entity::create("Box", nullptr);
+			auto t = e->getComponent<Transform>();
+			auto r = e->addComponent<Renderable>();
+			r->setMesh(mesh);
+
+			t->setLocalPosition(glm::vec3(x, 0.5f, -5.0f));
+			t->setLocalScale(glm::vec3(1.0f));
+
+			scene->addRootEntity("box_" + std::to_string(index), e);
+		}
+
+		index++;
+		x += 10.0f;
+	}
+	{
+		SubMesh s;
+		s.primitive = MeshPrimitives::createBox(glm::vec3(0), glm::vec3(1));
+		s.material = getDefaultMaterial();
+		s.material->addProperty("material.metallicFactor", 0.0f);
+		s.material->addProperty("material.roughnessFactor", 1.0f);
+
+		auto mesh = Mesh::create("Box");
+		mesh->addSubMesh(s);
+
+		auto e = Entity::create("Box", nullptr);
+		auto t = e->getComponent<Transform>();
+		auto r = e->addComponent<Renderable>();
+		r->setMesh(mesh);
+
+		t->setLocalPosition(glm::vec3(0.0f, 0.0f, 50.0f));
+		t->setLocalScale(glm::vec3(100.0f));
+
+		scene->addRootEntity("box", e);
+	}
+}
+
+void Application::initIESTestScene()
+{
+	renderer.setBloom(false);
+
+	std::string iesPath = "C:/workspace/code/ies/library";
+	auto iesFilelist = IO::getAllFileNames(iesPath);
+	int numProfiles = iesFilelist.size();
+
+	uint32 size = 256;
+	float* buffer = new float[numProfiles * size * size];
+	for (int i = 0; i < numProfiles; i++)
+	{
+		auto iesFn = iesFilelist[i];
+		//std::cout << iesFn << std::endl;
+
+		IO::IESProfile iesProfile;
+		iesProfile.load(iesPath + "/" + iesFn);
+		iesProfile.generateSamplePoints();
+
+		float* iesLUT = iesProfile.generateLUT(size);
+		uint32 offset = i * size * size;
+		std::memcpy(buffer + offset, iesLUT, size * size * sizeof(float));
+		delete[] iesLUT;
+	}
+
+	auto iesProfileTex = Texture2DArray::create(size, size, numProfiles, GL::R32F);
+	iesProfileTex->bind();
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	iesProfileTex->upload(buffer);
+	delete[] buffer;
+	scene->setIESProfile(iesProfileTex);
+
+	//auto mesh = iesProfile.createPhotometricNet();
+	//auto e = Entity::create("blub", nullptr);
+	//auto r = e->addComponent<Renderable>();
+	//r->setMesh(mesh);
+	//scene->addEntity("IES_Light", e);
+	//return;
+
+	std::vector<int> temps = { 1500, 3000, 6500, 9000, 12000 };
+	float x = -4.0f;
+	int index = 0;
+	for (int T : temps)
+	{
+		{
+			auto light = Light::create(LightType::POINT);
+			light->setColorTemp(T);
+			light->setLuminousPower(125.0f);
+			light->setRange(5.0f);
+			light->setIESProfile(index);
+
+			auto lightEntity = Entity::create("light", nullptr);
+			auto t = lightEntity->getComponent<Transform>();
+			lightEntity->addComponent(light);
+			t->setLocalRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)));
+			t->setLocalPosition(glm::vec3(x, 1, -0.05));
+
+			float radius = 0.01f;
+
+			SubMesh s;
+			s.primitive = MeshPrimitives::createUVSphere(glm::vec3(0), radius, 32, 32);
+			s.primitive->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
+			s.material = getDefaultMaterial();
+			s.material->addProperty("material.baseColorFactor", glm::vec4(light->getColor(), 1.0));
+			s.material->addProperty("material.unlit", true);
+
+			auto mesh = Mesh::create("Sphere");
+			mesh->addSubMesh(s);
+
+			auto r = lightEntity->addComponent<Renderable>();
+			r->setMesh(mesh);
+
+			scene->addRootEntity("light_" + std::to_string(T) + "K", lightEntity);
+		}
+
+		{
+			SubMesh s;
+			s.primitive = MeshPrimitives::createBox(glm::vec3(0), glm::vec3(1));
+			s.material = getDefaultMaterial();
+			s.material->addProperty("material.metallicFactor", 0.0f);
+			s.material->addProperty("material.roughnessFactor", 1.0f);
+
+			auto mesh = Mesh::create("Box");
+			mesh->addSubMesh(s);
+
+			auto e = Entity::create("Box", nullptr);
+			auto t = e->getComponent<Transform>();
+			auto r = e->addComponent<Renderable>();
+			r->setMesh(mesh);
+
+			t->setLocalPosition(glm::vec3(x, 0.05f, -1.0f));
+			t->setLocalScale(glm::vec3(0.1f));
+
+			scene->addRootEntity("box_" + std::to_string(index), e);
+		}
+
+		index++;
+		x += 2.0f;
+	}
+
+#ifdef WITH_ASSIMP
+	std::string assetPath = "../../../../assets";
+	IO::AssimpImporter importer;
+	auto model = importer.importModel(assetPath + "/plane.obj");
+	model->getComponent<Transform>()->setLocalScale(glm::vec3(10));
+	scene->addRootEntity("plane", model);
+#else
+	std::cout << "not supported file extension" << std::endl;
+#endif
+
+	{
+		SubMesh s;
+		s.primitive = MeshPrimitives::createBox(glm::vec3(0), glm::vec3(1));
+		s.material = getDefaultMaterial();
+		s.material->addProperty("material.metallicFactor", 0.0f);
+		s.material->addProperty("material.roughnessFactor", 1.0f);
+
+		auto mesh = Mesh::create("Box");
+		mesh->addSubMesh(s);
+
+		auto e = Entity::create("Box", nullptr);
+		auto t = e->getComponent<Transform>();
+		auto r = e->addComponent<Renderable>();
+		r->setMesh(mesh);
+
+		t->setLocalPosition(glm::vec3(0.0f, 0.0f, 5.0f));
+		t->setLocalScale(glm::vec3(10.0f));
+
+		scene->addRootEntity("box", e);
+	}
 }
 
 void Application::setupInput()
@@ -526,22 +614,30 @@ void Application::setupInput()
 	input.addKeyCallback(GLFW_KEY_D, GLFW_RELEASE, std::bind(&FPSCamera::releaseDirection, &camera, FPSCamera::Direction::RIGHT));
 	input.setMouseMoveCallback(std::bind(&FPSCamera::updateRotation, &camera, _1, _2));
 	input.setMouseWheelCallback(std::bind(&FPSCamera::updateSpeed, &camera, _1, _2));
-
-	input.addKeyCallback(GLFW_KEY_M, GLFW_PRESS, std::bind(&Scene::nextMaterial, scene.get()));
-	//input.addKeyCallback(GLFW_KEY_C, GLFW_PRESS, std::bind(&Renderer::nextCamera, &renderer));
 	input.addKeyCallback(GLFW_KEY_SPACE, GLFW_PRESS, [&] {animate = !animate; });
-	input.addKeyCallback(GLFW_KEY_R, GLFW_PRESS, std::bind(&Application::saveReflectionProbe, this));
-
 	input.setDropCallback(std::bind(&Application::handleDrop, this, _1, _2));
 }
 
-void Application::saveReflectionProbe()
+bool Application::loadGLTFModel(const std::string& name, const std::string& fullpath)
 {
-	std::cout << "render to cubemap " << std::endl;
-	auto cm = renderer.renderToCubemap(scene);
+	IO::glTF::Importer importer;
+	auto rootEntity = importer.importModel(fullpath);
+	if (rootEntity)
+	{
+		scene->addRootEntity(name, rootEntity);
+		return true;
+	}
+	return false;
+}
 
-	// TODO: save cubemap!
-
+bool Application::loadModelASSIMP(std::string name, std::string path)
+{
+	IO::AssimpImporter importer;
+	auto model = importer.importModel(path);
+	if (model == nullptr)
+		return false;
+	scene->addRootEntity(name, model);
+	return true;
 }
 
 void Application::handleDrop(int count, const char** paths)
@@ -567,17 +663,16 @@ void Application::handleDrop(int count, const char** paths)
 		std::string ext = filename.substr(extIndex, filename.length() - extIndex);
 
 		if (ext.compare("gltf") == 0 || ext.compare("glb") == 0)
-			scene->loadModelGLTF(name, fullPath);
+			loadGLTFModel(name, fullPath);
 		else
 #ifdef WITH_ASSIMP
-			scene->loadModelASSIMP(name, fullPath);
+			loadModelASSIMP(name, fullPath);
 #else
 			std::cout << "not supported file extension: " << ext << std::endl;
 #endif
 	}
 
-	renderer.initLights(scene);
-	scene->initShadowMaps();
+	renderer.prepare(scene);
 	scene->playAnimations();
 	initCamera();
 }
@@ -598,25 +693,48 @@ void Application::loop()
 
 		if (animTime > tickTime)
 		{
-			// TODO: add switch from main camera to secondary cameras
 			camera.move(animTime);
 			camera.rotate(animTime);
-			renderer.updateCamera(camera);
+			renderer.updateCamera(camera, dt);
 
 			if (animate)
 			{
 				scene->updateAnimations(animTime);
 				scene->updateAnimationState(animTime);
-				renderer.initLights(scene);
-				renderer.updateShadows(scene);
-			}	
+				auto ppp = scene->getCurrentProfile(camera.getPosition());
+				renderer.updatePostProcess(ppp);
+				renderer.updateTime(startTime);
+
+				for (auto [_, root] : scene->getRootEntities())
+				{
+					for (auto ps : root->getComponentsInChildren<ParticleSystem>())
+					{
+						ps->setVP(camera.getViewProjectionMatrix());
+						ps->createBillboard(camera.getForward(), camera.getUp());
+						ps->updateTransformFeedback(animTime);
+					}
+				}
+
+				//GLuint timerQuery;
+				//glGenQueries(1, &timerQuery);
+				//glBeginQuery(GL_TIME_ELAPSED, timerQuery);
+				renderer.initLights(scene, camera);
+				//renderer.updateShadows(scene);
+				//renderer.updateVolumes(scene);
+				//glEndQuery(GL_TIME_ELAPSED);
+
+				//int done = 0;
+				//while (!done)
+				//	glGetQueryObjectiv(timerQuery, GL_QUERY_RESULT_AVAILABLE, &done);
+
+				//GLuint64 elapsedTime;
+				//glGetQueryObjectui64v(timerQuery, GL_QUERY_RESULT, &elapsedTime);
+				//std::cout << "shadowmaps update time: " << (float)elapsedTime / 1000000.0 << " ms" << std::endl;
+			}
 			animTime = 0.0f;
 		}
 
 		renderer.renderToScreen(scene);
-		//renderer.renderForward(scene);
-		//renderer.renderText();
-
 		window.swapBuffers();
 
 		dt = glfwGetTime() - startTime;

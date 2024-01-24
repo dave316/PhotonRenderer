@@ -23,7 +23,9 @@ void main()
 		color = vertexColor.rgb;
 	else
 		color = solidColor;
-
+//	float exposure = 1.0;
+//	color = vec3(1.0) - exp(-color * exposure);
+	//color = color / (1.0 + color);
 	if(useGammaEncoding)
 		color = linear2sRGB(color);
 

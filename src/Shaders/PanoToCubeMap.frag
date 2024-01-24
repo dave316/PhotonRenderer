@@ -5,6 +5,8 @@ in vec3 uvw;
 layout(location = 0) out vec4 fragColor;
 
 uniform sampler2D panorama;
+uniform float exposure;
+uniform vec3 colorTint;
 
 void main()
 {
@@ -13,5 +15,5 @@ void main()
 	uv *= vec2(0.1591, 0.3183);
 	uv += 0.5;
 	vec3 color = texture2D(panorama, uv).rgb;
-	fragColor = vec4(color, 1.0);
+	fragColor = vec4(color * exposure, 1.0);
 }
