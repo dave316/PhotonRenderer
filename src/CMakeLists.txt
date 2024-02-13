@@ -64,6 +64,7 @@ endforeach()
 #source_group("Shaders" FILES ${SHADER_LIST})
 
 add_library(libphoton STATIC ${SRC_LIST} ${SHADER_LIST}) # TODO: better handling of 3rdParty libs
+target_compile_definitions(libphoton PUBLIC GLM_ENABLE_EXPERIMENTAL)
 if (WIN32)
     set_target_properties(libphoton PROPERTIES OUTPUT_NAME "libphoton")
 endif()
