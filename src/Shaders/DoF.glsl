@@ -245,8 +245,8 @@ vec3 computeDoF()
 	float depth = linearize(zValue);
 	//float depth = avgDepth(texCoord0.xy);
 
-	if(depth < maxDepth)
-		return texture2D(linearRGBTex, texCoord0.xy).rgb;
+	//if(depth > 0.99)
+	//	return texture2D(linearRGBTex, texCoord0.xy).rgb;
 	
 	//focal plane calculation
 	float fDepth = focalDepth;
