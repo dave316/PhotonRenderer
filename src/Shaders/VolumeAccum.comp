@@ -1,0 +1,81 @@
+#version 460 core
+
+#include "Utils.glsl"
+#include "Camera.glsl"
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(rgba16f, binding = 0) uniform image3D accumFogTex;
+
+uniform sampler3D inScatteringTex;
+
+vec3 lineZPlaneIntersection(vec3 a, vec3 b, float zDistance)
+{
+	vec3 normal = vec3(0,0,1);
+	vec3 line = b - a;
+	float t = (zDistance - dot(normal, a)) / dot(normal, line);
+	return a + t * line;
+}
+
+void main()
+{
+	uint numDepthSlices = 64;
+	ivec3 globalIndex = ivec3(gl_WorkGroupID.xyz);
+	vec4 accumScatTrans = vec4(0,0,0,1);
+	vec2 ndc = (vec2(globalIndex.xy)) / vec2(gl_NumWorkGroups.xy);
+	for(uint z = 0; z < numDepthSlices; ++z)
+	{
+		vec3 eye = vec3(0);
+		float zNear = camera.zNear;
+		float zFar = camera.zFar;
+
+		vec2 pointNDC = (vec2(globalIndex.xy) + vec2(0.5)) / vec2(gl_NumWorkGroups.xy); // normalized coords [0..1]
+		vec4 pointClip = vec4(pointNDC * 2.0 - 1.0, -1.0, 1.0); // clip space coords [-1..1]
+		vec4 pointView = camera.P_I * pointClip; // inverse projection -> view space
+		pointView /= pointView.w; // perspective divide
+
+		float depth = (float(z)) / float(numDepthSlices);
+		float tNear = -zNear * pow(zFar / zNear, float(z) / float(numDepthSlices));
+		float tFar = -zNear * pow(zFar / zNear, float(z+1) / float(numDepthSlices));
+
+		vec3 pNear = lineZPlaneIntersection(eye, pointView.xyz, tNear);
+		vec3 pFar = lineZPlaneIntersection(eye, pointView.xyz, tFar);
+		float s = distance(pFar, pNear);
+
+//		float depth = float(z) / float(numDepthSlices);
+		vec4 scatTrans = texture(inScatteringTex, vec3(ndc.xy, depth));
+		accumScatTrans.rgb += scatTrans.rgb * accumScatTrans.a;
+		accumScatTrans.a *= exp(-s * scatTrans.a);
+		imageStore(accumFogTex, ivec3(globalIndex.xy, z), accumScatTrans);
+	}
+
+
+//	vec4 currentColor = texture(inScatteringTex, vec3(ndc.xy, 0));
+//	vec4 finalValue = vec4(currentColor.rgb, exp(-currentColor.a));
+//	imageStore(accumFogTex, ivec3(globalIndex.xy, 0), finalValue);
+//	for(uint z = 1; z < numDepthSlices; z++)
+//	{
+//		vec3 eye = vec3(0);
+//		float zNear = camera.zNear;
+//		float zFar = camera.zFar;
+//
+//		vec2 pointNDC = (vec2(globalIndex.xy) + vec2(0.5)) / vec2(gl_NumWorkGroups.xy); // normalized coords [0..1]
+//		vec4 pointClip = vec4(pointNDC * 2.0 - 1.0, -1.0, 1.0);
+//		vec4 pointView = camera.P_I * pointClip; // inverse projection -> view space
+//		pointView /= pointView.w; // perspective divide
+//
+//		float depth = float(z - 1) / float(numDepthSlices);
+//		float tNear = -zNear * pow(zFar / zNear, depth);
+//		float tFar = -zNear * pow(zFar / zNear, depth);
+//
+//		vec3 pNear = lineZPlaneIntersection(eye, pointView.xyz, tNear);
+//		vec3 pFar = lineZPlaneIntersection(eye, pointView.xyz, tFar);
+//		float s = distance(pFar, pNear);
+//
+//		vec4 nextColor = texture(inScatteringTex, vec3(ndc.xy, depth));
+//		float extinction = currentColor.a + nextColor.a;
+//		vec3 light = currentColor.rgb + exp(-s * extinction) * nextColor.rgb;			
+//		currentColor = vec4(light, extinction);
+//		vec4 finalValue = vec4(currentColor.rgb, exp(-s * currentColor.a));
+//		imageStore(accumFogTex, ivec3(globalIndex.xy, z), finalValue);
+//	}
+}
