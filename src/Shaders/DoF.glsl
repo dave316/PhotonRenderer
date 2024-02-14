@@ -256,7 +256,7 @@ vec3 computeDoF()
 		//fDepth = linearize(texture2D(renderTex,focus).w);
 	}
 
-	//dof blur factor calculationdfcfrds
+	//dof blur factor calculation
 	float blur = 0.0;
 	float f = focalLength; //focal length in mm
 	float d = fDepth*1000.0; //focal plane in mm
@@ -284,9 +284,7 @@ vec3 computeDoF()
 	}
 	else
 	{
-		col = computeAverageBlur(w,h,blur);// * vec3(1,0.8,0.5);
-		//col = computeAverageBlur(w,h,blur) * vec3(1,0.9,0.87);
-		//col = computeAverageBlur(w,h,blur);
+		col = computeAverageBlur(w,h,blur);
 		//col = computeGMMBlur(w, h, blur);
 	}
 
