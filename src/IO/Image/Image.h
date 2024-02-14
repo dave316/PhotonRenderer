@@ -66,6 +66,21 @@ namespace IO
 			return pixel;
 		}
 
+		void flip()
+		{
+			DataType* rawPtr = data.get();
+			for (int y = 0; y < height / 2; y++)
+			{
+				for (int x = 0; x < width; x++)
+				{
+					for (int c = 0; c < channels; c++)
+					{
+						std::swap(rawPtr[y * width * channels + x * channels + c], rawPtr[(height - y - 1) * width * channels + x * channels + c]);
+					}
+				}
+			}
+		}
+
 		uint32 getWidth()
 		{
 			return width;

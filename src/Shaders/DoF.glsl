@@ -15,8 +15,8 @@ uniform float zfar = 100.0;
 //------------------------------------------
 //user variables
 
-int samples = 15; //samples on the first ring
-int rings = 12; //ring count
+uniform int samples = 5; //samples on the first ring
+uniform int rings = 3; //ring count
 
 uniform float CoC = 0.03;//circle of confusion size in mm (35mm film = 0.03mm)
 
@@ -24,8 +24,9 @@ bool autofocus = false; //use autofocus in shader? disable if you use external f
 vec2 focus = vec2(0.5,0.5); // autofocus point on screen (0.0,0.0 - left lower corner, 1.0,1.0 - upper right)
 float maxblur = 2.0; //clamp value of max blur (0.0 = no blur,1.0 default)
 
-float threshold = 0.85; //highlight threshold;
-float gain = 10.0; //highlight gain;
+uniform float threshold = 1.0; //highlight threshold;
+uniform float gain = 100.0; //highlight gain;
+uniform vec3 gainTint;
 
 float bias = 0.0; //bokeh edge bias
 float fringe = 0.0; //bokeh chromatic aberration/fringing
@@ -33,120 +34,23 @@ float fringe = 0.0; //bokeh chromatic aberration/fringing
 bool noise = false; //use noise instead of pattern for sample dithering
 float namount = 0.0001; //dither amount
 
-uniform bool pentagon = false; //use pentagon as bokeh shape?
-uniform float feather = 0.4; //pentagon shape feather
-
-
 uniform float a1, a2, a3;
 uniform float b1, b2, b3;
 uniform float c1, c2, c3;
 
-float penta(vec2 coords) //pentagonal shape
+float linearize(float depth)
 {
-	float scale = float(rings) - 1.3;
-	vec4  HS0 = vec4( 1.0,         0.0,         0.0,  1.0);
-	vec4  HS1 = vec4( 0.309016994, 0.951056516, 0.0,  1.0);
-	vec4  HS2 = vec4(-0.809016994, 0.587785252, 0.0,  1.0);
-	vec4  HS3 = vec4(-0.809016994,-0.587785252, 0.0,  1.0);
-	vec4  HS4 = vec4( 0.309016994,-0.951056516, 0.0,  1.0);
-	vec4  HS5 = vec4( 0.0        ,0.0         , 1.0,  1.0);
-
-	vec4  one = vec4( 1.0 );
-
-	vec4 P = vec4((coords),vec2(scale, scale)); 
-
-	vec4 dist = vec4(0.0);
-	float inorout = -4.0;
-
-	dist.x = dot( P, HS0 );
-	dist.y = dot( P, HS1 );
-	dist.z = dot( P, HS2 );
-	dist.w = dot( P, HS3 );
-
-	dist = smoothstep( -feather, feather, dist );
-
-	inorout += dot( dist, one );
-
-	dist.x = dot( P, HS4 );
-	dist.y = HS5.w - abs( P.z );
-
-	dist = smoothstep( -feather, feather, dist );
-	inorout += dist.x;
-
-	return clamp( inorout, 0.0, 1.0 );
-}
-
-float hepta2(vec2 coords)
-{
-	vec2 hPoints[8] = {
-		float(rings) * vec2(1.0, 0.0),
-		float(rings) * vec2(0.62349, 0.781831),
-		float(rings) * vec2(-0.222521, 0.974928),
-		float(rings) * vec2(-0.900969, 0.433884),
-		float(rings) * vec2(-0.900969, -0.433884),
-		float(rings) * vec2(-0.222521, -0.974928),
-		float(rings) * vec2(0.62349, -0.781832),
-		float(rings) * vec2(1.0, 0.0)
-	};
-
-	vec2 p = coords;
-	float prevSide = 0.0;
-	for(int i = 0; i < 7; i++)
-	{
-		vec2 p0 = hPoints[i];
-		vec2 p1 = hPoints[i + 1];
-		vec2 s0 = p1 - p0;
-		vec2 s1 = p - p0;
-		float side = sign(s0.x * s1.y - s0.y * s1.x);
-		if(i > 0 && side != prevSide)
-			return 0.0;
-		prevSide = side;
-	}
-	return 1.0;
-}
-
-float hepta(vec2 coords)
-{
-	float scale = float(rings) - 2.0;
-	vec4  HS0 = vec4( 1.0,         0.0,         0.0,  1.0);
-	vec4  HS1 = vec4(0.62349, 0.781831, 0.0,  1.0);
-	vec4  HS2 = vec4(-0.222521, 0.974928, 0.0,  1.0);
-	vec4  HS3 = vec4(-0.900969, 0.433884, 0.0,  1.0);
-	vec4  HS4 = vec4(-0.900969, -0.433884, 0.0,  1.0);
-	vec4  HS5 = vec4(-0.222521, -0.974928, 0.0,  1.0);
-	vec4  HS6 = vec4(0.62349, -0.781832, 0.0,  1.0);
-	vec4  HS7 = vec4( 0.0        ,0.0         , 1.0,  1.0);
-
-	vec4  one = vec4( 1.0 );
-
-	vec4 P = vec4(-coords.x,coords.y,scale,scale); 
-
-	vec4 dist = vec4(0.0);
-	float inorout = -6.0;
-
-	dist.x = dot( P, HS0 );
-	dist.y = dot( P, HS1 );
-	dist.z = dot( P, HS2 );
-	dist.w = dot( P, HS3 );
-
-	dist = smoothstep( -feather, feather, dist );
-
-	inorout += dot( dist, one );
-
-	dist.x = dot( P, HS4 );
-	dist.y = dot( P, HS5 );
-	dist.z = dot( P, HS6 );
-	dist.w = HS7.w - abs( P.z );
-
-	dist = smoothstep( -feather, feather, dist );
-	inorout += dot(dist.xyz, vec3(1));
-
-	return clamp( inorout, 0.0, 1.0 );
+	return -zfar * znear / (depth * (zfar - znear) - zfar);
 }
 
 vec3 color(vec2 coords,float blur) //processing the sample
 {
 	vec3 col = vec3(0.0);
+
+//	float zValue = texture2D(depthTex,coords).r;
+//	float depth = linearize(zValue);
+//	if(depth < 0.12)
+//		return col;
 
 	col.r = texture2D(linearRGBTex,coords + vec2(0.0,0.0)*texel*fringe*blur).r;
 	col.g = texture2D(linearRGBTex,coords + vec2(0.0,-1.0)*texel*fringe*blur).g;
@@ -155,7 +59,7 @@ vec3 color(vec2 coords,float blur) //processing the sample
 	vec3 lumcoeff = vec3(0.299,0.587,0.114);
 	float lum = dot(col.rgb, lumcoeff);
 	float thresh = max((lum-threshold)*gain, 0.0);
-	return col + mix(vec3(0.0),col,thresh*blur);
+	return col + mix(vec3(0.0),col,thresh*blur) * gainTint;
 }
 
 vec2 rand(vec2 coord) //generating noise/pattern texture for dithering
@@ -171,38 +75,11 @@ vec2 rand(vec2 coord) //generating noise/pattern texture for dithering
 	return vec2(noiseX,noiseY);
 }
 
-float linearize(float depth)
-{
-	return -zfar * znear / (depth * (zfar - znear) - zfar);
-}
-
-vec2 rotate(vec2 v, float a) {
-	float s = sin(a);
-	float c = cos(a);
-	mat2 m = mat2(c, -s, s, c);
-	return m * v;
-}
-
 vec3 computeAverageBlur(float w, float h, float blur)
 {
-	vec2 size = textureSize(linearRGBTex, 0).xy;
-	vec2 coords = gl_FragCoord.xy;
-	float relX = (coords.x / size.x) * 2.0 - 1.0;
-	float relY = (coords.y / size.y) * 2.0 - 1.0;
-	float r = sqrt(relX * relX + relY * relY) / sqrt(2);
-
 	vec3 col = texture2D(linearRGBTex, texCoord0.xy).rgb;
 	float s = 1.0;
 	int ringsamples;
-//	float a = 1.0 - r;
-//	if(a > 0.5)
-//		a = 1.0;
-//	else
-//	    a += 0.5;
-//	a = min(a, 1.0);
-	float a = 1.0;
-	float b = 1.0;
-	//float angle = atan(-relY, relX);
 	for (int i = 1; i <= rings; i += 1)
 	{   
 		ringsamples = i * samples;
@@ -210,19 +87,11 @@ vec3 computeAverageBlur(float w, float h, float blur)
 		for (int j = 0 ; j < ringsamples ; j += 1)   
 		{
 			float step = PI*2.0 / float(ringsamples);
-			float pw = a * (cos(float(j)*step)*float(i));
-			float ph = b * (sin(float(j)*step)*float(i));
+			float pw = cos(float(j)*step)*float(i);
+			float ph = sin(float(j)*step)*float(i);
 
-			//vec2 samplePoint = vec2(pw*w,ph*h);
-			//vec2 rotPoint = rotate(vec2(pw,ph), angle);
-			float p = 1.0;
-			if (pentagon)
-			{ 
-				p = hepta(vec2(pw,ph));
-			}
-			col += color(texCoord0.xy + vec2(pw*w,ph*h),blur)*mix(1.0,(float(i))/(float(rings)),bias) * p;  
-			//col += color(texCoord0.xy + vec2(rotPoint.x*w,rotPoint.y*h),blur)*mix(1.0,(float(i))/(float(rings)),bias) * p;  
-			s += 1.0*mix(1.0,(float(i))/(float(rings)),bias)*p;
+			col += color(texCoord0.xy + vec2(pw*w,ph*h),blur)*mix(1.0,(float(i))/(float(rings)),bias);  
+			s += 1.0*mix(1.0,(float(i))/(float(rings)),bias);
 		}
 	}
 	col /= s;
@@ -366,16 +235,18 @@ float avgDepth(vec2 texCoord)
 	return depth / 121.0;
 }
 
+uniform float maxDepth = 0.0;
+
 vec3 computeDoF() 
 {
 	float zValue = texture2D(depthTex,texCoord0.xy).r;
 
-	//if(zValue > 0.99)
-	//	return texture2D(linearRGBTex, texCoord0.xy).rgb;
-
 	//scene depth calculation
-	//float depth = linearize(zValue);
-	float depth = avgDepth(texCoord0.xy);
+	float depth = linearize(zValue);
+	//float depth = avgDepth(texCoord0.xy);
+
+	//if(depth > 0.99)
+	//	return texture2D(linearRGBTex, texCoord0.xy).rgb;
 	
 	//focal plane calculation
 	float fDepth = focalDepth;
@@ -413,7 +284,6 @@ vec3 computeDoF()
 	}
 	else
 	{
-		//col = computeAverageBlur(w,h,blur) * vec3(1,0.9,0.87);
 		col = computeAverageBlur(w,h,blur);
 		//col = computeGMMBlur(w, h, blur);
 	}
