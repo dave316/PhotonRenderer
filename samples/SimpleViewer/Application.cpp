@@ -41,14 +41,14 @@ bool Application::init()
 	std::string srcPath = assetPath + "/glTF-Sample-Models/sourceModels";
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
 
-	scene = Scene::create("Scene");
-	////initButterflyScene();
-	std::string name = "DamagedHelmet";
-	std::string fullPath = gltfPath + "/" + name + "/glTF/" + name + ".gltf";
-	
-	IO::glTF::Importer importer;
-	auto rootEntity = importer.importModel(fullPath);
-	scene->addRootEntity(name, rootEntity);
+	//scene = Scene::create("Scene");
+	//////initButterflyScene();
+	//std::string name = "DamagedHelmet";
+	//std::string fullPath = gltfPath + "/" + name + "/glTF/" + name + ".gltf";
+	//
+	//IO::glTF::Importer importer;
+	//auto rootEntity = importer.importModel(fullPath);
+	//scene->addRootEntity(name, rootEntity);
 
 	//auto updateShader = renderer.getShader("ParticleUpdate");
 	//auto updateRender = renderer.getShader("ParticleRender");
@@ -205,62 +205,62 @@ bool Application::init()
 	//initIESTestScene();
 	//initLightTestScene();
 
-	//Light::lightForward = glm::vec3(0, 0, 1);
+	Light::lightForward = glm::vec3(0, 0, 1);
 
-	//std::string unityAssetPath = "C:/workspace/code/Archviz/Assets";
-	//std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
-	//std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
+	std::string unityAssetPath = "C:/workspace/code/Archviz/Assets";
+	std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
+	std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
 
-	////std::string unityAssetPath = "C:/workspace/code/VikingVillage/Assets";
-	////std::string unityPrefabPath = unityAssetPath + "/Viking Village/Prefabs";
-	////std::string unitySceneFile = "Viking Village/Scenes/The_Viking_Village.unity";
+	//std::string unityAssetPath = "C:/workspace/code/VikingVillage/Assets";
+	//std::string unityPrefabPath = unityAssetPath + "/Viking Village/Prefabs";
+	//std::string unitySceneFile = "Viking Village/Scenes/The_Viking_Village.unity";
 
-	////std::string unityAssetPath = "C:/workspace/code/Christmas/Assets";
-	////std::string unityPrefabPath = unityAssetPath + "/Christmas pack/Prefabs";
-	//
-	//IO::Unity::Importer sceneImporter(8192);
-	//scene = sceneImporter.loadScene(unityAssetPath, unitySceneFile);
-	////sceneImporter.loadMetadata(unityAssetPath);
-	////auto prefab = sceneImporter.loadPrefab(unityPrefabPath + "/TreeToy_Ball.prefab");
-	////scene->addRootEntity("TreeBall", prefab);
-	////scene->updateAnimations(0.0f);
-	//sceneImporter.clearCache();
+	//std::string unityAssetPath = "C:/workspace/code/Christmas/Assets";
+	//std::string unityPrefabPath = unityAssetPath + "/Christmas pack/Prefabs";
+	
+	IO::Unity::Importer sceneImporter(8192);
+	scene = sceneImporter.loadScene(unityAssetPath, unitySceneFile);
+	//sceneImporter.loadMetadata(unityAssetPath);
+	//auto prefab = sceneImporter.loadPrefab(unityPrefabPath + "/TreeToy_Ball.prefab");
+	//scene->addRootEntity("TreeBall", prefab);
+	//scene->updateAnimations(0.0f);
+	sceneImporter.clearCache();
 
-	//for (auto [name, entity] : scene->getRootEntities())
-	//{
-	//	auto models = entity->getChildrenWithComponent<Renderable>();
-	//	for (auto m : models)
-	//	{
-	//		auto r = m->getComponent<Renderable>();
-	//		if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
-	//		{
-	//			r->setType(RenderType::OPAQUE);
-	//			r->setPriority(1);
-	//		}
-	//		if (name.compare("3D HOUSE") == 0)
-	//		{
-	//			auto modelName = m->getName();
-	//			if (modelName.length() == 16)
-	//			{
-	//				auto prefix = m->getName().substr(0, 14);
-	//				if (prefix.compare("Glass_Exterior") == 0)
-	//				{
-	//					r->setType(RenderType::OPAQUE);
-	//					r->setPriority(2);
-	//				}
-	//			}
-	//			else if (modelName.length() == 23)
-	//			{
-	//				auto prefix = modelName.substr(0, 21);
-	//				if (prefix.compare("Window_Glass_Interior") == 0)
-	//				{
-	//					r->setType(RenderType::OPAQUE);
-	//					r->setPriority(2);
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
+	for (auto [name, entity] : scene->getRootEntities())
+	{
+		auto models = entity->getChildrenWithComponent<Renderable>();
+		for (auto m : models)
+		{
+			auto r = m->getComponent<Renderable>();
+			if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
+			{
+				r->setType(RenderType::OPAQUE);
+				r->setPriority(1);
+			}
+			if (name.compare("3D HOUSE") == 0)
+			{
+				auto modelName = m->getName();
+				if (modelName.length() == 16)
+				{
+					auto prefix = m->getName().substr(0, 14);
+					if (prefix.compare("Glass_Exterior") == 0)
+					{
+						r->setType(RenderType::OPAQUE);
+						r->setPriority(2);
+					}
+				}
+				else if (modelName.length() == 23)
+				{
+					auto prefix = modelName.substr(0, 21);
+					if (prefix.compare("Window_Glass_Interior") == 0)
+					{
+						r->setType(RenderType::OPAQUE);
+						r->setPriority(2);
+					}
+				}
+			}
+		}
+	}
 
 	//std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
 	std::string envFn = assetPath + "/office.hdr";
