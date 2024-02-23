@@ -406,8 +406,8 @@ namespace IO
 				//std::cout << "shininessStrength: " << shininessStrength << std::endl;
 				//std::cout << "specularColor: " << specularColor.x << " " << specularColor.y << " " << specularColor.z << std::endl;
 
-				setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "diffuseTex", true);
-				setTextureInfo(pScene, pMaterial, aiTextureType_SPECULAR, material, "specGlossTex", true);
+				//setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "diffuseTex", true);
+				//setTextureInfo(pScene, pMaterial, aiTextureType_SPECULAR, material, "specGlossTex", true);
 
 				material->setShader("Default_SPECGLOSS");
 			}

@@ -263,19 +263,19 @@ bool Application::init()
 	}
 
 	//std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
-	std::string envFn = assetPath + "/office.hdr";
+	//std::string envFn = assetPath + "/office.hdr";
 	////std::string envFn = "C:/workspace/code/VikingVillage/Assets/Viking Village/Textures/Skies/Daytime/SunsetSkyboxHDR.hdr";
-	auto panoImg = IO::decodeHDRFromFile(envFn, true);
+	//auto panoImg = IO::decodeHDRFromFile(envFn, true);
 	//auto panoImg = IO::decodeFromFile(envFn, true);
 
-	Skybox skybox;
-	skybox.texture = panoImg->upload(false);
-	skybox.rotation = -90.0f;
-	skybox.exposure = 1.0f;
+	//Skybox skybox;
+	//skybox.texture = panoImg->upload(false);
+	//skybox.rotation = -90.0f;
+	//skybox.exposure = 1.0f;
 	//glm::vec3 srgb = glm::vec3(255, 180, 107);
 	//skybox.color = glm::vec4(4.0f * glm::pow(srgb / 255.0f, glm::vec3(2.2f)), 1.0f);
 	//skybox.rotation = 45.0f;
-	scene->setSkybox(skybox);
+	//scene->setSkybox(skybox);
 
 	renderer.updateCamera(camera);
 	renderer.prepare(scene);

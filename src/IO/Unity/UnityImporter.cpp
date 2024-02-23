@@ -1967,16 +1967,11 @@ namespace IO
 			
 			// parse scene hierarchy using DFS
 			auto scene = Scene::create("UnityScene");
-			//scene->addRootEntity(traverse(1308100271, nullptr, db));
-			//scene->addRootEntity(traverse(810077401, nullptr, db));
-			scene->addRootEntity(traverse(1308100271, nullptr, db));
-			scene->addRootEntity(traverse(2075706406, nullptr, db));
-
-			//for (auto&& [name, id] : rootNodes)
-			//{
-			//	auto root = traverse(id, nullptr, db);
-			//	scene->addRootEntity(name, root);
-			//}
+			for (auto&& [name, id] : rootNodes)
+			{
+				auto root = traverse(id, nullptr, db);
+				scene->addRootEntity(name, root);
+			}
 
 			// flip faces that are CW
 			scene->checkWindingOrder();
