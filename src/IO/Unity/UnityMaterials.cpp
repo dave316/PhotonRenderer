@@ -1,3 +1,5 @@
+#ifdef WITH_UNITY
+
 #include "UnityMaterials.h"
 
 #include <IO/ShaderLoader.h>
@@ -1708,3 +1710,5 @@ namespace IO
 		}
 	}
 }
+
+#endif

@@ -1,3 +1,5 @@
+#ifdef WITH_UNITY
+
 #include "UnityYAML.h"
 
 namespace IO
@@ -360,3 +362,5 @@ namespace IO
 		}
 	}
 }
+
+#endif

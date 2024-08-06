@@ -4,8 +4,6 @@
 #include <stb_image_write.h>
 #include <stb_image_resize.h>
 
-#include <tinyexr.h>
-
 #ifdef WITH_KTX
 #include <ktx.h>
 #include <vulkan/vulkan_core.h>
@@ -13,7 +11,10 @@
 using namespace half_float;
 #endif
 
+#ifdef WITH_UNITY
+#include <tinyexr.h>
 #include <tiffio.h>
+#endif
 
 #include "ImageDecoder.h"
 
@@ -147,6 +148,7 @@ namespace IO
 		stbi_write_hdr(filename.c_str(), image->getWidth(), image->getHeight(), image->getChannels(), image->getRawPtr());
 	}
 
+#ifdef WITH_UNITY
 	ImageUI8::Ptr decodeTIFFromFile(const std::string& filename)
 	{
 		TIFFRGBAImage tiffRGBA;
@@ -206,6 +208,27 @@ namespace IO
 		return img;
 	}
 
+	ImageF32::Ptr decodeEXRFromFile(const std::string& filename)
+	{
+		int w, h;
+		const char* err;
+		float* rgba;
+
+		int ret = LoadEXR(&rgba, &w, &h, filename.c_str(), &err);
+		if (ret != 0)
+			std::cout << err << std::endl;
+
+		//std::cout << "loaded exr image: " << w << "x" << h << std::endl;
+
+		auto img = ImageF32::create(w, h, 4);
+		img->setFromMemory(rgba, w * h * 4);
+
+		delete[] rgba;
+
+		return img;
+	}
+#endif
+
 	ImageF32::Ptr decodeHDRFromFile(const std::string& filename, bool flipY)
 	{
 		int width = 0;
@@ -222,26 +245,6 @@ namespace IO
 
 		delete[] data;
 
-		return img;
-	}
-
-	ImageF32::Ptr decodeEXRFromFile(const std::string& filename)
-	{
-		int w, h;
-		const char* err;
-		float* rgba;
-
-		int ret = LoadEXR(&rgba, &w, &h, filename.c_str(), &err);
-		if (ret != 0)
-			std::cout << err << std::endl;
-		
-		//std::cout << "loaded exr image: " << w << "x" << h << std::endl;
-
-		auto img = ImageF32::create(w, h, 4);
-		img->setFromMemory(rgba, w * h * 4);
-
-		delete[] rgba;
-		
 		return img;
 	}
 

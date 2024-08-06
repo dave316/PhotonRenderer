@@ -1,6 +1,8 @@
 #ifndef INCLUDED_UNITYYAML
 #define INCLUDED_UNITYYAML
 
+#ifdef WITH_UNITY
+
 #pragma once
 
 #include "UnityTypes.h"
@@ -73,4 +75,5 @@ namespace IO
 	}
 }
 
+#endif
 #endif // INCLUDED_UNITYYAML

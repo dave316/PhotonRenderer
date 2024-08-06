@@ -15,9 +15,11 @@ namespace IO
 	ImageUI8::Ptr decodeFromMemory(std::vector<uint8>& buffer);
 	ImageUI8::Ptr decodeFromFile(const std::string& filename, bool flipY = false);
 	ImageF32::Ptr decodeFloat(const std::string& filename, bool flipY = false);
+#ifdef WITH_UNITY
 	ImageUI8::Ptr decodeTIFFromFile(const std::string& filename);
-	ImageF32::Ptr decodeHDRFromFile(const std::string& filename, bool flipY = false);
 	ImageF32::Ptr decodeEXRFromFile(const std::string& filename);
+#endif
+	ImageF32::Ptr decodeHDRFromFile(const std::string& filename, bool flipY = false);
 	void saveToFile(const std::string& filename, ImageUI8::Ptr img);
 	void saveHDR(const std::string& filename, ImageF32::Ptr image);
 

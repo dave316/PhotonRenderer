@@ -1,6 +1,8 @@
 #ifndef INCLUDED_UNITYIMPORTER
 #define INCLUDED_UNITYIMPORTER
 
+#ifdef WITH_UNITY
+
 #pragma once
 
 #include "UnityYAML.h"
@@ -98,4 +100,5 @@ namespace IO
 	}
 }
 
+#endif
 #endif // INCLUDED_UNITYIMPORTER

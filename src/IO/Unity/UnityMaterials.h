@@ -1,6 +1,8 @@
 #ifndef INCLUDED_UNITYMATERIALS
 #define INCLUDED_UNITYMATERIALS
 
+#ifdef WITH_UNITY
+
 #pragma once
 
 #include "UnityYAML.h"
@@ -58,4 +60,5 @@ namespace IO
 	}
 }
 
+#endif
 #endif // INCLUDED_UNITYMATERIALS

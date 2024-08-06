@@ -1,3 +1,5 @@
+#ifdef WITH_UNITY
+
 #include "UnityImporter.h"
 #include "UnityYAML.h"
 
@@ -2137,3 +2139,5 @@ namespace IO
 		}
 	}
 }
+
+#endif
