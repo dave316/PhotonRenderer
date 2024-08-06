@@ -3,7 +3,7 @@
 
 int main()
 {
-	Application app("PhotonRenderer", 1920, 1080);
+	Application app("PhotonRenderer", 1600, 900);
 	if (app.init())
 	{
 		app.loop();

@@ -497,7 +497,7 @@ void Renderer::updateShadows(Scene::Ptr scene)
 	if (!pointLights.empty())
 	{
 		omniShadowFBO->begin();
-		glCullFace(GL_FRONT);
+		//glCullFace(GL_FRONT);
 		depthCMShader->use();
 		for (int i = 0; i < pointLights.size(); i++)
 		{
@@ -508,7 +508,7 @@ void Renderer::updateShadows(Scene::Ptr scene)
 			renderScene(scene, depthCMShader, false);
 		}
 		omniShadowFBO->end();
-		glCullFace(GL_BACK);
+		//glCullFace(GL_BACK);
 	}
 }
 

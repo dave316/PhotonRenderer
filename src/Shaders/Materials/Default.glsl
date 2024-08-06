@@ -193,7 +193,8 @@ vec3 getNormal(vec2 uv0, vec2 uv1)
 	//vec3 normal = getTexel(normalTex, uv0, uv1).rgb * 2.0 - 1.0;
 	normal *= vec3(material.normalScale, material.normalScale, 1.0);
 #else
-	vec3 normal = getTexel(normalTex, uv0, uv1).rgb * 2.0 - 1.0;
+	vec3 n = getTexel(normalTex, uv0, uv1).rgb;
+	vec3 normal = n * 2.0 - 1.0;
 	normal *= vec3(material.normalScale, material.normalScale, 1.0);
 #endif
 	return normalize(normal);

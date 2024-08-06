@@ -73,8 +73,8 @@ namespace IO
 		unsigned int index = 0;
 		traverse(pScene->mRootNode, index);
 		
-		loadAnimations(pScene);
-		loadSkins(pScene);
+		//loadAnimations(pScene);
+		//loadSkins(pScene);
 		//loadTextures(pScene);
 		//if(materials.empty())
 		loadMaterials(pScene);
@@ -371,14 +371,15 @@ namespace IO
 			material->addProperty("material.emissiveStrength", 1.0f);
 			material->addProperty("material.occlusionStrength", 1.0f);
 
-			setTextureInfo(pScene, pMaterial, aiTextureType_BASE_COLOR, material, "baseColorTex", true);
-			if(pMaterial->GetTextureCount(aiTextureType_NORMALS) > 0)
-				setTextureInfo(pScene, pMaterial, aiTextureType_NORMALS, material, "normalTex");
-			else
-				setTextureInfo(pScene, pMaterial, aiTextureType_HEIGHT, material, "normalTex");
-			setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE_ROUGHNESS, material, "metalRoughTex");
-			setTextureInfo(pScene, pMaterial, aiTextureType_LIGHTMAP, material, "occlusionTex");
-			setTextureInfo(pScene, pMaterial, aiTextureType_EMISSIVE, material, "emissiveTex", true);
+			//setTextureInfo(pScene, pMaterial, aiTextureType_BASE_COLOR, material, "baseColorTex", true);
+			//setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "baseColorTex", true);
+			//if(pMaterial->GetTextureCount(aiTextureType_NORMALS) > 0)
+			//	setTextureInfo(pScene, pMaterial, aiTextureType_NORMALS, material, "normalTex");
+			//else
+			//	setTextureInfo(pScene, pMaterial, aiTextureType_HEIGHT, material, "normalTex");
+			//setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE_ROUGHNESS, material, "metalRoughTex");
+			//setTextureInfo(pScene, pMaterial, aiTextureType_LIGHTMAP, material, "occlusionTex");
+			//setTextureInfo(pScene, pMaterial, aiTextureType_EMISSIVE, material, "emissiveTex", true);
 	
 			material->addProperty("material.normalScale", 1.0f); // TODO: add to normal tex info
 			material->addProperty("material.unlit", false);
@@ -387,31 +388,31 @@ namespace IO
 			int shadingModel = -1;
 			pMaterial->Get(AI_MATKEY_SHADING_MODEL, shadingModel);
 
-			if (shadingModel != 11) // Phong shading -> use PBR spec gloss material
-			{
-				glm::vec3 diffuseColor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_DIFFUSE);
-				glm::vec3 specularColor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_SPECULAR);
-				float opacity = getFloatFromMaterial(pMaterial, AI_MATKEY_OPACITY);
-				float shininess = getFloatFromMaterial(pMaterial, AI_MATKEY_SHININESS, 0.0f);
-				float shininessStrength = getFloatFromMaterial(pMaterial, AI_MATKEY_SHININESS_STRENGTH, 0.0f) / 100.0f;
-				float glossFactor = shininessStrength * (shininess > 0.0f ? glm::log2(shininess) / 8.0f : 1.0f);
-				if (glossFactor == 0.0) // it makes no sense that there is specular color when the glossiness is zero anyway...
-					specularColor = glm::vec3(0);
+			//if (shadingModel != 11) // Phong shading -> use PBR spec gloss material
+			//{
+			//	glm::vec3 diffuseColor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_DIFFUSE);
+			//	glm::vec3 specularColor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_SPECULAR);
+			//	float opacity = getFloatFromMaterial(pMaterial, AI_MATKEY_OPACITY);
+			//	float shininess = getFloatFromMaterial(pMaterial, AI_MATKEY_SHININESS, 0.0f);
+			//	float shininessStrength = getFloatFromMaterial(pMaterial, AI_MATKEY_SHININESS_STRENGTH, 0.0f) / 100.0f;
+			//	float glossFactor = shininessStrength * (shininess > 0.0f ? glm::log2(shininess) / 8.0f : 1.0f);
+			//	if (glossFactor == 0.0) // it makes no sense that there is specular color when the glossiness is zero anyway...
+			//		specularColor = glm::vec3(0);
 
-				material->addProperty("material.diffuseFactor", glm::vec4(diffuseColor, opacity));
-				material->addProperty("material.specularFactor", specularColor);
-				material->addProperty("material.glossFactor", glossFactor);
+			//	material->addProperty("material.diffuseFactor", glm::vec4(diffuseColor, opacity));
+			//	material->addProperty("material.specularFactor", specularColor);
+			//	material->addProperty("material.glossFactor", glossFactor);
 
-				//std::cout << "shininess: " << shininess << std::endl;
-				//std::cout << "shininessStrength: " << shininessStrength << std::endl;
-				//std::cout << "specularColor: " << specularColor.x << " " << specularColor.y << " " << specularColor.z << std::endl;
+			//	//std::cout << "shininess: " << shininess << std::endl;
+			//	//std::cout << "shininessStrength: " << shininessStrength << std::endl;
+			//	//std::cout << "specularColor: " << specularColor.x << " " << specularColor.y << " " << specularColor.z << std::endl;
 
-				//setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "diffuseTex", true);
-				//setTextureInfo(pScene, pMaterial, aiTextureType_SPECULAR, material, "specGlossTex", true);
+			//	setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "diffuseTex", true);
+			//	setTextureInfo(pScene, pMaterial, aiTextureType_SPECULAR, material, "specGlossTex", true);
 
-				material->setShader("Default_SPECGLOSS");
-			}
-			else // for every other shading model use default PBR metal rough mat
+			//	material->setShader("Default_SPECGLOSS");
+			//}
+			//else // for every other shading model use default PBR metal rough mat
 			{
 				material->setShader("Default");
 			}

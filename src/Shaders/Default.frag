@@ -6,7 +6,8 @@ layout(location = 2) in vec3 wNormal;
 layout(location = 3) in vec2 texCoord0;
 layout(location = 4) in vec2 texCoord1;
 layout(location = 5) in flat int instanceID;
-layout(location = 6) in mat3 wTBN;
+layout(location = 6) in vec3 tangent;
+layout(location = 7) in mat3 wTBN;
 
 struct FSInput
 {
@@ -545,7 +546,7 @@ void main()
 	vec3 tView = inverse(wTBN) * wView;
 	vec4 baseColor = vertexColor * getBaseColor(uv0, uv1, tView);
 #else
-	vec4 baseColor = getBaseColor(uv0, uv1);
+	vec4 baseColor = getBaseColor(uv0, uv1);// * vec4(1.0, 0.8, 0.8, 1.0);
 #endif
 	float alpha = baseColor.a;
 	if(material.alphaMode == 1 && alpha < material.alphaCutOff)
@@ -728,7 +729,7 @@ vec3 anisotropyDirection = vec3(0);
 	vec3 f_translucency = vec3(0);
 
 	float albedoScaling = 1.0;
-
+	
 	// image based lights
 	if(useIBL)
 	{

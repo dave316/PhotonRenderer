@@ -22,7 +22,9 @@ layout(location = 2) out vec3 wNormal;
 layout(location = 3) out vec2 texCoord0;
 layout(location = 4) out vec2 texCoord1;
 layout(location = 5) out int instanceID;
-layout(location = 6) out mat3 wTBN;
+layout(location = 6) out vec3 tangent;
+layout(location = 7) out mat3 wTBN;
+
 
 #include "Camera.glsl"
 
@@ -103,7 +105,7 @@ void main()
 	vec3 mPosition = vPosition;
 	vec3 mNormal = vNormal;
 	vec3 mTangent = vTangent.xyz;
-	vec3 mBitangent = cross(mNormal, mTangent) * sign(vTangent.w);
+	vec3 mBitangent = cross(mNormal, mTangent) * vTangent.w;
 	if(numMorphTargets > 0)
 	{
 		mPosition += getTargetAttribute(gl_VertexID, MORPH_TARGET_POSITION_OFFSET);
@@ -149,6 +151,8 @@ void main()
 	vec3 wTangent = normalize(N * mTangent);
 	vec3 wBitangent = normalize(N * mBitangent);
 	wTBN = mat3(wTangent, wBitangent, wNormal);
+
+	tangent = vTangent.xyz;
 
 	vertexColor = vColor;
 	texCoord0 = vTexCoord0;

@@ -135,7 +135,7 @@ bool Editor::init()
 	skybox.texture = panoImg->upload(false);
 	scene->setSkybox(skybox);
 
-	renderer.setIBL(true);
+	renderer.setIBL(false);
 	renderer.setBloom(false);
 	renderer.setTonemappingOp(0);
 
@@ -680,9 +680,9 @@ void Editor::gui()
 					}
 					ImGui::Checkbox("Use color temperature", &useColorTemp);
 
-					float intensity = l->getIntensity();
-					ImGui::SliderFloat("Intensity", &intensity, 0, 100);
-					l->setLuminousIntensity(intensity);
+					float intensity = l->getLumen();
+					ImGui::SliderFloat("Intensity", &intensity, 0, 100000);
+					l->setLuminousPower(intensity);
 
 					float range = l->getRange();
 					ImGui::SliderFloat("Range", &range, 0, 100);

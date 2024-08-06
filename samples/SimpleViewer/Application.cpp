@@ -28,6 +28,33 @@ Application::Application(const char* title, unsigned int width, unsigned int hei
 	camera.setAspect((float)width / (float)height);
 }
 
+glm::vec3 sphericalToCartesian(float phi, float theta)
+{
+	float x = glm::cos(phi) * glm::cos(theta);
+	float y = glm::sin(phi);
+	float z = glm::cos(phi) * glm::sin(theta);
+	return glm::vec3(x, y, z);
+}
+
+glm::vec3 computeIrradiance(std::vector<glm::vec3> sh, glm::vec3 dir)
+{
+	glm::vec3 irradiance = 
+		sh[0] * 0.282095f
+
+		// Band 1
+		+ sh[1] * (0.488603f * dir.y)
+		+ sh[2] * (0.488603f * dir.z)
+		+ sh[3] * (0.488603f * dir.x)
+
+		// Band  2
+		+ sh[4] * (1.092548f * dir.x * dir.y)
+		+ sh[5] * (1.092548f * dir.y * dir.z)
+		+ sh[6] * (0.315392f * (3.0f * dir.z * dir.z - 1.0f))
+		+ sh[7] * (1.092548f * dir.x * dir.z)
+		+ sh[8] * (0.546274f * (dir.x * dir.x - dir.y * dir.y));
+	return irradiance;
+}
+
 bool Application::init()
 {
 	if (!window.isInitialized())
@@ -42,13 +69,250 @@ bool Application::init()
 	std::string gltfPath = assetPath + "/glTF-Sample-Models/2.0";
 
 	//scene = Scene::create("Scene");
-	//////initButterflyScene();
-	//std::string name = "DamagedHelmet";
+	////initButterflyScene();
+	//std::string name = "Sponza";
 	//std::string fullPath = gltfPath + "/" + name + "/glTF/" + name + ".gltf";
 	//
 	//IO::glTF::Importer importer;
 	//auto rootEntity = importer.importModel(fullPath);
 	//scene->addRootEntity(name, rootEntity);
+	//auto root = importer.importModel(assetPath + "/metahuman/f_med_nrw_body.gltf");
+	//scene->addRootEntity("metahuman", root);
+
+	//IO::AssimpImporter importer;
+	//auto root = importer.importModel(assetPath + "/hulk/hulk_tex_simplified.obj");
+	//scene->addRootEntity("hulk", root);
+
+	//for (auto r : root->getComponentsInChildren<Renderable>())
+	//{
+	//	auto mesh = r->getMesh();
+	//	for (auto& sub : mesh->getSubMeshes())
+	//	{
+	//		sub.material->addProperty("material.metallicFactor", 0.0f);
+	//		sub.material->addProperty("material.roughnessFactor", 0.4f);
+	//	}
+	//}
+
+	//std::vector<glm::vec3> shValues;
+	//shValues.push_back(glm::vec3(1));
+	//{
+	//	std::ifstream file(assetPath + "/sh_coeffs_49.txt");
+	//	if (!file.is_open())
+	//		std::cout << "error opening file" << std::endl;
+	//	std::string line;
+	//	while (std::getline(file, line))
+	//	{
+	//		std::stringstream ss(line);
+	//		float value;
+	//		ss >> value;
+	//		shValues.push_back(glm::vec3(value));
+	//	}
+	//}
+
+	//glm::vec3 maxDir;
+	//float maxSum = 0;
+	//for (float u = -1.0; u <= 1.0; u += 0.1)
+	//{
+	//	for (float v = -1.0; v <= 1.0; v += 0.1)
+	//	{
+	//		float theta = u * glm::pi<float>() + glm::half_pi<float>();
+	//		float phi = -v * glm::half_pi<float>();
+	//		glm::vec3 dir = sphericalToCartesian(phi, theta);
+	//		dir = glm::normalize(dir);
+	//		glm::vec3 irr = computeIrradiance(shValues, dir);
+	//		float sum = irr.x + irr.y + irr.z;
+	//		if (sum > maxSum)
+	//		{
+	//			maxSum = sum;
+	//			maxDir = dir;
+	//		}
+	//	}
+	//}
+
+	////std::swap(maxDir.x, maxDir.z);
+	////std::swap(maxDir.x, maxDir.z);
+	//maxDir.x = -maxDir.x;
+	//maxDir.y = -maxDir.y;
+
+	//std::cout << "max sum: " << maxSum << std::endl;
+	//std::cout << "max dir: " << maxDir.x << " " << maxDir.y << " " << maxDir.z << std::endl;
+
+	//auto light = Light::create(LightType::POINT);
+
+	//light->setColorTemp(5500);
+	//light->setLuminousPower(100000);
+	//light->setRange(1000); 
+
+	//auto lightEntity = Entity::create("light", nullptr); 
+	//auto t = lightEntity->getComponent<Transform>();
+	//lightEntity->addComponent(light);
+	//t->setLocalPosition(maxDir * 50.0f);
+	////t->setLocalPosition(glm::vec3(-4.5f, 45.06f, -2.315f));
+
+	//float radius = 0.1f;
+
+	//SubMesh s;
+	//s.primitive = MeshPrimitives::createUVSphere(glm::vec3(0), radius, 32, 32);
+	//s.primitive->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
+	//s.material = getDefaultMaterial();
+	//s.material->addProperty("material.baseColorFactor", glm::vec4(light->getColor(), 1.0));
+	//s.material->addProperty("material.unlit", true);
+
+	//auto mesh = Mesh::create("Sphere");
+	//mesh->addSubMesh(s);
+
+	//auto r = lightEntity->addComponent<Renderable>();
+	//r->setMesh(mesh);
+
+	//scene->addRootEntity("sun", lightEntity);
+
+	//std::ifstream file(assetPath + "/centers.txt");
+	//std::string line;
+	//int idx = 0;
+	//while (std::getline(file, line))
+	//{
+	//	std::stringstream ss(line);
+	//	glm::vec2 center;
+	//	ss >> center.x >> center.y;
+
+	//	if(center.x == 0.0f && center.y == 0.0f)
+	//		continue;
+
+	//	float u = 2.0f * static_cast<float>(center.x) / 5640.0f - 1.0f;
+	//	float v = 2.0f * static_cast<float>(center.y) / 2820.0f - 1.0f;
+
+	//	float theta = u * glm::pi<float>() + glm::half_pi<float>();
+	//	float phi = -v * glm::half_pi<float>();
+	//	glm::vec3 dir = sphericalToCartesian(phi, theta);
+	//	dir = glm::normalize(dir);
+	//
+	//	float radius = 1.0f;
+
+	//	SubMesh s;
+	//	s.primitive = MeshPrimitives::createUVSphere(dir * 25.f, radius, 32, 32);
+	//	s.primitive->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
+	//	s.material = getDefaultMaterial();
+	//	//s.material->addProperty("material.baseColorFactor", glm::vec4(colors[i], 1.0));
+	//	s.material->addProperty("material.unlit", true);
+
+	//	auto mesh = Mesh::create("Sphere");
+	//	mesh->addSubMesh(s);
+
+	//	std::string name = "debug_sphere_" + std::to_string(idx);
+	//	auto e = Entity::create(name, nullptr);
+	//	auto r = e->addComponent<Renderable>();
+	//	r->setMesh(mesh);
+
+	//	//scene->addRootEntity(name, e);
+
+	//	idx++;
+	//}
+
+	//std::vector<glm::vec3> colors = {
+	//	glm::vec3(0,0,1),
+	//	glm::vec3(1,0,0),
+	//	glm::vec3(1,1,0),
+	//	glm::vec3(0,1,1),
+	//	glm::vec3(1,0,1),
+	//	glm::vec3(0,1,0),
+	//};
+
+	//glm::vec2 blue(0, 1410);
+	//glm::vec2 red(1410, 1410);
+	//glm::vec2 yellow(2820, 1410);
+	//glm::vec2 cyan(4230, 1410);
+	//glm::vec2 magenta(2820, 0);
+	//glm::vec2 green(2820, 2820);
+	//std::vector<glm::vec2> pixelCoords;
+	//pixelCoords.push_back(blue);
+	//pixelCoords.push_back(red);
+	//pixelCoords.push_back(yellow);
+	//pixelCoords.push_back(cyan);
+	//pixelCoords.push_back(magenta);
+	//pixelCoords.push_back(green); 	
+
+	//for (int i = 0; i < 6; i++)
+	//{
+	//	float u = 2.0f * static_cast<float>(pixelCoords[i].x) / 5640.0f - 1.0f;
+	//	float v = 2.0f * static_cast<float>(pixelCoords[i].y) / 2820.0f - 1.0f;
+
+	//	float theta = u * glm::pi<float>() + glm::half_pi<float>();
+	//	float phi = -v * glm::half_pi<float>();
+	//	glm::vec3 dir = sphericalToCartesian(phi, theta);
+	//	dir = glm::normalize(dir);
+	//	
+	//	float radius = 2.0f;
+
+	//	SubMesh s;
+	//	s.primitive = MeshPrimitives::createUVSphere(dir * 10.f, radius, 32, 32);
+	//	s.primitive->setBoundingBox(glm::vec3(-radius), glm::vec3(radius));
+	//	s.material = getDefaultMaterial();
+	//	s.material->addProperty("material.baseColorFactor", glm::vec4(colors[i], 1.0));
+	//	s.material->addProperty("material.unlit", true);
+
+	//	auto mesh = Mesh::create("Sphere");
+	//	mesh->addSubMesh(s);
+
+	//	std::string name = "debug_sphere_" + std::to_string(i);
+	//	auto e = Entity::create(name, nullptr);
+	//	auto r = e->addComponent<Renderable>();
+	//	r->setMesh(mesh);
+
+	//	scene->addRootEntity(name, e);
+	//}
+
+
+	//auto root = importer.importModel(assetPath + "/metahuman/f_med_nrw_body.FBX");
+	//scene->addRootEntity("metahuman", root);
+
+	//auto colorImg = IO::decodeFromFile(assetPath + "/metahuman/BodyBaseColor.PNG");
+	//auto colorTex = colorImg->upload(false);
+
+	//auto normalImg = IO::decodeFromFile(assetPath + "/metahuman/female_body_normal_map.PNG");
+	//auto normalTex = normalImg->upload(false);
+
+	//auto roughImg = IO::decodeFromFile(assetPath + "/metahuman/female_body_roughness_map.PNG");
+	//auto roughTex = roughImg->upload(false);
+
+	//for (auto e : root->getChildrenWithComponent<Renderable>())
+	//{
+	//	std::cout << e->getName() << std::endl;
+	//	auto name = e->getName();
+	//	if (name[name.length() - 1] != '0')
+	//		e->setActive(false);
+
+	//	auto r = e->getComponent<Renderable>();
+	//	auto mesh = r->getMesh();
+	//	for (auto& m : mesh->getSubMeshes())
+	//	{
+	//		std::cout << "set mat of submesh " << m.primitive->getName() << std::endl;
+
+	//		//m.material->setShader("Default");
+
+	//		auto mat = getDefaultMaterial();
+	//		mat->addProperty("material.metallicFactor", 0.0f);
+
+	//		std::string texUniform = "baseColorTex";
+	//		mat->addTexture(texUniform + ".tSampler", colorTex);
+	//		mat->addProperty(texUniform + ".use", true);
+	//		mat->addProperty(texUniform + ".uvIndex", 0);
+	//		mat->addProperty(texUniform + ".uvTransform", glm::mat3(1.0f));
+
+	//		//texUniform = "normalTex";
+	//		//mat->addTexture(texUniform + ".tSampler", normalTex);
+	//		//mat->addProperty(texUniform + ".use", true);
+	//		//mat->addProperty(texUniform + ".uvIndex", 0);
+	//		//mat->addProperty(texUniform + ".uvTransform", glm::mat3(1.0f));
+
+	//		m.material = mat;
+
+	//		//texUniform = "metalRoughTex";
+	//		//m.material->addTexture(texUniform + ".tSampler", roughTex);
+	//		//m.material->addProperty(texUniform + ".use", true);
+	//		//m.material->addProperty(texUniform + ".uvIndex", 0);
+	//		//m.material->addProperty(texUniform + ".uvTransform", glm::mat3(1.0f));
+	//	}
+	//}
 
 	//auto updateShader = renderer.getShader("ParticleUpdate");
 	//auto updateRender = renderer.getShader("ParticleRender");
@@ -183,7 +447,7 @@ bool Application::init()
 	//	scene->addRootEntity("box", e);
 	//}
 
-	renderer.setTonemappingOp(0);
+	renderer.setTonemappingOp(7);
 	renderer.setIBL(true);
 	renderer.setBloom(false);
 
@@ -263,18 +527,16 @@ bool Application::init()
 	}
 
 	//std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
-	//std::string envFn = assetPath + "/office.hdr";
+	////std::string envFn = assetPath + "/led0.hdr";
+	////std::string envFn = assetPath + "/pano.jpg";
 	////std::string envFn = "C:/workspace/code/VikingVillage/Assets/Viking Village/Textures/Skies/Daytime/SunsetSkyboxHDR.hdr";
 	//auto panoImg = IO::decodeHDRFromFile(envFn, true);
-	//auto panoImg = IO::decodeFromFile(envFn, true);
+	////auto panoImg = IO::decodeFromFile(envFn, true);
 
 	//Skybox skybox;
 	//skybox.texture = panoImg->upload(false);
-	//skybox.rotation = -90.0f;
+	//skybox.rotation = 0.0f;
 	//skybox.exposure = 1.0f;
-	//glm::vec3 srgb = glm::vec3(255, 180, 107);
-	//skybox.color = glm::vec4(4.0f * glm::pow(srgb / 255.0f, glm::vec3(2.2f)), 1.0f);
-	//skybox.rotation = 45.0f;
 	//scene->setSkybox(skybox);
 
 	renderer.updateCamera(camera);
@@ -719,7 +981,7 @@ void Application::loop()
 				//glGenQueries(1, &timerQuery);
 				//glBeginQuery(GL_TIME_ELAPSED, timerQuery);
 				renderer.initLights(scene, camera);
-				//renderer.updateShadows(scene);
+				renderer.updateShadows(scene);
 				//renderer.updateVolumes(scene);
 				//glEndQuery(GL_TIME_ELAPSED);
 

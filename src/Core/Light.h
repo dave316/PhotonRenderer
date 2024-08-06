@@ -55,6 +55,7 @@ private:
 	LightType type = LightType::POINT;
 	LightShape shape = LightShape::PUNCTUAL;
 	glm::vec3 linearColor = glm::vec3(1.0f);
+	float lumen = 0.0f;
 	float intensity = 1.0f;
 	float range = -1.0f;
 	float innerConeAngle = 0.0f;
@@ -98,6 +99,7 @@ public:
 	LightType getType();
 	glm::vec3 getColor();
 	float getIntensity();
+	float getLumen();
 	float getRange();
 	std::vector<glm::mat4> getViewProjections();
 	typedef std::shared_ptr<Light> Ptr;

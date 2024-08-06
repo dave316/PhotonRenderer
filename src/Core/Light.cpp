@@ -124,6 +124,7 @@ void Light::setColorTemp(int temperature)
 
 void Light::setLuminousPower(float lumen)
 {
+	this->lumen = lumen;
 	const float pi = glm::pi<float>();
 	switch (type)
 	{
@@ -208,6 +209,11 @@ glm::vec3 Light::getColor()
 float Light::getIntensity()
 {
 	return intensity;
+}
+
+float Light::getLumen()
+{
+	return lumen;
 }
 
 float Light::getRange()

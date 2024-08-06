@@ -52,7 +52,7 @@ public:
 		float fov = 60.0f,
 		float aspect = 4.0f / 3.0f,
 		float zNear = 0.1f,
-		float zFar = 25.0f);
+		float zFar = 500.0f);
 
 	void setAspect(float aspect);
 	void setFov(float fov);

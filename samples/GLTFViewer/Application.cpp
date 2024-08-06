@@ -193,7 +193,7 @@ void Application::initCamera()
 	float zFar = dist + (longestDistance * 0.6f);
 	zNear = glm::max(zNear, zFar / 10000.0f);
 
-	//std::cout << "zNear: " << zNear << " zFar: " << zFar << std::endl;
+	std::cout << "zNear: " << zNear << " zFar: " << zFar << std::endl;
 
 	camera.setPlanes(zNear, zFar);
 	camera.setSpeed(longestDistance / 10.0f);
@@ -697,6 +697,11 @@ void Application::gui()
 		if (ImGuiFileDialog::Instance()->IsOk())
 		{
 			std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+			auto panoImg = IO::decodeHDRFromFile(filePathName, true);
+			Skybox skybox;
+			skybox.texture = panoImg->upload(false);
+			skybox.exposure = 1.0;
+			scene->setSkybox(skybox);
 			renderer.initLightProbes(scene);
 		}
 		ImGuiFileDialog::Instance()->Close();
