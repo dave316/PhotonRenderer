@@ -164,7 +164,7 @@ namespace IO
 			//"Default.glsl",
 			//"Default.glsl",
 			//"Default.glsl",
-			//"SpecGloss.glsl",
+			"SpecGloss.glsl",
 			//"TerrainBlend.glsl",
 		};
 
@@ -195,7 +195,7 @@ namespace IO
 			//{ "TRANSMISSION", "TRANSLUCENCY" },
 			//{ "SPECULAR", "IRIDESCENCE" },
 			//{ "ANISOTROPY", "IRIDESCENCE" },
-			//{ "SPECGLOSS" },
+			{ "SPECGLOSS" },
 			//{ "SPECGLOSS", "LAYERED_MATERIAL" }
 		};
 
