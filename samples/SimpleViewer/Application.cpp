@@ -31,7 +31,7 @@ bool Application::init()
 
 	std::string assetPath = "../../../../assets";
 	std::string modelPath = assetPath + "/Models/DamagedHelmet/DamagedHelmet.gltf";
-	std::string envPath = assetPath + "/IBL/Footprint_Court/Footprint_Court_2k.hdr";
+	std::string envPath = assetPath + "/IBL/Newport_Loft/Newport_Loft_Ref.hdr";
 
 	scene = Scene::create("Scene");
 		
