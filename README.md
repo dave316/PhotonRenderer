@@ -23,13 +23,13 @@ Download and install [VCPKG](https://github.com/microsoft/vcpkg). Set environmen
 
 Install dependencies:
 ```
-./vcpkg.exe install assimp freetype glew glfw3 glm stb
+./vcpkg.exe install assimp glew glfw3 glm stb imgui[glfw-binding,opengl3-binding] imguizmo
 ```
 
 ### Building
 Open CMake-GUI
-- set source path to ./src
-- set build path to ./build
+- set source path to ./PhotonRenderer/
+- set build path to ./PhotonRenderer/build
 - press configure and select your visual studio version and the platform x64
 - select specify toolchain file for cross-compiling
 - set toolchain file to: <vcpkg_root>/scripts/buildsystems/vcpkg.cmake
