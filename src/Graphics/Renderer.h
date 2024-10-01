@@ -74,7 +74,7 @@ private:
 	unsigned int width;
 	unsigned int height;
 
-	bool useBloom = true;
+	bool useBloom = false;
 
 	std::map<std::string, ReflectionProbe> reflectionProbes;
 

@@ -52,7 +52,7 @@ bool Application::init()
 
 	scene = Scene::create("Scene");
 
-	std::string envFn = assetPath + "/Newport_Loft_Ref.hdr";
+	std::string envFn = assetPath + "/IBL/Newport_Loft/Newport_Loft_Ref.hdr";
 	auto panoImg = IO::decodeHDRFromFile(envFn, true);
 
 	Skybox skybox;
@@ -575,8 +575,8 @@ void Application::gui()
 		ImGuiFileDialog::Instance()->Close();
 	}
 
-	bool show_demo_window = true;
-	ImGui::ShowDemoWindow(&show_demo_window);
+	//bool show_demo_window = true;
+	//ImGui::ShowDemoWindow(&show_demo_window);
 }
 
 void Application::loop()

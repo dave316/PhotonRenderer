@@ -44,7 +44,7 @@ class Application
 	bool animate = false;
 	bool useIBL = true;
 	bool useLights = true;
-	bool useBloom = true;
+	bool useBloom = false;
 	int cameraIndex = 0;
 	int materialIndex = 0;
 	int animIndex = 0;
