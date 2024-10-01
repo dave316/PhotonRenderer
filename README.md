@@ -37,4 +37,4 @@ Open CMake-GUI
 - select configuration Release x64 and Build Solution
 
 ## Running
-If you run it from Visual Studio you need to set the Working Directory to the Folder where the exe file is located.
+Download sample assets [Assets](https://files.icg.tugraz.at/f/60a18ad065a146e8a997/) and extract in root folder. Run the solution and you should see something like this.
