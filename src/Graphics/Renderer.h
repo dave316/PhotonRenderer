@@ -106,8 +106,6 @@ public:
 	void setLights(int numLights);
 	void setDebugChannel(int channel);
 	void setTonemappingOp(int index);
-	void setVolumeParams(glm::vec3 scatter, float absorption, float phase);
-	void setVolumeBox(glm::vec3 minBox, glm::vec3 maxBox);
 	void setRenderQueue(std::map<std::string, std::vector<Renderable::Ptr>> renderQueue);
 	void updateTime(float dt);
 	void clear();

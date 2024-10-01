@@ -588,25 +588,6 @@ void Renderer::setTonemappingOp(int index)
 		s->setUniform("toneMappingMode", index);
 }
 
-void Renderer::setVolumeParams(glm::vec3 scatter, float absorption, float phase)
-{
-	for (auto& [_, s] : shaders)
-	{
-		s->setUniform("scattering", scatter);
-		s->setUniform("absorption", absorption);
-		s->setUniform("phase", phase);
-	}
-}
-
-void Renderer::setVolumeBox(glm::vec3 minBox, glm::vec3 maxBox)
-{
-	for (auto& [_, s] : shaders)
-	{
-		s->setUniform("minBox", minBox);
-		s->setUniform("maxBox", maxBox);
-	}
-}
-
 void Renderer::setRenderQueue(std::map<std::string, std::vector<Renderable::Ptr>> renderQueue)
 {
 	this->renderQueue = renderQueue;

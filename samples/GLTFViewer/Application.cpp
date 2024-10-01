@@ -44,8 +44,7 @@ bool Application::init()
 	ImGui_ImplGlfw_InitForOpenGL(window.getWindow(), true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
-	samplePath = assetPath + "/glTF-Sample-Models/2.0";
-	//samplePath = "C:/workspace/code/PhotonRendererNew/assets/glTF-Sample-Assets/Models";
+	samplePath = assetPath + "/glTF-Sample-Assets/Models";
 	initGLTFSamples(samplePath);
 
 	if (!renderer.init())
@@ -53,8 +52,7 @@ bool Application::init()
 
 	scene = Scene::create("Scene");
 
-	std::string envFn = assetPath + "/Footprint_Court/Footprint_Court_2k.hdr";
-	//std::string envFn = "C:/workspace/code/VikingVillage/Assets/Viking Village/Textures/Skies/Daytime/SunsetSkyboxHDR.hdr";
+	std::string envFn = assetPath + "/Newport_Loft_Ref.hdr";
 	auto panoImg = IO::decodeHDRFromFile(envFn, true);
 
 	Skybox skybox;
@@ -62,65 +60,8 @@ bool Application::init()
 	skybox.exposure = 1.0;
 	scene->setSkybox(skybox);
 
-	//fogMaterial = Texture3D::create(256, 256, 256, GL::R32F);
-	//float* buffer = new float[256 * 256 * 256];
-	//for (int i = 0; i < 256; i++)
-	//{
-	//	for (int j = 0; j < 256; j++)
-	//	{
-	//		for (int k = 0; k < 256; k++)
-	//		{
-	//			int c = 1;
-	//			float x = static_cast<float>(i) / 64.0f;
-	//			float y = static_cast<float>(j) / 64.0f;
-	//			float z = static_cast<float>(k) / 64.0f;
-
-	//			int o;
-	//			float frequency = 1.0f;
-	//			float amplitude = 1.0f;
-	//			float sum = 0.0f;
-
-	//			for (o = 0; o < 8; o++) {
-	//				float r = stb_perlin_noise3_internal(x * frequency, y * frequency, z * frequency, 4, 4, 4, (unsigned char)o) * amplitude;
-	//				sum += (float)fabs(r);
-	//				frequency *= 2.0f;
-	//				amplitude *= 0.5f;
-	//			}
-
-	//			//glm::vec3 pos(x, y, z);
-	//			//glm::vec3 rPos = pos - glm::vec3(0.5);
-	//			//float value = 0.0;
-	//			//if (glm::length(rPos) < 0.25)
-	//			//	value = glm::length(rPos) * 1.0;
-
-	//			//float noiseR = stb_perlin_noise3_seed(x, y, z, 8, 8, 8, 75839);
-	//			//float noiseR = stb_perlin_fbm_noise3(x, y, z, 2.0f, 0.5f, 8);
-	//			//float noiseG = stb_perlin_noise3_seed(x, y, z, 1, 1, 1, 5678);
-	//			//float noiseB = stb_perlin_noise3_seed(x, y, z, 1, 1, 1, 9012);
-	//			buffer[k * 256 * 256 * c + j * 256 * c + i * c + 0] = sum;
-	//			//buffer[k * 256 * 256 * 3 + j * 256 * 3 + i * 3 + 1] = 0.5 + noiseG;
-	//			//buffer[k * 256 * 256 * 3 + j * 256 * 3 + i * 3 + 2] = 0.5 + noiseB;
-	//			//std::cout << noise << std::endl;
-	//		}
-	//	}
-	//}
-	//fogMaterial->upload(buffer);
-	//fogMaterial->use(23);
-	//delete[] buffer;
-
 	renderer.updateCamera(camera);
 	renderer.prepare(scene);
-
-	//fogMaterial = Texture3D::create(256, 256, 256, GL::RGBA32F);
-	//fogMaterial->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-	//fogMaterial->bind();
-	//glBindImageTexture(0, fogMaterial->getID(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-
-	//auto vScatterShader = renderer.getShader("VolumeScatter");
-	//vScatterShader->use();
-	//glDispatchCompute(256, 256, 256);
-	//glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-	//fogMaterial->use(24);
 
 	setupInput();
 
@@ -193,8 +134,6 @@ void Application::initCamera()
 	float zFar = dist + (longestDistance * 0.6f);
 	zNear = glm::max(zNear, zFar / 10000.0f);
 
-	std::cout << "zNear: " << zNear << " zFar: " << zFar << std::endl;
-
 	camera.setPlanes(zNear, zFar);
 	camera.setSpeed(longestDistance / 10.0f);
 	camera.setVelocity(longestDistance / 100.0f);
@@ -256,71 +195,6 @@ bool Application::loadGLTFModel(const std::string& name, const std::string& full
 		renderInfo = importer.getRenderingStats();
 
 		scene->addRootEntity(name, rootEntity);
-
-		//{
-		//	SubMesh s;
-		//	s.primitive = MeshPrimitives::createBox(glm::vec3(0), glm::vec3(1));
-		//	s.material = getDefaultMaterial();
-		//	s.material->addProperty("material.metallicFactor", 0.0f);
-		//	s.material->addProperty("material.roughnessFactor", 1.0f);
-
-		//	auto mesh = Mesh::create("Box");
-		//	mesh->addSubMesh(s);
-
-		//	auto e = Entity::create("Box", nullptr);
-		//	auto t = e->getComponent<Transform>();
-		//	auto r = e->addComponent<Renderable>();
-		//	r->setMesh(mesh);
-
-		//	t->setLocalPosition(glm::vec3(-3.0f, 3.0f, -0.25f));
-		//	t->setLocalScale(glm::vec3(1.0f));
-
-		//	scene->addRootEntity("box", e);
-		//}
-
-		{
-			SubMesh s;
-			s.primitive = MeshPrimitives::createBox(glm::vec3(0, 5, 0), glm::vec3(2));
-			auto surf = s.primitive->getSurface();
-			Box bbox;
-			for (auto& v : surf.vertices)
-				bbox.expand(v.position);
-
-			renderer.setVolumeBox(bbox.getMinPoint(), bbox.getMaxPoint());
-
-			s.material = getDefaultMaterial();
-			s.material->addProperty("material.metallicFactor", 0.0f);
-			s.material->addProperty("material.roughnessFactor", 1.0f);
-
-			auto mesh = Mesh::create("Box");
-			mesh->addSubMesh(s);
-
-			auto e = Entity::create("Box", nullptr);
-			auto t = e->getComponent<Transform>();
-			auto r = e->addComponent<Renderable>();
-			r->setMesh(mesh);
-
-			//t->setLocalPosition(glm::vec3(-3.0f, 3.0f, -0.25f));
-			//t->setLocalScale(glm::vec3(1.0f));
-
-			//scene->addRootEntity("box", e);
-		}
-
-		////auto light = Light::create(LightType::DIRECTIONAL);
-		//auto light = Light::create(LightType::POINT);
-
-		//light->setColorTemp(3500);
-		//light->setLuminousPower(2500);
-		////light->setLuminousIntensity(10);
-		//light->setRange(100);
-
-		//auto lightEntity = Entity::create("light", nullptr);
-		//auto t = lightEntity->getComponent<Transform>();
-		//lightEntity->addComponent(light);
-		//t->setLocalPosition(glm::vec3(0,2,0));
-		////t->setLocalRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)) * glm::angleAxis(glm::radians(45.0f), glm::vec3(0, 1, 0)));
-
-		//scene->addRootEntity("sun", lightEntity);
 
 		renderer.updateCamera(camera);
 		renderer.prepare(scene);
@@ -558,17 +432,11 @@ void Application::gui()
 				ImGui::EndCombo();
 			}
 		}
-
-		//ImGui::ColorPicker3("Scattering", (float*)&scattering, ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
-		//ImGui::ColorPicker3("Absorption", (float*)&absorption, ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoAlpha);
-		
+			
 		ImGui::SliderFloat("Exposure", &ppParams.postExposure, -5.0f, 5.0f);
 		ImGui::SliderFloat("Bloom Intensity", &ppParams.bloomIntensity, 0.0f, 1.0f);
 		ImGui::SliderFloat("Bloom Threshold", &ppParams.bloomThreshold, 0.0f, 1.0f);
 		ImGui::ColorEdit3("Bloom Tint", (float*)&ppParams.bloomTint, ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoAlpha);
-		ImGui::ColorEdit3("Scatter", (float*)&scatter, ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoAlpha);
-		ImGui::SliderFloat("Absorption", &absorption, 0.0f, 5.0f);
-		ImGui::SliderFloat("Phase", &phase, -1.0f, 1.0f);
 
 		if (!cameras.empty())
 		{
@@ -745,7 +613,6 @@ void Application::loop()
 			}
 			renderer.updatePostProcess(ppParams);
 			renderer.updateTime(startTime);
-			renderer.setVolumeParams(scatter, absorption, phase);
 
 			if (animate)
 			{

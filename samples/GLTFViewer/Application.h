@@ -31,8 +31,7 @@ class Application
 	Renderer renderer;
 	Scene::Ptr scene;
 	PostProcessParameters ppParams;
-	//Texture3D::Ptr fogMaterial;
-
+	
 	std::string samplePath;
 	std::vector<GLTFSampleInfo> samplesInfo;
 	std::vector<CameraInfo> cameras;
@@ -51,9 +50,6 @@ class Application
 	int animIndex = 0;
 	int debugIndex = 0;
 	int tonemappingIndex = 0;
-	glm::vec3 scatter = glm::vec3(1);
-	float absorption = 0.05f;
-	float phase = 0.0f;
 
 	Application(const Application&) = delete;
 	Application& operator=(const Application&) = delete;

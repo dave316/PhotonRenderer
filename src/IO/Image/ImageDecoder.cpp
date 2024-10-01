@@ -2,7 +2,7 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include <stb_image.h>
 #include <stb_image_write.h>
-#include <stb_image_resize.h>
+#include <stb_image_resize2.h>
 
 #ifdef WITH_KTX
 #include <ktx.h>
@@ -38,7 +38,7 @@ namespace IO
 		uint32 c = src->getChannels();
 
 		auto dst = ImageF32::create(width, height, c);
-		stbir_resize_float(src->getRawPtr(), w, h, 0, dst->getRawPtr(), width, height, 0, c);
+		stbir_resize_float_linear(src->getRawPtr(), w, h, 0, dst->getRawPtr(), width, height, 0, (stbir_pixel_layout)c);
 		return dst;
 	}
 
@@ -49,7 +49,7 @@ namespace IO
 		uint32 c = src->getChannels();
 
 		auto dst = ImageUI8::create(width, height, c);
-		stbir_resize_uint8(src->getRawPtr(), w, h, 0, dst->getRawPtr(), width, height, 0, c);
+		stbir_resize_uint8_linear(src->getRawPtr(), w, h, 0, dst->getRawPtr(), width, height, 0, (stbir_pixel_layout)c);
 		return dst;
 	}
 
