@@ -36,6 +36,6 @@ Open CMake-GUI
 - select configuration Release x64 and Build Solution
 
 ## Running
-Download sample assets [Assets](https://files.icg.tugraz.at/f/60a18ad065a146e8a997/) and extract in root folder. Run the solution and you should see something like this.
+Download sample [assets](https://files.icg.tugraz.at/f/60a18ad065a146e8a997/) and extract in root folder. Run the solution and you should see something like this.
 
 ![Example](images/example.png)
