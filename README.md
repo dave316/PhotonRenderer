@@ -3,7 +3,6 @@ This is a OpenGL Renderer with support for PBR materials and image based lightin
 
 ## Dependencies
 - ASSIMP
-- FREETYPE
 - GLEW
 - GLFW3
 - GLM
@@ -23,13 +22,13 @@ Download and install [VCPKG](https://github.com/microsoft/vcpkg). Set environmen
 
 Install dependencies:
 ```
-./vcpkg.exe install assimp freetype glew glfw3 glm stb
+./vcpkg.exe install assimp glew glfw3 glm stb imgui[glfw-binding,opengl3-binding] imguizmo
 ```
 
 ### Building
 Open CMake-GUI
-- set source path to ./src
-- set build path to ./build
+- set source path to ./PhotonRenderer/
+- set build path to ./PhotonRenderer/build
 - press configure and select your visual studio version and the platform x64
 - select specify toolchain file for cross-compiling
 - set toolchain file to: <vcpkg_root>/scripts/buildsystems/vcpkg.cmake
@@ -37,4 +36,5 @@ Open CMake-GUI
 - select configuration Release x64 and Build Solution
 
 ## Running
-If you run it from Visual Studio you need to set the Working Directory to the Folder where the exe file is located.
+Download sample assets [Assets](https://files.icg.tugraz.at/f/60a18ad065a146e8a997/) and extract in root folder. Run the solution and you should see something like this.
+![Example](images/example.jpg)
