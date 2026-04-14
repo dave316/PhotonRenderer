@@ -1,3 +1,3 @@
 #include "Entity.h"
 
-unsigned int Entity::globalIDCount = 0;
+unsigned int pr::Entity::globalIDCount = 0;

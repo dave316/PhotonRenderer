@@ -10,7 +10,6 @@ namespace IO
 {
 	namespace Unity
 	{
-
 		int countTabs(std::string line)
 		{
 			int numTabs = 0;
@@ -57,10 +56,10 @@ namespace IO
 							lineSS >> path >> empty;
 							lineSS >> empty >> guid;
 
-							int i0 = path.find('(') + 1;
-							int i1 = path.find(')');
+							int i0 = static_cast<int>(path.find('(') + 1);
+							int i1 = static_cast<int>(path.find(')'));
 							int len = i1 - i0;
-							int fileID = std::stoll(path.substr(i0, len));
+							int fileID = (int)std::stoll(path.substr(i0, len));
 
 							fileID2GUID.insert(std::make_pair(fileID, guid));
 						}
@@ -104,8 +103,6 @@ namespace IO
 
 										Tetrahedron t;
 
-										int indices[4];
-										int neighbors[4];
 										for (int i = 0; i < 4; i++)
 										{
 											std::getline(ss, line);
@@ -327,7 +324,6 @@ namespace IO
 							}
 							else if (key.compare("lightmapST") == 0)
 							{
-								glm::vec4 lightMapST;
 								std::string values[4];
 								for (int i = 0; i < 4; i++)
 									lineSS >> values[i];
@@ -436,15 +432,6 @@ namespace IO
 				}
 			}
 
-			//for (int i = 0; i < lightMaps.size(); i++)
-			//	std::cout << "Light map " << i << ", fileID:  " << lightMaps[i] << std::endl;
-			//for (int i = 0; i < dirMaps.size(); i++)
-			//	std::cout << "Dir map " << i << ", fileID:  " << dirMaps[i] << std::endl;
-			//for (int i = 0; i < reflectionProbes.size(); i++)
-			//	std::cout << "Reflection probe " << i << ", fileID:  " << reflectionProbes[i] << std::endl;
-			//for (int i = 0; i < reflectionObjects.size(); i++)
-			//	std::cout << "Reflection probe " << i << ", objectID:  " << reflectionObjects[i] << std::endl;
-
 			for (auto id : lMaps)
 				if (fileID2GUID.find(id) != fileID2GUID.end())
 					lightMaps.push_back(fileID2GUID[id]);
@@ -482,6 +469,13 @@ namespace IO
 					plmd[idx.targetPrefab].insert(std::make_pair(ld.meshRendererID, ld));
 				}
 			}
+
+			for (int i = 0; i < lightMaps.size(); i++)
+				std::cout << "Light map " << i << ", fileID:  " << lightMaps[i] << std::endl;
+			for (int i = 0; i < directionMaps.size(); i++)
+				std::cout << "Dir map " << i << ", fileID:  " << directionMaps[i] << std::endl;
+			for (auto [fileID,name] : reflectionProbes)
+				std::cout << "Reflection probe " << name << ", fileID:  " << fileID << std::endl;
 		}
 	}
 }

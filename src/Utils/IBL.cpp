@@ -1,439 +1,909 @@
 #include "IBL.h"
 
-#include <Graphics/MeshPrimitives.h>
+#include <Graphics/GraphicsContext.h>
 
-#include <glm/glm.hpp>
+#include <fstream>
+#include <sstream>
+#include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
 
-namespace IBL
+void loadBinary(std::string fileName, std::string& buffer)
 {
-	std::vector<glm::mat4> createCMViews(glm::vec3 position = glm::vec3(0))
+	std::ifstream file(fileName, std::ios::binary);
+	if (file.is_open())
 	{
-		std::vector<glm::mat4> VP;
-		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
-		VP.push_back(P * glm::lookAt(position, position + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(position, position + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
-		VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
-		VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
-		VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
-		return VP;
+		file.seekg(0, std::ios::end);
+		unsigned int size = (unsigned int)file.tellg();
+		file.seekg(0, std::ios::beg);
+
+		buffer.resize(size);
+
+		file.read(&buffer[0], size);
+		file.close();
 	}
-
-	TextureCubeMap::Ptr createCubemapFromColor(glm::vec3 color, int size, float rotation)
+	else
 	{
-		glClearColor(color.r, color.g, color.b, 1.0f);
-
-		glm::vec3 position = glm::vec3(0);
-		auto M = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0, 1, 0));
-		auto VP = createCMViews(position);
-		auto cubemap = TextureCubeMap::create(size, size, GL::RGB32F);
-		cubemap->generateMipmaps();
-		auto envFBO = Framebuffer::create(size, size);
-		envFBO->addRenderTexture(GL::COLOR0, cubemap);
-		envFBO->begin();
-		envFBO->end();
-		cubemap->generateMipmaps();
-		cubemap->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-
-		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-		return cubemap;
-	}
-
-	TextureCubeMap::Ptr convertEqui2CM(Shader::Ptr pano2cm, Texture2D::Ptr panorama, int size, float rotation, float exposure)
-	{
-		glm::vec3 position = glm::vec3(0);
-		auto M = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0, 1, 0));
-		auto VP = createCMViews(position);
-		auto cubeMesh = MeshPrimitives::createCube(position, 1.0f);
-		auto cubemap = TextureCubeMap::create(size, size, GL::RGB32F); // TODO: set format depending on use
-		cubemap->generateMipmaps();
-		auto envFBO = Framebuffer::create(size, size);
-		envFBO->addRenderTexture(GL::COLOR0, cubemap);
-
-		pano2cm->use();
-		pano2cm->setUniform("M", M);
-		pano2cm->setUniform("VP[0]", VP);
-		pano2cm->setUniform("panorama", 0);
-		pano2cm->setUniform("exposure", exposure);
-
-		envFBO->checkStatus();
-		envFBO->begin();
-		panorama->use(0);
-		cubeMesh->draw();
-		envFBO->end();
-
-		cubemap->generateMipmaps();
-		cubemap->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-
-		return cubemap;
-	}
-
-	// creates a cubemap array for irradiance probes
-	TextureCubeMapArray::Ptr filterLambert(Shader::Ptr filter, std::vector<LightProbe::Ptr> lightProbes)
-	{
-		if (lightProbes.empty())
-			return nullptr;
-
-		glm::vec3 position = glm::vec3(0);
-		auto views = createCMViews(position);
-		unsigned int numProbes = lightProbes.size();
-		unsigned int faceSize = 32;
-		int layerID = 0;
-
-		auto cubeMesh = MeshPrimitives::createCube(position, 1.0f);
-		auto irradianceMaps = TextureCubeMapArray::create(faceSize, faceSize, numProbes, GL::RGB16F);
-		auto envFBO = Framebuffer::create(faceSize, faceSize);
-		envFBO->addRenderTexture(GL::COLOR0, irradianceMaps);
-		envFBO->checkStatus();
-		envFBO->begin();
-
-		filter->use();
-		filter->setUniform("M", glm::mat4(1.0f));
-		filter->setUniform("VP[0]", views);
-		filter->setUniform("environmentMap", 0);
-		filter->setUniform("filterIndex", 0);
-		filter->setUniform("sampleCount", 2048);
-
-		for (auto& lp : lightProbes)
-		{
-			filter->setUniform("texSize", lp->getFaceSize());
-			filter->setUniform("layerID", layerID);
-			lp->use(0);
-			cubeMesh->draw();
-			layerID++;
-		}
-
-		envFBO->end();
-
-		return irradianceMaps;
-	}
-
-	TextureCubeMapArray::Ptr filterSpecularGGX(Shader::Ptr filter, std::vector<LightProbe::Ptr> lightProbes)
-	{
-		glm::vec3 position = glm::vec3(0);
-		auto views = createCMViews(position);
-
-		// specular probe
-		filter->use();
-		filter->setUniform("M", glm::mat4(1.0f));
-		filter->setUniform("VP[0]", views);
-		filter->setUniform("environmentMap", 0);
-		filter->setUniform("filterIndex", 1);
-		filter->setUniform("sampleCount", 1024);
-
-		int numProbes = lightProbes.size();
-		int faceSize = 256;
-		int maxMipLevel = 8;
-
-		auto cubeMesh = MeshPrimitives::createCube(position, 1.0f);
-		auto specFBO = Framebuffer::create(faceSize, faceSize);
-		auto specularMaps = TextureCubeMapArray::create(faceSize, faceSize, numProbes, GL::RGB16F);
-		specularMaps->generateMipmaps();
-		specularMaps->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);		
-
-		for (unsigned int mip = 0; mip < maxMipLevel; mip++)
-		{
-			unsigned int mipWidth = faceSize * std::pow(0.5, mip);
-			unsigned int mipHeight = faceSize * std::pow(0.5, mip);
-			float roughness = (float)mip / (float)(maxMipLevel - 1);
-			filter->setUniform("roughness", roughness);
-
-			specFBO->resize(mipWidth, mipHeight);
-			specFBO->addRenderTexture(GL::COLOR0, specularMaps, mip);
-			specFBO->begin();
-
-			int layerID = 0;
-			for (auto lp : lightProbes)
-			{
-				filter->setUniform("texSize", lp->getFaceSize());
-				filter->setUniform("layerID", layerID);
-				lp->use(0);
-				cubeMesh->draw();
-				layerID++;
-			}
-
-			specFBO->end();
-		}
-
-		return specularMaps;
-	}
-
-	TextureCubeMapArray::Ptr filterSpecularSheen(Shader::Ptr filter, std::vector<LightProbe::Ptr> lightProbes)
-	{
-		glm::vec3 position = glm::vec3(0);
-		auto views = createCMViews(position);
-
-		// specular probe
-		filter->use();
-		filter->setUniform("M", glm::mat4(1.0f));
-		filter->setUniform("VP[0]", views);
-		filter->setUniform("environmentMap", 0);
-		filter->setUniform("filterIndex", 2);
-		filter->setUniform("sampleCount", 64);
-
-		int numProbes = lightProbes.size();
-		int faceSize = 256;
-		int maxMipLevel = 8;
-
-		auto cubeMesh = MeshPrimitives::createCube(position, 1.0f);
-		auto specFBO = Framebuffer::create(faceSize, faceSize);
-		auto specularMaps = TextureCubeMapArray::create(faceSize, faceSize, numProbes, GL::RGB16F);
-		specularMaps->generateMipmaps();
-		specularMaps->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-
-		for (unsigned int mip = 0; mip < maxMipLevel; mip++)
-		{
-			unsigned int mipWidth = faceSize * std::pow(0.5, mip);
-			unsigned int mipHeight = faceSize * std::pow(0.5, mip);
-			float roughness = (float)mip / (float)(maxMipLevel - 1);
-			filter->setUniform("roughness", roughness);
-
-			specFBO->resize(mipWidth, mipHeight);
-			specFBO->addRenderTexture(GL::COLOR0, specularMaps, mip);
-			specFBO->begin();
-
-			int layerID = 0;
-			for (auto lp : lightProbes)
-			{
-				filter->setUniform("texSize", lp->getFaceSize());
-				filter->setUniform("layerID", layerID);
-				lp->use(0);
-				cubeMesh->draw();
-				layerID++;
-			}
-
-			specFBO->end();
-		}
-
-		return specularMaps;
-	}
-
-	void computeSHLightprobes(Scene::Ptr scene, std::map<std::string, ReflectionProbe>& reflProbes)
-	{
-		SHLightProbes& shProbes = scene->getLightProbes();
-
-		auto tetrahedrons = shProbes.tetrahedras;
-		auto probeCoeffs = shProbes.coeffs;
-		auto positions = shProbes.positions;
-
-		if (tetrahedrons.empty() || probeCoeffs.empty() || positions.empty())
-			return;
-
-		std::set<int> indices;
-		
-		int index = 0;
-		for (auto [name, root] : scene->getRootEntities())
-		{
-			auto rendEnts = root->getChildrenWithComponent<Renderable>();
-			for (auto e : rendEnts)
-			{
-				auto r = e->getComponent<Renderable>();
-				auto mesh = r->getMesh();
-				if (e->isActive() && r->isEnabled())
-				{
-					if (r->getDiffuseMode() == 2)
-					{
-						//std::cout << "mesh " << e->getName() << " uses lightmapping." << std::endl;
-					}
-					else
-					{
-						//std::cout << "mesh " << e->getName() << " uses lightprobes." << std::endl;
-						glm::vec3 pos;
-						if (!r->getReflName().empty())
-						{
-							auto name = r->getReflName();
-							if (reflProbes.find(name) != reflProbes.end())
-								pos = reflProbes[name].position;
-						}
-						else
-						{
-							auto M = e->getComponent<Transform>()->getTransform();
-							Box meshbox;
-							for (auto s : mesh->getSubMeshes())
-							{
-								auto surf = s.primitive->getSurface();
-								for (auto v : surf.vertices)
-								{
-									glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0f));
-									meshbox.expand(pos);
-								}
-							}
-							pos = meshbox.getCenter();
-						}
-
-						IO::Unity::SH9 probe;
-						auto p = glm::vec3(-pos.x, pos.y, pos.z);
-						for (int i = 0; i < tetrahedrons.size(); i++)
-						{
-							auto& t = tetrahedrons[i];
-							if (t.indices[3] < 0)
-								continue;
-
-							auto p3 = positions[t.indices[3]];
-							auto R = glm::transpose(glm::mat3(t.matrix));
-							auto bc = R * (p - p3);
-							float a = bc.x;
-							float b = bc.y;
-							float c = bc.z;
-							float d = 1.0f - a - b - c;
-
-							if (a >= 0 && b >= 0 && c >= 0 && d >= 0) // point is inside tetrahedra
-							{
-								indices.insert(i);
-
-								auto p0 = positions[t.indices[0]];
-								auto p1 = positions[t.indices[1]];
-								auto p2 = positions[t.indices[2]];
-
-								auto& sh0 = probeCoeffs[t.indices[0]].coefficients;
-								auto& sh1 = probeCoeffs[t.indices[1]].coefficients;
-								auto& sh2 = probeCoeffs[t.indices[2]].coefficients;
-								auto& sh3 = probeCoeffs[t.indices[3]].coefficients;
-								for (int i = 0; i < 27; i++)
-									probe.coefficients[i] = sh0[i] * a + sh1[i] * b + sh2[i] * c + sh3[i] * d;
-
-								//std::cout << "probe idx: " << pIdx << " tetrahedron: " << i << std::endl;
-								break;
-							}
-						}
-
-						std::vector<glm::vec3> sh(9);
-						for (int k = 0; k < 9; k++)
-						{
-							sh[k].r = probe.coefficients[k];
-							sh[k].g = probe.coefficients[k + 9];
-							sh[k].b = probe.coefficients[k + 18];
-						}
-
-						r->setDiffuseMode(1);
-						r->setProbeSH9(sh);
-
-						//SubMesh m;
-						//m.primitive = MeshPrimitives::createUVSphere(pos, 0.1f, 16, 16);
-						//m.material = getDefaultMaterial();
-						//m.material->addProperty("material.baseColorFactor", glm::vec4(1, 1, 1, 1));
-						//m.material->addProperty("material.roughnessFactor", 1.0f);
-						//m.material->addProperty("material.metallicFactor", 0.0f);
-
-						//auto meshLP = Mesh::create("lightprobe");
-						//meshLP->addSubMesh(m);
-
-						//auto lpEntity = Entity::create("lightprobe_" + e->getName(), nullptr);
-						//auto lpRend = lpEntity->addComponent<Renderable>();
-						//lpRend->setMesh(meshLP);
-						//lpRend->setDiffuseMode(1);
-						//lpRend->setProbeSH9(sh);
-						//scene->addRootEntity("mesh_lightprobe_" + std::to_string(index), lpEntity);
-						//index++;
-					}
-				}
-			}
-		}
-	}
-
-	void computeProbeMapping(Scene::Ptr scene, std::map<std::string, ReflectionProbe>& reflProbes)
-	{
-		std::vector<Entity::Ptr> nodes;
-		for (auto [name, rootNode] : scene->getRootEntities())
-		{
-			auto rendNodes = rootNode->getChildrenWithComponent<Renderable>();
-			for (auto e : rendNodes)
-				nodes.push_back(e);
-		}
-
-		for (auto n : nodes)
-		{
-			auto r = n->getComponent<Renderable>();
-			auto t = n->getComponent<Transform>();
-			//auto meshBox = r->getBoundingBox();
-			auto M = t->getTransform();
-			auto mesh = r->getMesh();
-			Box meshbox;
-			for (auto s : mesh->getSubMeshes())
-			{
-				auto surf = s.primitive->getSurface();
-				for (auto v : surf.vertices)
-				{
-					glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0f));
-					meshbox.expand(pos);
-				}
-			}
-
-			if (r->getRPIndex() < 0)
-			{
-				auto name = r->getReflName();
-				if (reflProbes.find(name) != reflProbes.end())
-					r->setReflectionProbe(name, reflProbes[name].index);
-				else
-					r->setReflectionProbe("", 0);
-			}
-			else
-			{
-				if (reflProbes.size() == 1) // no need to compute local proxy if theres is only the global probe
-					continue;
-
-				auto M = t->getTransform();
-				//auto bmin = glm::vec3(M * glm::vec4(meshBox.getMinPoint(), 1.0f));
-				//auto bmax = glm::vec3(M * glm::vec4(meshBox.getMaxPoint(), 1.0f));
-				auto mmin = meshbox.getMinPoint();
-				auto mmax = meshbox.getMaxPoint();
-				glm::vec3 size = mmax - mmin;
-				float eps = std::numeric_limits<float>::epsilon();
-				if (size.x == 0) size.x = eps;
-				if (size.y == 0) size.y = eps;
-				if (size.z == 0) size.z = eps;
-				float meshVolume = size.x * size.y * size.z;
-				//std::cout << n->getName() << " mesh volume: " << meshVolume << std::endl;
-				//std::cout << n->getName() << " mesh size: " << size.x << " " << size.y << " " << size.z << std::endl;
-
-				//std::cout << n->getName() << std::endl;
-				std::vector<std::pair<std::string, float>> weights;
-				for (auto& [name, probe] : reflProbes)
-				{
-					glm::vec3 bmin = probe.boxMin;
-					glm::vec3 bmax = probe.boxMax;
-					if ((mmax.x >= bmin.x && bmax.x >= mmin.x) &&
-						(mmax.y >= bmin.y && bmax.y >= mmin.y) &&
-						(mmax.z >= bmin.z && bmax.z >= mmin.z))
-					{
-						glm::vec3 imin = glm::max(bmin, mmin);
-						glm::vec3 imax = glm::min(bmax, mmax);
-						glm::vec3 size = imax - imin;
-						if (size.x == 0) size.x = eps;
-						if (size.y == 0) size.y = eps;
-						if (size.z == 0) size.z = eps;
-						float intersectionVolume = size.x * size.y * size.z;
-						float ratio = intersectionVolume / meshVolume * 100.0f;
-						weights.push_back(std::make_pair(name, ratio));
-						//std::cout << env.name << " ratio: " << ratio << std::endl;
-					}
-				}
-
-				// TODO: set max. probes to be blended / recompute weights / implement weighted blending
-				//std::cout << n->getName() << " blend weights " << std::endl;
-				float maxWeight = 0.0f;
-				std::string maxName;
-				float sum = 0.0f;
-				for (auto [_, w] : weights)
-					sum += w;
-				for (auto [n, w] : weights)
-				{
-					float reweighted = w * 100.0f / sum;
-					//std::cout << envMapData[idx].name << " weight: " << reweighted << std::endl;
-					if (reweighted > maxWeight)
-					{
-						maxWeight = reweighted;
-						maxName = n;
-					}
-				}
-
-				//std::cout << n->getName() << " max. weight: " << maxName << " " << reflProbes[maxName].index << " " << maxWeight << std::endl;
-
-				r->setReflectionProbe(maxName, reflProbes[maxName].index);
-			}
-		}
+		std::cout << "could not open file " << fileName << std::endl;
 	}
 }
 
+std::string loadTxtFile(const std::string& fileName)
+{
+	std::ifstream file(fileName, std::ios::binary);
+	std::stringstream ss;
+
+	if (file.is_open())
+	{
+		ss << file.rdbuf();
+	}
+	else
+	{
+		std::cout << "could not open file " << fileName << std::endl;
+	}
+	return ss.str();
+}
+
+std::string loadExpanded(const std::string& fileName)
+{
+	std::string code = loadTxtFile(fileName);
+	std::stringstream is(code);
+	std::string line;
+	std::string expandedCode = "";
+	std::getline(is, line);
+
+	while (std::getline(is, line))
+	{
+		if (!line.empty() && line.at(0) == '#')
+		{
+			size_t index = line.find_first_of(" ");
+			std::string directive = line.substr(0, index);
+			if (directive.compare("#include") == 0)
+			{
+				size_t start = line.find_first_of("\"") + 1;
+				size_t end = line.find_last_of("\"");
+				size_t index = fileName.find_last_of("/");
+				std::string subFile = line.substr(start, end - start);
+				std::string includeFile = fileName.substr(0, index) + "/" + subFile;
+				std::string includeCode = loadTxtFile(includeFile);
+				expandedCode += includeCode;
+			}
+			else
+			{
+				expandedCode += line + "\n";
+			}
+		}
+		else
+		{
+			expandedCode += line + "\n";
+		}
+	}
+
+	expandedCode += '\0';
+
+	return expandedCode;
+}
+
+namespace IBL
+{
+	std::vector<glm::mat4> createCMViews(glm::vec3 position)
+	{
+		std::vector<glm::mat4> VP;
+		glm::mat4 P = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 1000.0f);
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, 1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, 1.0, 0.0)));
+		}
+		else
+		{
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
+			VP.push_back(P * glm::lookAt(position, position + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+		}
+		return VP;
+	}
+
+	pr::Texture2D::Ptr generateBRDFLUT(uint32 dim)
+	{
+		//std::string shaderPath = "../../../../src/Shaders";
+		auto unitQuad = createScreenQuad();
+		auto brdfLUT = pr::Texture2D::create(dim, dim, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
+		brdfLUT->setAddressMode(GPU::AddressMode::ClampToEdge);
+		brdfLUT->createData();
+		brdfLUT->uploadData();
+		brdfLUT->setLayout();
+
+		auto& ctx = pr::GraphicsContext::getInstance();
+		//auto renderPass = ctx.createRenderPass(1, true, false, false);
+		auto fbo = ctx.createFramebuffer(dim, dim, 1, true, true);
+		fbo->addAttachment(brdfLUT->getImageView());
+		fbo->createFramebuffer();
+
+		GPU::VertexDescription vertexInputDescription;
+		vertexInputDescription.binding = 0;
+		vertexInputDescription.stride = sizeof(Vertex);
+		vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(1, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, color)));
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(2, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, normal)));
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(3, 0, GPU::VertexAttribFormat::Vector2F, offsetof(Vertex, texCoord0)));
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(4, 0, GPU::VertexAttribFormat::Vector2F, offsetof(Vertex, texCoord1)));
+
+		vertexInputDescription.inputAttributes[0].name = "POSITION";
+		vertexInputDescription.inputAttributes[1].name = "COLOR";
+		vertexInputDescription.inputAttributes[2].name = "NORMAL";
+		vertexInputDescription.inputAttributes[3].name = "TEXCOORD";
+		vertexInputDescription.inputAttributes[4].name = "TEXCOORD";
+		vertexInputDescription.inputAttributes[4].index = 1;
+
+		auto descriptorPool = ctx.createDescriptorPool();
+		auto pipeline = ctx.createGraphicsPipeline(fbo, "BRDFLUT", 1);
+		pipeline->setDepthTest(false, false);
+		pipeline->setBlending(false);
+		pipeline->setCullMode(0);
+
+		switch (ctx.getCurrentAPI())
+		{
+			case pr::GraphicsAPI::OpenGL:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string versionStr = "#version 460 core\n";
+				std::string defineStr = "#define USE_OPENGL\n";
+				std::string prefix = versionStr + defineStr;
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLIntegrateBRDF.vert"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLIntegrateBRDF.frag"), GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Direct3D11:
+			{
+				std::string vsCode, psCode;
+				std::string shaderPath = "../../../../cache/shaders/cso";
+				loadBinary(shaderPath + "/IBLIntegrateBRDF.vs.cso", vsCode);
+				loadBinary(shaderPath + "/IBLIntegrateBRDF.ps.cso", psCode);
+				pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Vulkan:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLIntegrateBRDF.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLIntegrateBRDF.frag.spv"), GPU::ShaderStage::Fragment);
+				break;
+			}
+		}
+
+		pipeline->setVertexInputDescripton(vertexInputDescription);
+		pipeline->setLayout(descriptorPool, {});
+		pipeline->createProgram();
+
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		cmdBuf->begin();
+		cmdBuf->beginRenderPass(fbo);
+		cmdBuf->setViewport(0.0f, 0.0f, (float)dim, (float)dim);
+		cmdBuf->setScissor(0, 0, dim, dim);
+		cmdBuf->setCullMode(0);
+		cmdBuf->bindPipeline(pipeline);
+		unitQuad->draw(cmdBuf);
+		cmdBuf->endRenderPass();
+		cmdBuf->end();
+		cmdBuf->flush();
+
+		return brdfLUT;
+	}
+
+	pr::TextureCubeMap::Ptr convertEqui2CM(pr::Texture2D::Ptr pano, uint32 faceSize, float rotation)
+	{		//std::string shaderPath = "../../../../src/Shaders";
+		uint32 levels = static_cast<uint32>(std::floor(std::log2(std::max(faceSize, faceSize)))) + 1;
+		auto unitCube = createCube(glm::vec3(0), 1.0f);
+		auto cubeMap = pr::TextureCubeMap::create(faceSize, GPU::Format::RGBA16F, levels, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled | GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst);
+		cubeMap->createData();
+		cubeMap->setLayout();
+
+		auto& ctx = pr::GraphicsContext::getInstance();
+		//auto renderPass = ctx.createRenderPass(1, true, false, false);
+		auto fbo = ctx.createFramebuffer(faceSize, faceSize, 6, true, true);
+		auto image = cubeMap->getImage();
+		auto view = image->createImageView(GPU::ViewType::ViewCubeMap, GPU::SubResourceRange(0, 0, 1, 6));
+		fbo->addAttachment(view);
+		fbo->createFramebuffer();
+
+		Model model;
+		model.localToWorld = glm::rotate(glm::mat4(1.0f), glm::radians(rotation), glm::vec3(0, 1, 0));
+		auto modelUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(Model), 0);
+		modelUBO->uploadMapped(&model);
+
+		auto views = createCMViews();
+		CubeViews cubeViews;
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = glm::transpose(views[i]);
+		}
+		else
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = views[i];
+		}
+		cubeViews.layerID = 0;
+
+		auto viewsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(CubeViews), 0);
+		viewsUBO->uploadMapped(&cubeViews);
+
+		std::vector<GPU::DescriptorSetLayoutBinding> bindings = {
+			{ 0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Vertex },
+			{ 1, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Geometry },
+			{ 2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment }
+		};
+
+		auto descriptorPool = ctx.createDescriptorPool();
+		descriptorPool->addDescriptorSetLayout("Pano2CM", bindings);
+
+		auto descriptorSet = descriptorPool->createDescriptorSet("Pano2CM", 1);
+		descriptorSet->addDescriptor(modelUBO->getDescriptor());
+		descriptorSet->addDescriptor(viewsUBO->getDescriptor());
+		descriptorSet->addDescriptor(pano->getDescriptor());
+		descriptorSet->update();
+
+		GPU::VertexDescription vertexInputDescription;
+		vertexInputDescription.binding = 0;
+		vertexInputDescription.stride = sizeof(Vertex);
+		vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+		vertexInputDescription.inputAttributes[0].name = "POSITION";
+
+		std::vector<std::string> setLayouts = { "Pano2CM" };
+
+		auto pipeline = ctx.createGraphicsPipeline(fbo, "Pano2CM", 1);
+		pipeline->setDepthTest(false, false);
+		pipeline->setBlending(false);
+		pipeline->setCullMode(0);
+
+		switch (ctx.getCurrentAPI())
+		{
+			case pr::GraphicsAPI::OpenGL:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string versionStr = "#version 460 core\n";
+				std::string defineStr = "#define USE_OPENGL\n";
+				std::string prefix = versionStr + defineStr;
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/PanoToCubeMap.vert"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/PanoToCubeMap.geom"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/PanoToCubeMap.frag"), GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Direct3D11:
+			{
+				std::string vsCode, gsCode, psCode;
+				std::string shaderPath = "../../../../cache/shaders/cso";
+				loadBinary(shaderPath + "/PanoToCubemap.vs.cso", vsCode);
+				loadBinary(shaderPath + "/PanoToCubemap.gs.cso", gsCode);
+				loadBinary(shaderPath + "/PanoToCubemap.ps.cso", psCode);
+				pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(gsCode, GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Vulkan:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/PanoToCubeMap.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/PanoToCubeMap.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/PanoToCubeMap.frag.spv"), GPU::ShaderStage::Fragment);
+				break;
+			}
+		}
+
+		pipeline->setVertexInputDescripton(vertexInputDescription);
+		pipeline->setLayout(descriptorPool, setLayouts);
+		pipeline->createProgram();
+
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		cmdBuf->begin();
+		cmdBuf->setViewport(0.0f, 0.0f, (float)faceSize, (float)faceSize);
+		cmdBuf->setScissor(0, 0, faceSize, faceSize);
+		cmdBuf->setCullMode(0);
+		cmdBuf->beginRenderPass(fbo);
+		cmdBuf->bindPipeline(pipeline);
+		cmdBuf->bindDescriptorSets(pipeline, descriptorSet, 0);
+		unitCube->draw(cmdBuf);
+		cmdBuf->endRenderPass();
+		cmdBuf->end();
+		cmdBuf->flush();
+
+		cubeMap->generateMipmaps();
+		cubeMap->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+
+		return cubeMap;
+	}
+
+	pr::TextureCubeMap::Ptr generateIrradianceMap(pr::TextureCubeMap::Ptr lightProbe, uint32 dim)
+	{
+		//std::string shaderPath = "../../../../src/Shaders";
+		auto unitCube = createCube(glm::vec3(0), 1.0f);
+		auto irradianceMap = pr::TextureCubeMap::create(dim, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
+		irradianceMap->setAddressMode(GPU::AddressMode::ClampToEdge);
+		irradianceMap->setLayout();
+
+		auto& ctx = pr::GraphicsContext::getInstance();
+		//auto renderPass = ctx.createRenderPass(1, true, false, false);
+		auto fbo = ctx.createFramebuffer(dim, dim, 6, true, true);
+		fbo->addAttachment(irradianceMap->getImageView());
+		fbo->createFramebuffer();
+
+		auto views = createCMViews();
+		CubeViews cubeViews;
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = glm::transpose(views[i]);
+		}
+		else
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = views[i];
+		}
+		cubeViews.layerID = 0;
+
+		auto viewsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(CubeViews), 0);
+		viewsUBO->uploadMapped(&cubeViews);
+
+		FilterParameters params;
+		params.roughness = 0.0f;
+		params.sampleCount = 2048;
+		params.texSize = 1024;
+		params.filterIndex = 0;
+
+		auto paramsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(FilterParameters), 0);
+		paramsUBO->uploadMapped(&params);
+
+		std::vector<GPU::DescriptorSetLayoutBinding> bindings = {
+			{ 0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Geometry },
+			{ 1, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment },
+			{ 2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment }
+		};
+
+		auto descriptorPool = ctx.createDescriptorPool();
+		descriptorPool->addDescriptorSetLayout("IBLFilter", bindings);
+
+		auto descriptorSet = descriptorPool->createDescriptorSet("IBLFilter", 1);
+		descriptorSet->addDescriptor(viewsUBO->getDescriptor());
+		descriptorSet->addDescriptor(paramsUBO->getDescriptor());
+		descriptorSet->addDescriptor(lightProbe->getDescriptor());
+		descriptorSet->update();
+
+		GPU::VertexDescription vertexInputDescription;
+		vertexInputDescription.binding = 0;
+		vertexInputDescription.stride = sizeof(Vertex);
+		vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+		vertexInputDescription.inputAttributes[0].name = "POSITION";
+
+		std::vector<std::string> setLayouts = { "IBLFilter" };
+
+		auto pipeline = ctx.createGraphicsPipeline(fbo, "IBLFilter", 1);
+		pipeline->setDepthTest(false, false);
+		pipeline->setBlending(false);
+		pipeline->setCullMode(0);
+
+		switch (ctx.getCurrentAPI())
+		{
+			case pr::GraphicsAPI::OpenGL:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string versionStr = "#version 460 core\n";
+				std::string defineStr = "#define USE_OPENGL\n";
+				std::string prefix = versionStr + defineStr;
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.vert"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.geom"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.frag"), GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Direct3D11:
+			{
+				std::string vsCode, gsCode, psCode;
+				std::string shaderPath = "../../../../cache/shaders/cso";
+				loadBinary(shaderPath + "/IBLFilter.vs.cso", vsCode);
+				loadBinary(shaderPath + "/IBLFilter.gs.cso", gsCode);
+				loadBinary(shaderPath + "/IBLFilter.ps.cso", psCode);
+				pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(gsCode, GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Vulkan:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
+				break;
+			}
+		}
+
+		pipeline->setVertexInputDescripton(vertexInputDescription);
+		pipeline->setLayout(descriptorPool, setLayouts);
+		pipeline->createProgram();
+
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		cmdBuf->begin();
+		cmdBuf->setViewport(0.0f, 0.0f, (float)dim, (float)dim);
+		cmdBuf->setScissor(0, 0, dim, dim);
+		cmdBuf->setCullMode(0);
+		cmdBuf->beginRenderPass(fbo);
+		cmdBuf->bindPipeline(pipeline);
+		cmdBuf->bindDescriptorSets(pipeline, descriptorSet, 0);
+		unitCube->draw(cmdBuf);
+		cmdBuf->endRenderPass();
+		cmdBuf->end();
+		cmdBuf->flush();
+
+		return irradianceMap;
+	}
+
+	pr::TextureCubeMap::Ptr generatePrefilteredMap(pr::TextureCubeMap::Ptr lightProbe, uint32 dim, uint32 levels)
+	{
+		//std::string shaderPath = "../../../../src/Shaders";
+		auto unitCube = createCube(glm::vec3(0), 1.0f);
+		auto prefilteredMap = pr::TextureCubeMap::create(dim, GPU::Format::RGBA16F, levels, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
+		prefilteredMap->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+		prefilteredMap->setAddressMode(GPU::AddressMode::ClampToEdge);
+		prefilteredMap->setLayout();
+
+		auto& ctx = pr::GraphicsContext::getInstance();
+		//auto renderPass = ctx.createRenderPass(1, true, false, false);
+		auto image = prefilteredMap->getImage();
+		std::vector<GPU::ImageView::Ptr> imageViews;
+		std::vector<GPU::Framebuffer::Ptr> framebuffers;
+		for (uint32 m = 0; m < levels; m++)
+		{
+			uint32 width = dim >> m;
+			uint32 height = dim >> m;
+
+			auto view = image->createImageView(GPU::ViewType::ViewCubeMap, GPU::SubResourceRange(m, 0, 1, 6));
+			imageViews.push_back(view);
+
+			auto fbo = ctx.createFramebuffer(width, height, 6, true, true);
+			fbo->addAttachment(view);
+			fbo->createFramebuffer();
+			framebuffers.push_back(fbo);
+		}
+
+		auto views = createCMViews();
+		CubeViews cubeViews;
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = glm::transpose(views[i]);
+		}
+		else
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = views[i];
+		}
+		cubeViews.layerID = 0;
+
+		auto viewsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(CubeViews), 0);
+		viewsUBO->uploadMapped(&cubeViews);
+
+		FilterParameters params;
+		params.roughness = 0.0f;
+		params.sampleCount = 1024;
+		params.texSize = 1024;
+		params.filterIndex = 1;
+
+		auto paramsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(FilterParameters), 0);
+		paramsUBO->uploadMapped(&params);
+
+		std::vector<GPU::DescriptorSetLayoutBinding> bindings = {
+			{ 0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Geometry },
+			{ 1, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment },
+			{ 2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment }
+		};
+
+		auto descriptorPool = ctx.createDescriptorPool();
+		descriptorPool->addDescriptorSetLayout("IBLFilter", bindings);
+
+		auto descriptorSet = descriptorPool->createDescriptorSet("IBLFilter", 1);
+		descriptorSet->addDescriptor(viewsUBO->getDescriptor());
+		descriptorSet->addDescriptor(paramsUBO->getDescriptor());
+		descriptorSet->addDescriptor(lightProbe->getDescriptor());
+		descriptorSet->update();
+
+		GPU::VertexDescription vertexInputDescription;
+		vertexInputDescription.binding = 0;
+		vertexInputDescription.stride = sizeof(Vertex);
+		vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+		vertexInputDescription.inputAttributes[0].name = "POSITION";
+
+		std::vector<std::string> setLayouts = { "IBLFilter" };
+		auto pipeline = ctx.createGraphicsPipeline(framebuffers[0], "IBLFilter", 1);
+		pipeline->setDepthTest(false, false);
+		pipeline->setBlending(false);
+		pipeline->setCullMode(0);
+
+		switch (ctx.getCurrentAPI())
+		{
+			case pr::GraphicsAPI::OpenGL:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string versionStr = "#version 460 core\n";
+				std::string defineStr = "#define USE_OPENGL\n";
+				std::string prefix = versionStr + defineStr;
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.vert"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.geom"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.frag"), GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Direct3D11:
+			{
+				std::string vsCode, gsCode, psCode;
+				std::string shaderPath = "../../../../cache/shaders/cso";
+				loadBinary(shaderPath + "/IBLFilter.vs.cso", vsCode);
+				loadBinary(shaderPath + "/IBLFilter.gs.cso", gsCode);
+				loadBinary(shaderPath + "/IBLFilter.ps.cso", psCode);
+				pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(gsCode, GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Vulkan:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
+				break;
+			}
+		}
+
+		pipeline->setVertexInputDescripton(vertexInputDescription);
+		pipeline->setLayout(descriptorPool, setLayouts);
+		pipeline->createProgram();
+
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		for (uint32 m = 0; m < levels; m++)
+		{
+			params.roughness = (float)m / (float)(levels - 1);
+			paramsUBO->uploadMapped(&params);
+
+			cmdBuf->begin();
+			uint32 width = static_cast<uint32>(dim * std::pow(0.5f, m));
+			uint32 height = static_cast<uint32>(dim * std::pow(0.5f, m));
+			cmdBuf->setViewport(0.0f, 0.0f, (float)width, (float)height);
+			cmdBuf->setScissor(0, 0, width, height);
+			cmdBuf->setCullMode(0);
+			cmdBuf->beginRenderPass(framebuffers[m]);
+			cmdBuf->bindPipeline(pipeline);
+			cmdBuf->bindDescriptorSets(pipeline, descriptorSet, 0);
+
+			unitCube->draw(cmdBuf);
+
+			cmdBuf->endRenderPass();
+			cmdBuf->end();
+			cmdBuf->flush();
+		}
+
+		return prefilteredMap;
+	}
+
+	pr::TextureCubeMapArray::Ptr generatePrefilteredMaps(std::vector<pr::TextureCubeMap::Ptr> lightProbes, uint32 dim, uint32 levels)
+	{
+		auto unitCube = createCube(glm::vec3(0), 1.0f);
+		auto prefilteredMaps = pr::TextureCubeMapArray::create(dim, (uint32)lightProbes.size(), GPU::Format::RGBA16F, levels, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
+		prefilteredMaps->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+		prefilteredMaps->setAddressMode(GPU::AddressMode::ClampToEdge);
+		prefilteredMaps->setLayout();
+
+		auto& ctx = pr::GraphicsContext::getInstance();
+		//auto renderPass = ctx.createRenderPass(1, true, false, false);
+		auto image = prefilteredMaps->getImage();
+		std::vector<std::vector<GPU::ImageView::Ptr>> imageViews;
+		std::vector<std::vector<GPU::Framebuffer::Ptr>> framebuffers;
+		for (uint32 m = 0; m < levels; m++)
+		{
+			uint32 width = dim >> m;
+			uint32 height = dim >> m;
+
+			std::vector<GPU::ImageView::Ptr> views;
+			std::vector<GPU::Framebuffer::Ptr> fbos;
+			for (int l = 0; l < lightProbes.size(); l++)
+			{
+				auto view = image->createImageView(GPU::ViewType::ViewCubeMap, GPU::SubResourceRange(m, l * 6, 1, 6));
+				views.push_back(view);
+				
+				auto fbo = ctx.createFramebuffer(width, height, 6, true, true);
+				fbo->addAttachment(view);
+				fbo->createFramebuffer();
+				fbos.push_back(fbo);
+			}
+			imageViews.push_back(views);
+			framebuffers.push_back(fbos);
+		}
+
+		auto views = createCMViews();
+		CubeViews cubeViews;
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = glm::transpose(views[i]);
+		}
+		else
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = views[i];
+		}
+		cubeViews.layerID = 0;
+
+		auto viewsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(CubeViews), 0);
+		viewsUBO->uploadMapped(&cubeViews);
+
+		FilterParameters params;
+		params.roughness = 0.0f;
+		params.sampleCount = 1024;
+		params.texSize = 0;
+		params.filterIndex = 1;
+
+		auto paramsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(FilterParameters), 0);
+		paramsUBO->uploadMapped(&params);
+
+		std::vector<GPU::DescriptorSetLayoutBinding> bindings = {
+			{ 0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Geometry },
+			{ 1, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment },
+			{ 2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment }
+		};
+
+		auto descriptorPool = ctx.createDescriptorPool();
+		descriptorPool->addDescriptorSetLayout("IBLFilter", bindings);
+
+		std::vector<GPU::DescriptorSet::Ptr> descriptorSets;
+		for (int i = 0; i < lightProbes.size(); i++)
+		{
+			auto descriptorSet = descriptorPool->createDescriptorSet("IBLFilter", 1);
+			descriptorSet->addDescriptor(viewsUBO->getDescriptor());
+			descriptorSet->addDescriptor(paramsUBO->getDescriptor());
+			descriptorSet->addDescriptor(lightProbes[i]->getDescriptor());
+			descriptorSet->update();
+			descriptorSets.push_back(descriptorSet);
+		}
+
+		GPU::VertexDescription vertexInputDescription;
+		vertexInputDescription.binding = 0;
+		vertexInputDescription.stride = sizeof(Vertex);
+		vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+		vertexInputDescription.inputAttributes[0].name = "POSITION";
+
+		std::vector<std::string> setLayouts = { "IBLFilter" };
+		auto pipeline = ctx.createGraphicsPipeline(framebuffers[0][0], "IBLFilter", 1);
+		pipeline->setDepthTest(false, false);
+		pipeline->setBlending(false);
+		pipeline->setCullMode(0);
+
+		switch (ctx.getCurrentAPI())
+		{
+			case pr::GraphicsAPI::OpenGL:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string versionStr = "#version 460 core\n";
+				std::string defineStr = "#define USE_OPENGL\n";
+				std::string prefix = versionStr + defineStr;
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.vert"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.geom"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.frag"), GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Direct3D11:
+			{
+				std::string vsCode, gsCode, psCode;
+				std::string shaderPath = "../../../../cache/shaders/cso";
+				loadBinary(shaderPath + "/IBLFilter.vs.cso", vsCode);
+				loadBinary(shaderPath + "/IBLFilter.gs.cso", gsCode);
+				loadBinary(shaderPath + "/IBLFilter.ps.cso", psCode);
+				pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(gsCode, GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Vulkan:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
+				break;
+			}
+		}
+
+		pipeline->setVertexInputDescripton(vertexInputDescription);
+		pipeline->setLayout(descriptorPool, setLayouts);
+		pipeline->createProgram();
+
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		for (uint32 m = 0; m < levels; m++)
+		{
+			for (uint32 l = 0; l < lightProbes.size(); l++)
+			{
+				params.roughness = (float)m / (float)(levels - 1);
+				params.texSize = lightProbes[l]->getSize();
+				paramsUBO->uploadMapped(&params);
+
+				cubeViews.layerID = l;
+				viewsUBO->uploadMapped(&cubeViews);
+
+				cmdBuf->begin();
+				uint32 width = static_cast<uint32>(dim * std::pow(0.5f, m));
+				uint32 height = static_cast<uint32>(dim * std::pow(0.5f, m));
+				cmdBuf->setViewport(0.0f, 0.0f, (float)width, (float)height);
+				cmdBuf->setScissor(0, 0, width, height);
+				cmdBuf->setCullMode(0);
+				cmdBuf->beginRenderPass(framebuffers[m][l]);
+				cmdBuf->bindPipeline(pipeline);
+				cmdBuf->bindDescriptorSets(pipeline, descriptorSets[l], 0);
+
+				unitCube->draw(cmdBuf);
+
+				cmdBuf->endRenderPass();
+				cmdBuf->end();
+				cmdBuf->flush();
+			}
+		}
+
+ 		return prefilteredMaps;
+	}
+
+	pr::TextureCubeMap::Ptr generatePrefilteredMapCharlie(pr::TextureCubeMap::Ptr lightProbe, uint32 dim, uint32 levels)
+	{
+		//std::string shaderPath = "../../../../src/Shaders";
+		auto unitCube = createCube(glm::vec3(0), 1.0f);
+		auto prefilteredMapCharlie = pr::TextureCubeMap::create(dim, GPU::Format::RGBA16F, levels, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
+		prefilteredMapCharlie->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+		prefilteredMapCharlie->setAddressMode(GPU::AddressMode::ClampToEdge);
+		prefilteredMapCharlie->setLayout();
+
+		auto& ctx = pr::GraphicsContext::getInstance();
+		//auto renderPass = ctx.createRenderPass(1, true, false, false);
+		auto image = prefilteredMapCharlie->getImage();
+		std::vector<GPU::ImageView::Ptr> imageViews;
+		std::vector<GPU::Framebuffer::Ptr> framebuffers;
+		for (uint32 m = 0; m < levels; m++)
+		{
+			uint32 width = dim >> m;
+			uint32 height = dim >> m;
+
+			auto view = image->createImageView(GPU::ViewType::ViewCubeMap, GPU::SubResourceRange(m, 0, 1, 6));
+			imageViews.push_back(view);
+
+			auto fbo = ctx.createFramebuffer(width, height, 6, true, true);
+			fbo->addAttachment(view);
+			fbo->createFramebuffer();
+			framebuffers.push_back(fbo);
+		}
+
+		auto views = createCMViews();
+		CubeViews cubeViews;
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = glm::transpose(views[i]);
+		}
+		else
+		{
+			for (int i = 0; i < 6; i++)
+				cubeViews.VP[i] = views[i];
+		}
+		cubeViews.layerID = 0;
+
+		auto viewsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(CubeViews), 0);
+		viewsUBO->uploadMapped(&cubeViews);
+
+		FilterParameters params;
+		params.roughness = 0.0f;
+		params.sampleCount = 64;
+		params.texSize = 1024;
+		params.filterIndex = 2;
+
+		auto paramsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(FilterParameters), 0);
+		paramsUBO->uploadMapped(&params);
+
+		std::vector<GPU::DescriptorSetLayoutBinding> bindings = {
+			{ 0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Geometry },
+			{ 1, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment },
+			{ 2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment }
+		};
+
+		auto descriptorPool = ctx.createDescriptorPool();
+		descriptorPool->addDescriptorSetLayout("IBLFilter", bindings);
+
+		auto descriptorSet = descriptorPool->createDescriptorSet("IBLFilter", 1);
+		descriptorSet->addDescriptor(viewsUBO->getDescriptor());
+		descriptorSet->addDescriptor(paramsUBO->getDescriptor());
+		descriptorSet->addDescriptor(lightProbe->getDescriptor());
+		descriptorSet->update();
+
+		GPU::VertexDescription vertexInputDescription;
+		vertexInputDescription.binding = 0;
+		vertexInputDescription.stride = sizeof(Vertex);
+		vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+		vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+		vertexInputDescription.inputAttributes[0].name = "POSITION";
+
+		std::vector<std::string> setLayouts = { "IBLFilter" };
+		auto pipeline = ctx.createGraphicsPipeline(framebuffers[0], "IBLFilter", 1);
+		pipeline->setDepthTest(false, false);
+		pipeline->setBlending(false);
+		pipeline->setCullMode(0);
+
+		switch (ctx.getCurrentAPI())
+		{
+			case pr::GraphicsAPI::OpenGL:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string versionStr = "#version 460 core\n";
+				std::string defineStr = "#define USE_OPENGL\n";
+				std::string prefix = versionStr + defineStr;
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.vert"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.geom"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/IBL/IBLFilter.frag"), GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Direct3D11:
+			{
+				std::string vsCode, gsCode, psCode;
+				std::string shaderPath = "../../../../cache/shaders/cso";
+				loadBinary(shaderPath + "/IBLFilter.vs.cso", vsCode);
+				loadBinary(shaderPath + "/IBLFilter.gs.cso", gsCode);
+				loadBinary(shaderPath + "/IBLFilter.ps.cso", psCode);
+				pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(gsCode, GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+				break;
+			}
+			case pr::GraphicsAPI::Vulkan:
+			{
+				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
+				break;
+			}
+		}
+
+		pipeline->setVertexInputDescripton(vertexInputDescription);
+		pipeline->setLayout(descriptorPool, setLayouts);
+		pipeline->createProgram();
+
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		for (uint32 m = 0; m < levels; m++)
+		{
+			params.roughness = (float)m / (float)(levels - 1);
+			paramsUBO->uploadMapped(&params);
+
+			cmdBuf->begin();
+			uint32 width = static_cast<uint32>(dim * std::pow(0.5f, m));
+			uint32 height = static_cast<uint32>(dim * std::pow(0.5f, m));
+			cmdBuf->setViewport(0.0f, 0.0f, (float)width, (float)height);
+			cmdBuf->setScissor(0, 0, width, height);
+			cmdBuf->setCullMode(0);
+			cmdBuf->beginRenderPass(framebuffers[m]);
+			cmdBuf->bindPipeline(pipeline);
+			cmdBuf->bindDescriptorSets(pipeline, descriptorSet, 0);
+
+			unitCube->draw(cmdBuf);
+
+			cmdBuf->endRenderPass();
+			cmdBuf->end();
+			cmdBuf->flush();
+		}
+
+		return prefilteredMapCharlie;
+	}
+}

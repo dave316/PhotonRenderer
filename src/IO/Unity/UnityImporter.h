@@ -1,22 +1,16 @@
-#ifndef INCLUDED_UNITYIMPORTER
-#define INCLUDED_UNITYIMPORTER
-
-#ifdef WITH_UNITY
+#ifndef INCLUDED_UNITYIMPORTEROLD
+#define INCLUDED_UNITYIMPORTEROLD
 
 #pragma once
 
 #include "UnityYAML.h"
-#include "LightData.h"
 #include "UnityMaterials.h"
-#include <Core/Entity.h>
-#include <Core/LightProbe.h>
-#include <Core/Lod.h>
-#include <Core/Renderable.h>
+#include "LightData.h"
 #include <Core/Scene.h>
-#include <Core/Collider.h>
-#include <Core/Volume.h>
-#include <string>
-#include <set>
+#include <Core/Renderable.h>
+#include <Core/LightProbe.h>
+#include <Core/Light.h>
+#include <Graphics/Material.h>
 
 namespace IO
 {
@@ -27,29 +21,29 @@ namespace IO
 			RenderSettings renderSettings;
 			LightmapSettings lightmapSettings;
 			std::map<int64_t, GameObject> gameObjects;
-			std::map<int64_t, UTransform> transforms;
+			std::map<int64_t, Transform> transforms;
 			std::map<int64_t, MeshRenderer> meshRenderers;
 			std::map<int64_t, MeshFilter> meshFilters;
 			std::map<int64_t, PrefabInstance> prefabInstances;
 			std::map<int64_t, ReflectionProbe> relfectionProbes;
 			std::map<int64_t, LightProbeGroup> lightProbeGroups;
-			std::map<int64_t, ULight> lights;
+			std::map<int64_t, Light> lights;
 			std::map<int64_t, LODGroup> lodGroups;
-			std::map<int64_t, UVolume> volumes;
-			std::map<int64_t, UBoxCollider> boxColliders;
+			std::map<int64_t, Volume> volumes;
+			std::map<int64_t, BoxCollider> boxColliders;
 			std::map<int64_t, std::string> fileIDMap;
 			bool isPrefab = false;
 		};
 
 		struct PrefabCache
 		{
-			Entity::Ptr root = nullptr;
+			pr::Entity::Ptr root = nullptr;
 			std::map<int64_t, std::string> fileIDMap;
 		};
 
 		struct MeshCache
 		{
-			Entity::Ptr root = nullptr;
+			pr::Entity::Ptr root = nullptr;
 			bool generateUVs = false;
 			std::map<int64_t, std::string> fileIDMap;
 		};
@@ -57,8 +51,6 @@ namespace IO
 		class Importer
 		{
 		private:
-			std::string lightmapUVPath;
-
 			struct UnityObject
 			{
 				uint64_t id;
@@ -67,38 +59,39 @@ namespace IO
 				std::string content;
 			};
 
+			std::string lightmapUVPath;
+			LightData lightData;
 			Materials mats;
 
 			std::map<int64_t, UnityObject> unityObjects;
 			std::map<std::string, Metadata> metaData;
 			std::map<std::string, MeshCache> meshCache;
 			std::map<std::string, PrefabCache> prefabeCache;
-			std::map<std::string, std::map<int64_t, Material::Ptr>> materialCache;
+			std::map<std::string, std::map<int64_t, pr::Material::Ptr>> materialCache;
 			std::set<std::string> meshes;
 
-			Entity::Ptr traverse(int64_t objectID, Entity::Ptr parent, Database& db);
-			Entity::Ptr copy(Entity::Ptr dst, Entity::Ptr src);
-			Entity::Ptr instantiatePrefab(Database& db, PrefabInstance& instance, PrefabCache& cache, int64_t prefabID);
-
-		public:
-			LightData lightData;
-			Importer(unsigned int maxTexSize);
-			void loadMetadata(const std::string& assetPath);
-			void loadObjects(const std::string& OLDSceneFile);
+			void loadObjects(const std::string& sceneFile);
 			void loadMeshGUID(const std::string& guid);
 			void loadPrefabGUID(const std::string& guid);
-			void loadCameraProfileGUID(const std::string& guid, PostProcessParameters& ppp);
-			void clearCache();
 
-			Material::Ptr loadMaterialGUID(const std::string& guid);
-			Entity::Ptr loadPrefab(const std::string& prefabFile);
-			Entity::Ptr loadPrefabInstance(Database& db, PrefabInstance& prefabInstance, int64_t prefabID, const std::string& guid);
-			Scene::Ptr loadScene(const std::string& assetPath, const std::string& sceneFile);
-			void loadLightMaps(Scene::Ptr scene);
-			void loadSettings(RenderSettings& settings, Scene::Ptr scene);
+			pr::Material::Ptr loadMaterialGUID(const std::string& guid);
+			pr::Entity::Ptr copy(pr::Entity::Ptr dst, pr::Entity::Ptr src);
+			pr::Entity::Ptr instantiatePrefab(Database& db, PrefabInstance& instance, PrefabCache& cache, int64_t prefabID);
+			pr::Entity::Ptr loadPrefabInstance(Database& db, PrefabInstance& prefabInstance, int64_t prefabID, const std::string& guid);
+			pr::Entity::Ptr traverse(int64_t objectID, pr::Entity::Ptr parent, Database& db);
+
+		public:
+
+			Importer(uint32 maxTexSize);
+			void clear();
+			pr::Scene::Ptr loadScene(const std::string& assetPath, const std::string& sceneFile);
+			void loadMetadata(const std::string& assetPath);
+			void loadLightMaps(pr::Scene::Ptr scene);
+			void loadDirectionMaps(pr::Scene::Ptr scene);
+			void getLightProbes(pr::Scene::Ptr scene);
+			pr::Entity::Ptr loadPrefab(const std::string& prefabFile);
 		};
 	}
 }
 
-#endif
-#endif // INCLUDED_UNITYIMPORTER
+#endif // INCLUDED_UNITYIMPORTEROLD

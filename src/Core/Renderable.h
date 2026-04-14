@@ -4,97 +4,102 @@
 #pragma once
 
 #include "Component.h"
-
-#include <Graphics/Material.h>
 #include <Graphics/Mesh.h>
 #include <Graphics/Skin.h>
-#include <Graphics/Shader.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 
-struct ModelUniformData
+namespace pr
 {
-	glm::mat4 M;
-	glm::mat4 N;
-	int animMode = 0;
-	//glm::vec3 padding;
-};
-
-struct IBLUniformData
-{
-	int diffuseMode;
-	int specularProbeIndex;
-	int lightMapIndex;
-	int padding;
-	glm::vec4 lightMapST;
-	glm::vec4 sh[9];
-};
-
-enum RenderType
-{
-	OPAQUE = 0,
-	TRANSPARENT = 1
-};
-
-class Renderable : public Component
-{
-	Mesh::Ptr mesh;
-	Skin::Ptr skin;
-	bool skinnedMesh = false;
-	bool morphTagets = false;
-	bool enabled = true;
-
-	int bufferOffset = 0;
-	int diffuseMode = 0; // 0 - lightprobe(cubemap), 1 - lightprobe(SH), 2 - lightmap
-	int lightMapIndex = -1;
-	glm::vec2 lightMapOffset = glm::vec2(0);
-	glm::vec2 lightMapScale = glm::vec2(0);
-
-	std::string reflName = "";
-	int specularProbeIndex = 0;
-	std::vector<glm::vec3> sh9;
-
-	RenderType type;
-	unsigned int renderPriority;
-
-public:
-	Renderable(RenderType type = RenderType::OPAQUE) : type(type), renderPriority(0) {}
-	~Renderable();
-	void setMesh(Mesh::Ptr mesh);
-	void render(Shader::Ptr shader, bool useShader = false);
-	void switchMaterial(int materialIndex);
-	void setSkin(Skin::Ptr skin);
-	void setEnabled(bool enabled);
-	bool isSkinnedMesh();
-	bool useMorphTargets();
-	bool isEnabled();
-	void setPriority(unsigned int priority);
-	void setType(RenderType type);
-	void setDiffuseMode(int mode);
-	void setLightMapIndex(int mode);
-	void setLightMapST(glm::vec2 offsect, glm::vec2 scale);
-	void setReflectionProbe(std::string name, int index);
-	void setProbeSH9(std::vector<glm::vec3>& sh9);
-	void setOffset(int offset);
-	void writeUniformData(IBLUniformData& data);
-	std::vector<float> getWeights();
-	void computeJoints(std::vector<Entity::Ptr>& nodes);
-	Mesh::Ptr getMesh();
-	Skin::Ptr getSkin();
-	Box getBoundingBox();
-	glm::vec2 getLMOffset();
-	glm::vec2 getLMScale();
-	int getLMIndex();
-	int getRPIndex();
-	int getDiffuseMode();
-	std::string getReflName();
-	std::vector<glm::vec3> getSH9();
-	unsigned int getPriority();
-	RenderType  getType();
-	typedef std::shared_ptr<Renderable> Ptr;
-	static Ptr create()
+	enum class RenderType
 	{
-		return std::make_shared<Renderable>();
-	}
+		Opaque,
+		Transparent
+	};
 
-};
+	class Renderable : public Component
+	{
+	public:
+		Renderable(pr::Mesh::Ptr mesh, RenderType type = RenderType::Opaque);
+		~Renderable();
+		void setMesh(pr::Mesh::Ptr mesh);
+		void setDescriptor(GPU::DescriptorPool::Ptr descriptorPool);
+		void update(glm::mat4 modelMatrix);
+		void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
+		void renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
+		void setSkin(pr::Skin::Ptr skin);
+		void setType(RenderType type);
+		void setPriority(uint32 priority);
+		void setDiffuseMode(int mode);
+		void setLightMapIndex(int mode);
+		void setLightMapST(glm::vec2 offsect, glm::vec2 scale);
+		void setReflectionProbe(std::string name, int index);
+		void setProbeSH9(std::vector<glm::vec3>& sh9);
+		bool isSkinnedMesh();
+		bool hasMorphtargets();
+		bool isTransmissive();
+		bool isEnabled() { return enabled; }
+		void setCurrentWeights(std::vector<float> weights);
+		pr::Skin::Ptr getSkin();
+		Box getBoundingBox();
+		pr::Mesh::Ptr getMesh();
+		uint32 getNumPrimitives();
+		uint32 getNumVariants();
+		void switchVariant(uint32 index);
+		void setEnabled(bool enabled);
+		std::string getShaderName();
+		RenderType getType();
+		uint32 getPriority();
+		glm::vec2 getLMOffset();
+		glm::vec2 getLMScale();
+		int getDiffuseMode();
+		int getLMIndex();
+		int getRPIndex();
+		std::string getReflName();
+
+		struct UniformData
+		{
+			glm::mat4 M;
+			glm::mat4 N;
+			glm::vec4 weights[2];
+			int animMode = 0;
+			int numMorphTargets = 0;
+			int irradianceMode = 0;
+			int lightMapIndex = -1;
+			glm::vec4 lightMapST = glm::vec4(0);
+			glm::vec4 sh[9];
+			int reflectionProbeIndex = 0;
+			int paddint[3];
+		};
+
+
+		typedef std::shared_ptr<Renderable> Ptr;
+		static Ptr create(pr::Mesh::Ptr mesh)
+		{
+			return std::make_shared<Renderable>(mesh);
+		}
+
+	private:
+		pr::Mesh::Ptr mesh = nullptr;
+		pr::Skin::Ptr skin = nullptr;
+		GPU::DescriptorSet::Ptr descriptorSet;
+		GPU::Buffer::Ptr modelUBO = nullptr;
+		std::vector<float> morphWeights;
+		bool enabled = true;
+		bool castShadow = true;
+		bool receiveShadow = true;
+
+		int diffuseMode = 0; // 0 - lightprobe(cubemap), 1 - lightprobe(SH), 2 - lightmap
+		int lightMapIndex = -1;
+		glm::vec2 lightMapOffset = glm::vec2(0);
+		glm::vec2 lightMapScale = glm::vec2(0);
+		std::string reflName = "";
+		int specularProbeIndex = 0;
+		std::vector<glm::vec3> sh9;
+
+		RenderType type;
+		uint32 priority;
+	};
+}
 
 #endif // INCLUDED_RENDERABLE

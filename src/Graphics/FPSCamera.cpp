@@ -29,49 +29,9 @@ void FPSCamera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov
 
 	yaw = -90.0f;
 	pitch = 0.0f;
-	movementSpeed = 10.0f;
+	movementSpeed = 20.0f;
 	rotationSpeed = 0.1f;
 	velocity = movementSpeed * 0.1f;
-}
-
-glm::vec3 FPSCamera::getPosition()
-{
-	return position;
-}
-
-glm::vec3 FPSCamera::getForward()
-{
-	return direction;
-}
-
-glm::vec3 FPSCamera::getRight()
-{
-	return right;
-}
-
-glm::vec3 FPSCamera::getUp()
-{
-	return up;
-}
-
-glm::mat4 FPSCamera::getViewMatrix() const
-{
-	return glm::lookAt(position, position + direction, up);
-}
-
-glm::mat4 FPSCamera::getProjectionMatrix() const
-{
-	return glm::perspective(fov, aspect, zNear, zFar);
-}
-
-glm::mat4 FPSCamera::getViewProjectionMatrix() const
-{
-	return getProjectionMatrix() * getViewMatrix();
-}
-
-void FPSCamera::setPosition(glm::vec3 pos)
-{
-	this->position = pos;
 }
 
 void FPSCamera::setDirection(Direction dir)
@@ -109,22 +69,6 @@ void FPSCamera::move(float deltaTime)
 	}
 }
 
-void FPSCamera::setAspect(float aspect)
-{
-	this->aspect = aspect;
-}
-
-void FPSCamera::setFov(float fov)
-{
-	this->fov = glm::radians(fov);
-}
-
-void FPSCamera::setPlanes(float zNear, float zFar)
-{
-	this->zNear = zNear;
-	this->zFar = zFar;
-}
-
 void FPSCamera::setSpeed(float speed)
 {
 	this->movementSpeed = speed;
@@ -133,26 +77,6 @@ void FPSCamera::setSpeed(float speed)
 void FPSCamera::setVelocity(float velocity)
 {
 	this->velocity = velocity;
-}
-
-float FPSCamera::getFov()
-{
-	return fov;
-}
-
-float FPSCamera::getAspect() 
-{
-	return aspect;
-}
-
-float FPSCamera::getZNear()
-{
-	return zNear;
-}
-
-float FPSCamera::getZFar()
-{
-	return zFar;
 }
 
 void FPSCamera::updateRotation(float dx, float dy)
@@ -185,16 +109,10 @@ void FPSCamera::rotate(float deltaTime)
 	right = glm::normalize(glm::cross(direction, up));
 }
 
-void FPSCamera::writeUniformData(CameraUniformData& data)
+
+glm::mat4 FPSCamera::getViewMatrix() const
 {
-	data.V = getViewMatrix();
-	data.V_I = glm::inverse(data.V);
-	data.P = getProjectionMatrix();
-	data.P_I = glm::inverse(data.P);
-	data.VP = data.P * data.V;
-	data.VP_I = glm::inverse(data.VP);
-	data.position = glm::vec4(position, 0.0f);
-	data.direction = direction;
-	data.zNear = zNear;
-	data.zFar = zFar;
+	return glm::lookAt(position, position + direction, up);
 }
+
+

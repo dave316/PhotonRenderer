@@ -4,6 +4,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -54,7 +55,7 @@ namespace IO
 			bool isActive;
 		};
 
-		struct UTransform : public Object
+		struct Transform : public Object
 		{
 			ObjectRef correspondingSourceObject;
 			FileID prefabInstance;
@@ -117,7 +118,7 @@ namespace IO
 			std::vector<glm::vec3> sourcePositions;
 		};
 
-		struct ULight
+		struct Light
 		{
 			uint32_t type;
 			uint32_t shape;
@@ -126,18 +127,19 @@ namespace IO
 			float range;
 		};
 
-		struct TexEnv
+		struct Texture
 		{
 			ObjectRef texture;
 			glm::vec2 offset;
 			glm::vec2 scale;
 		};
 
-		struct UnityMaterial : public Object
+		struct Material : public Object
 		{
 			std::string name;
 			ObjectRef shader;
-			std::map<std::string, TexEnv> texEnvs;
+			std::set<std::string> keywords;
+			std::map<std::string, Texture> texEnvs;
 			std::map<std::string, float> floats;
 			std::map<std::string, glm::vec4> colors;
 		};
@@ -198,7 +200,7 @@ namespace IO
 			bool enabled;
 		};
 
-		struct UVolume
+		struct Volume
 		{
 			FileID gameObject;
 			bool isGlobal;
@@ -206,7 +208,7 @@ namespace IO
 			ObjectRef sharedProfile;
 		};
 
-		struct UBoxCollider
+		struct BoxCollider
 		{
 			glm::vec3 center;
 			glm::vec3 size;

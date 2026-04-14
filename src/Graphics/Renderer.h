@@ -3,128 +3,159 @@
 
 #pragma once
 
-#include <Graphics/Framebuffer.h>
-#include <Graphics/FPSCamera.h>
+#include <Platform/Types.h>
+#include <Platform/Window.h>
 
 #include <Core/Light.h>
-#include <Core/LightProbe.h>
 #include <Core/Renderable.h>
 #include <Core/Scene.h>
 
-#include <glm/glm.hpp>
+#include <Graphics/UserCamera.h>
+#include <Graphics/GraphicsContext.h>
+#include <Graphics/Primitive.h>
+#include <Graphics/GUI.h>
+#include <Graphics/PostProcessor.h>
+#include <Graphics/Shadows.h>
+#include <Graphics/Volumes.h>
+#include <Graphics/Outline.h>
+#include <Graphics/Scatter.h>
 
-class Renderer
+namespace pr
 {
-private:
-	Shader::Ptr defaultShader;
-	Shader::Ptr postProcessShader;
-	Shader::Ptr skyboxShader;
-	Shader::Ptr unlitShader;
-	Shader::Ptr outlineShader;
+	std::vector<std::string> getAllFileNames(const std::string& path, const std::string& extension);
+	void loadBinary(std::string fileName, std::string& buffer);
+	std::string loadTxtFile(const std::string& fileName);
+	std::string loadExpanded(const std::string& fileName);
 
-	std::map<std::string, Shader::Ptr> shaders;
-	GL::UniformBuffer<CameraUniformData> cameraUBO;
-	GL::UniformBuffer<ModelUniformData> modelUBO;
-	GL::UniformBuffer<LightUniformData> lightUBO;
-	GL::UniformBuffer<ReflectionProbe> reflUBO;
-
-	Framebuffer::Ptr screenFBO;
-	Framebuffer::Ptr postFBO;
-	Framebuffer::Ptr outlineFBO;
-	Framebuffer::Ptr bloomFBO;
-	
-	// screen maps
-	Texture2D::Ptr screenTex;
-	Texture2D::Ptr refrTex;
-	Texture2D::Ptr bloomTex;
-	Texture2D::Ptr postTex;
-	Texture2D::Ptr outlineTex;
-	Texture2D::Ptr bloomBlurTex;
-
-	Primitive::Ptr screenQuad;
-	Primitive::Ptr unitCube;
-
-	FPSCamera camera;
-
-	// IBL Maps
-	TextureCubeMap::Ptr skybox;
-	TextureCubeMapArray::Ptr irradianceMaps;
-	TextureCubeMapArray::Ptr specularMapsGGX;
-	TextureCubeMapArray::Ptr specularMapsSheen;
-	Texture2D::Ptr brdfLUT;
-
-	// Lightmaps
-	Texture2DArray::Ptr lightMaps;
-	Texture2DArray::Ptr directionMaps;
-	Texture2DArray::Ptr iesProfiles;
-
-	// Shadowmaps
-	Texture2DArray::Ptr csmShadowMap;
-	TextureCubeMapArray::Ptr omniShadowMap;
-	Framebuffer::Ptr csmShadowFBO;
-	Framebuffer::Ptr omniShadowFBO;
-
-	// Fog volumes
-	Texture3D::Ptr fogMaterialVolume;
-	Texture3D::Ptr inScatteringVolume;
-	Texture3D::Ptr acumFogVolume;
-
-	std::map<std::string, std::vector<Renderable::Ptr>> renderQueue;
-
-	unsigned int width;
-	unsigned int height;
-
-	bool useBloom = false;
-
-	std::map<std::string, ReflectionProbe> reflectionProbes;
-
-	Renderer(const Renderer&) = delete;
-	Renderer& operator=(const Renderer&) = delete;
-public:
-	
-	Renderer(unsigned int width, unsigned int height);
-	~Renderer();
-
-	bool init();
-	void initLUT();
-	void initFBOs();
-	void initShaders();
-	void initLights(Scene::Ptr scene, FPSCamera& camera);
-	void initShadows(Scene::Ptr scene);
-	void initLightProbes(Scene::Ptr scene);
-	void initFogVolumes(Scene::Ptr scene);
-	void prepare(Scene::Ptr scene);
-	void resize(unsigned int width, unsigned int height);
-	void updateCamera(FPSCamera& camera);
-	void updateCamera(FPSCamera& camera, float dt);
-	void updateCamera(glm::mat4 P, glm::mat4 V, glm::vec3 pos);
-	void updatePostProcess(PostProcessParameters& params);
-	void updateShadows(Scene::Ptr scene);
-	void updateVolumes(Scene::Ptr scene);
-	void setBloom(bool useBloom);
-	void setIBL(bool useIBL);
-	void setLights(int numLights);
-	void setDebugChannel(int channel);
-	void setTonemappingOp(int index);
-	void setRenderQueue(std::map<std::string, std::vector<Renderable::Ptr>> renderQueue);
-	void updateTime(float dt);
-	void clear();
-	void renderScene(Scene::Ptr scene, Shader::Ptr defShader, bool transmission);
-	void renderBatchedScene(Scene::Ptr scene, Shader::Ptr shader);
-	void renderToScreen(Scene::Ptr scene);
-	void renderOutline(Entity::Ptr entity);
-	Texture2D::Ptr renderToTexture(Scene::Ptr scene);
-	Texture2D::Ptr renderForward(Scene::Ptr scene);
-	Shader::Ptr getShader(std::string name);
-	std::map<std::string, ReflectionProbe> getEnvMapData()
+	struct CameraData
 	{
-		return reflectionProbes;
-	}
+		glm::mat4 VP;
+		glm::mat4 VP_I;
+		glm::mat4 P;
+		glm::mat4 P_I;
+		glm::mat4 V;
+		glm::mat4 V_I;
+		glm::vec4 position;
+		glm::vec4 time;
+		glm::vec4 projParams;
+		float zNear;
+		float zFar;
+		float scale;
+		float bias;
+	};
 
-	// TODO: put somewhere else...
-	//std::vector<glm::vec4> getFrustrumCorners(glm::mat4& VP);
-	//std::vector<glm::mat4> getLightSpaceMatrices(FPSCamera& camera, glm::vec3 lightDir);
-	//glm::mat4 getLightSpaceMatrix(FPSCamera& camera, glm::vec3& lightDir, float zNear, float zFar);
-};
+	struct Lights
+	{
+		LightUniformData lightData[10];
+		int numLights;
+		int padding[3];
+	};
+
+	struct Skybox
+	{
+		int index;
+		int lod;
+		int padding[2];
+	};
+
+	class Renderer
+	{
+	public:
+		Renderer() {}
+		void init(Window::Ptr window, GPU::Swapchain::Ptr swapchain = nullptr);
+		void initFramebuffers();
+		void initDescriptorLayouts();
+		void initDescriptorSets();
+		void initPipelines();
+		void initScene(UserCamera& userCamera, Scene::Ptr scene);
+		void resize(uint32 width, uint32 height);
+		void prepare(UserCamera& userCamera, pr::Scene::Ptr scene);
+		void buildCmdBuffer(pr::Scene::Ptr scene, GPU::Swapchain::Ptr swapchain = nullptr);
+		void buildScatterCmdBuffer(pr::Scene::Ptr scene);
+		void buildShadowCmdBuffer(pr::Scene::Ptr scene);
+		void addLights(pr::Scene::Ptr scene);
+		void updateLights(UserCamera& userCamera, pr::Scene::Ptr scene);
+		void updateCamera(Scene::Ptr scene, UserCamera& userCamera, float time, int debugChannel = 0);
+		void updateCamera(Scene::Ptr scene, glm::mat4 P, glm::mat4 V, glm::vec3 pos, float time, int debugChannel = 0);
+		void updateShadows(pr::Scene::Ptr scene);
+		void updatePost(Post& post);
+		void renderToTexture(pr::Scene::Ptr scene);
+
+		GPU::DescriptorPool::Ptr getDescriptorPool() { return descriptorPool; }
+		GPU::CommandBuffer::Ptr getCommandBuffer(int index) {
+			return commandBuffers[index];
+		}
+		pr::Texture2D::Ptr getFinalTex() {
+			return finalTex;
+		}
+
+		typedef std::shared_ptr<Renderer> Ptr;
+		static Ptr create()
+		{
+			return std::make_shared<Renderer>();
+		}
+
+	private:
+		PostProcessor postProcessor;
+		Shadows shadows;
+		Volumes volumes;
+		Outline outline;
+		Scatter scatter;
+
+		std::map<std::string, GPU::GraphicsPipeline::Ptr> pipelines;
+		GPU::GraphicsPipeline::Ptr skyboxPipeline;
+		GPU::Framebuffer::Ptr offscreenFramebuffer;
+		GPU::Framebuffer::Ptr offscreenFramebuffer2;
+		GPU::Framebuffer::Ptr finalFramebuffer;
+		GPU::ImageView::Ptr grabView;
+		std::vector<GPU::CommandBuffer::Ptr> commandBuffers;
+
+		GPU::DescriptorPool::Ptr descriptorPool;
+		GPU::DescriptorSet::Ptr descriptorSetCamera;
+		GPU::DescriptorSet::Ptr descriptorSetSkybox;
+		GPU::DescriptorSet::Ptr descriptorSetIBL;
+		GPU::DescriptorSet::Ptr descriptorSetLight;
+		GPU::DescriptorSet::Ptr descriptorSetVolume;
+		GPU::DescriptorSet::Ptr animDescriptorSet;
+		GPU::DescriptorSet::Ptr morphDescriptorSet;
+
+		GPU::Buffer::Ptr cameraUBO;
+		GPU::Buffer::Ptr skyboxUBO;
+		GPU::Buffer::Ptr lightUBO;
+		GPU::Buffer::Ptr reflectionProbeUBO;
+
+		// IBL
+		pr::Texture2D::Ptr brdfLUT;
+		pr::TextureCubeMap::Ptr skybox;
+		pr::TextureCubeMap::Ptr irradianceMap;
+		pr::TextureCubeMap::Ptr prefilteredMapCharlie;
+		pr::TextureCubeMapArray::Ptr reflectionMaps;
+
+		// Post processing
+		pr::Texture2D::Ptr screenTex;
+		pr::Texture2D::Ptr grabTex;
+		pr::Texture2D::Ptr brightTex;
+		pr::Texture2D::Ptr depthTex;
+		pr::Texture2D::Ptr finalTex;
+
+		uint32 currentCamera = 0;
+		std::vector<CameraData> cameras;
+		CameraData camera;
+		Skybox skyboxData;
+
+		// helper meshes
+		pr::Primitive::Ptr unitQuad;
+		pr::Primitive::Ptr unitCube;
+
+		uint32 width = 0;
+		uint32 height = 0;
+
+		bool updated = false;
+		bool offscreen = false;
+
+		Renderer(const Renderer&) = delete;
+		Renderer& operator=(const Renderer&) = delete;
+	};
+}
 
 #endif // INCLUDED_RENDERER

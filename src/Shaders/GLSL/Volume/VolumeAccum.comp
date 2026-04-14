@@ -1,0 +1,78 @@
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+#ifdef USE_OPENGL
+layout(std140, binding = 0) uniform CameraUBO
+#else
+layout(std140, set = 0, binding = 0) uniform CameraUBO
+#endif
+{
+	mat4 viewProjection;
+	mat4 viewProjectionInv;
+	mat4 projection;
+	mat4 projectionInv;
+	mat4 view;
+	mat4 viewInv;
+	vec4 position;
+	vec4 time;
+	vec4 projParams;
+	float zNear;
+	float zFar;
+	float scale;
+	float bias;
+} camera;
+
+#ifdef USE_OPENGL
+layout(binding = 0) uniform sampler3D inScatteringTex;
+layout(binding = 1, rgba16f) uniform image3D accumFogTex;
+#else
+layout(set = 1, binding = 0) uniform sampler3D inScatteringTex;
+layout(set = 1, binding = 1, rgba16f) uniform image3D accumFogTex;
+#endif
+
+vec3 lineZPlaneIntersection(vec3 a, vec3 b, float zDistance)
+{
+	vec3 normal = vec3(0,0,1);
+	vec3 line = b - a;
+	float t = (zDistance - dot(normal, a)) / dot(normal, line);
+	return a + t * line;
+}
+
+void main()
+{
+	uint numDepthSlices = 128;
+	ivec3 globalIndex = ivec3(gl_WorkGroupID.xyz);
+	vec4 accumScatTrans = vec4(0,0,0,1);
+	vec2 ndc = (vec2(globalIndex.xy)) / vec2(gl_NumWorkGroups.xy);
+	vec3 scatteredLight = vec3(0.0);
+	float transmittance = 1.0;
+	for(uint z = 0; z < numDepthSlices; ++z)
+	{
+		vec3 eye = vec3(0);
+		float zNear = camera.zNear;
+		float zFar = camera.zFar;
+
+		vec2 pointNDC = (vec2(globalIndex.xy) + vec2(0.5)) / vec2(gl_NumWorkGroups.xy); // normalized coords [0..1]
+		vec4 pointClip = vec4(pointNDC * 2.0 - 1.0, -1.0, 1.0); // clip space coords [-1..1]
+		vec4 pointView = camera.projectionInv * pointClip; // inverse projection -> view space
+		pointView /= pointView.w; // perspective divide
+
+		float depth = (float(z)) / float(numDepthSlices);
+		float tNear = -zNear * pow(zFar / zNear, float(z) / float(numDepthSlices));
+		float tFar = -zNear * pow(zFar / zNear, float(z+1) / float(numDepthSlices));
+
+		vec3 pNear = lineZPlaneIntersection(eye, pointView.xyz, tNear);
+		vec3 pFar = lineZPlaneIntersection(eye, pointView.xyz, tFar);
+		float s = distance(pFar, pNear);
+
+		vec4 scatTrans = texture(inScatteringTex, vec3(ndc.xy, depth));
+		vec3 Lin = scatTrans.rgb;
+		float sigmaE = scatTrans.a;
+		vec3 Sint = (Lin - Lin * exp(-sigmaE * s)) / sigmaE;
+		scatteredLight += transmittance * Sint;
+		transmittance *= exp(-sigmaE * s);
+	
+		imageStore(accumFogTex, ivec3(globalIndex.xy, z), vec4(scatteredLight, transmittance));
+	}
+}

@@ -1,7 +1,5 @@
-#ifndef INCLUDED_UNITYYAML
-#define INCLUDED_UNITYYAML
-
-#ifdef WITH_UNITY
+#ifndef INCLUDED_UNITYYAMLOLD
+#define INCLUDED_UNITYYAMLOLD
 
 #pragma once
 
@@ -56,14 +54,14 @@ namespace IO
 		bool read(ryml::ConstNodeRef n, Component* value);
 		bool read(ryml::ConstNodeRef n, ObjectRef* value);
 		bool read(ryml::ConstNodeRef n, GameObject* value);
-		bool read(ryml::ConstNodeRef n, UTransform* value);
+		bool read(ryml::ConstNodeRef n, Transform* value);
 		bool read(ryml::ConstNodeRef n, MeshRenderer* value);
 		bool read(ryml::ConstNodeRef n, MeshFilter* value);
 		bool read(ryml::ConstNodeRef n, ReflectionProbe* value);
 		bool read(ryml::ConstNodeRef n, LightProbeGroup* value);
-		bool read(ryml::ConstNodeRef n, ULight* value);
-		bool read(ryml::ConstNodeRef n, TexEnv* value);
-		bool read(ryml::ConstNodeRef n, UnityMaterial* value);
+		bool read(ryml::ConstNodeRef n, Light* value);
+		bool read(ryml::ConstNodeRef n, Texture* value);
+		bool read(ryml::ConstNodeRef n, Material* value);
 		bool read(ryml::ConstNodeRef n, Modification* value);
 		bool read(ryml::ConstNodeRef n, PrefabInstance* value);
 		bool read(ryml::ConstNodeRef n, RenderSettings* value);
@@ -71,9 +69,8 @@ namespace IO
 		bool read(ryml::ConstNodeRef n, Renderer* value);
 		bool read(ryml::ConstNodeRef n, LOD* value);
 		bool read(ryml::ConstNodeRef n, LODGroup* value);
-		bool read(ryml::ConstNodeRef n, UBoxCollider* value);
+		bool read(ryml::ConstNodeRef n, BoxCollider* value);
 	}
 }
 
-#endif
-#endif // INCLUDED_UNITYYAML
+#endif // INCLUDED_UNITYYAMLOLD

@@ -1,164 +1,148 @@
 #include "Mesh.h"
 
-int Mesh::numDrawCalls = 0;
-
-Mesh::Mesh(const std::string& name) :
-	name(name)
+namespace pr
 {
-}
-
-Mesh::~Mesh()
-{
-	//std::cout << "Mesh " << name << " destroyed" << std::endl;
-}
-
-void Mesh::addSubMesh(SubMesh subMesh)
-{
-	numVertices += subMesh.primitive->numVertices();
-	numTrianlges += subMesh.primitive->numTriangles();
-	subMeshes.push_back(subMesh);
-}
-
-void Mesh::addVariant(std::string name)
-{
-	variants.push_back(name);
-}
-
-void Mesh::switchVariant(int index)
-{
-	for (auto& s : subMeshes)
-	{ 
-		if(index < s.variants.size())
-			s.material = s.variants[index];
-	}		
-}
-
-void Mesh::setMorphWeights(std::vector<float>& weights)
-{
-	this->morphWeights = weights;
-}
-
-void Mesh::flipWindingOrder()
-{
-	for (auto s : subMeshes)
-		s.primitive->flipWindingOrder();
-}
-
-void Mesh::draw(Shader::Ptr shader, bool useShader)
-{
-	//auto subMesh = subMeshes[0];
-	for (auto subMesh : subMeshes)
+	Mesh::Mesh(const std::string& name) : name(name)
 	{
-		auto primitve = subMesh.primitive;
-		auto material = subMesh.material;
+	}
 
-		shader->setUniform("computeFlatNormals", primitve->getFlatNormals());
-		
-		//auto material = primitive->getMaterial();
-		if (useShader || shader->getName().compare(material->getShader()) == 0)
+	void Mesh::addVariant(std::string variant)
+	{
+		variants.push_back(variant);
+	}
+
+	void Mesh::addSubMesh(SubMesh subMesh)
+	{
+		subMeshes.push_back(subMesh);
+	}
+
+	void Mesh::setMorphWeights(std::vector<float>& weights)
+	{
+		this->weights = weights;
+	}
+
+	void Mesh::flipWindingOrder()
+	{
+		for (auto subMesh : subMeshes)
+			subMesh.primitive->flipWindingOrder();
+	}
+
+	void Mesh::draw(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	{
+		for (auto subMesh : subMeshes)
 		{
-			if (material->isDoubleSided())
-				glDisable(GL_CULL_FACE);
+			auto mat = subMesh.material;
 
-			if (material->useBlending())
+			// TODO: There is a problem when primitives have different materials because
+			// now the shader is set for the whole mesh! It would be better to extract
+			// the primitives/materials and group/sort according to shader/material!
+			//if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
+			//if (mat)
 			{
-				glEnable(GL_BLEND);
-				glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-				glBlendEquation(GL_FUNC_ADD);
-			}
+				if (mat->isDoubleSided())
+					cmdBuffer->setCullMode(0);
 
-			material->setUniforms(shader);
-			numDrawCalls++;
+				mat->bindMainMat(cmdBuffer, pipeline);
+				subMesh.primitive->bind(cmdBuffer, pipeline);
+				subMesh.primitive->draw(cmdBuffer);
 
-			bool useInstancing = primitve->isUsingInstancing();
-			shader->setUniform("useInstancing", useInstancing);
-
-			primitve->draw();
-
-			if (material->useBlending())
-				glDisable(GL_BLEND);
-
-			if (material->isDoubleSided())
-			{
-				glEnable(GL_CULL_FACE);
-				glCullFace(GL_BACK);
+				if (mat->isDoubleSided())
+					cmdBuffer->setCullMode(2);
 			}
 		}
 	}
-}
 
-void Mesh::setMaterial(unsigned int index, Material::Ptr material)
-{
-	if (index < subMeshes.size())
-		subMeshes[index].material = material;
-}
-
-void Mesh::clear()
-{
-	subMeshes.clear();
-}
-
-Box Mesh::getBoundingBox()
-{
-	Box boundingBox;
-	for (auto& m : subMeshes)
-		boundingBox.expand(m.primitive->getBoundingBox());
-	return boundingBox;
-}
-
-std::vector<SubMesh>& Mesh::getSubMeshes()
-{
-	return subMeshes;
-}
-
-std::vector<float> Mesh::getWeights()
-{
-	return morphWeights;
-}
-
-std::vector<std::string> Mesh::getVariants()
-{
-	return variants;
-}
-
-bool Mesh::useMorphTargets()
-{
-	return !morphWeights.empty();
-}
-
-bool Mesh::useBlending()
-{
-	for (auto m : subMeshes)
+	void Mesh::drawDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
 	{
-		auto mat = m.material;
-		if (mat->useBlending())
-			return true;
-	}
-	return false;
-}
+		for (auto subMesh : subMeshes)
+		{
+			auto mat = subMesh.material;
 
-bool Mesh::isTransmissive()
-{
-	for (auto m : subMeshes)
+			if (mat->isDoubleSided())
+				cmdBuffer->setCullMode(0);
+
+			mat->bindShadowMat(cmdBuffer, pipeline);
+			subMesh.primitive->bind(cmdBuffer, pipeline);
+			subMesh.primitive->draw(cmdBuffer);
+
+			if (mat->isDoubleSided())
+				cmdBuffer->setCullMode(2);
+		}
+	}
+
+	void Mesh::setDescriptor(GPU::DescriptorPool::Ptr descriptorPool)
 	{
-		auto mat = m.material;
-		if (mat->isTransmissive())
-			return true;
+		for (auto subMesh : subMeshes)
+		{
+			subMesh.primitive->update(descriptorPool);
+			if (subMesh.material)
+				subMesh.material->update(descriptorPool);
+
+			for (auto v : subMesh.variants)
+				v->update(descriptorPool);
+		}
 	}
-	return false;
-}
 
-int Mesh::getNumVertices()
-{
-	return numVertices;
-}
+	void Mesh::setMaterial(unsigned int index, Material::Ptr material)
+	{
+		if (index < subMeshes.size())
+			subMeshes[index].material = material;
+	}
 
-int Mesh::getNumTriangles()
-{
-	return numTrianlges;
-}
+	bool Mesh::hasMorphTargets()
+	{
+		return !weights.empty();
+	}
 
-int Mesh::getNumPrimitives()
-{
-	return subMeshes.size();
+	bool Mesh::isTransmissive()
+	{
+		for (auto subMesh : subMeshes)
+		{
+			if (subMesh.material->isTransmissive())
+				return true;
+		}
+		return false;
+	}
+
+	std::vector<float> Mesh::getWeights()
+	{
+		return weights;
+	}
+
+	std::vector<std::string> Mesh::getVariants()
+	{
+		return variants;
+	}
+
+	Box Mesh::getBoundingBox()
+	{
+		Box boundingBox;
+		for (auto subMesh : subMeshes)
+			boundingBox.expand(subMesh.primitive->getBoundingBox());
+		return boundingBox;
+	}
+
+	uint32 Mesh::numPrimitives()
+	{
+		return static_cast<uint32>(subMeshes.size());
+	}
+
+	uint32 Mesh::getNumVariants()
+	{
+		return static_cast<uint32>(subMeshes[0].variants.size());
+	}
+
+	void Mesh::switchVariant(uint32 index)
+	{
+		for (auto& subMesh : subMeshes)
+		{
+			if (index < subMesh.variants.size())
+				subMesh.material = subMesh.variants[index];
+		}
+	}
+
+	std::string Mesh::getShaderName()
+	{
+		return subMeshes[0].material->getShaderName();
+	}
 }

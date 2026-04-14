@@ -1,62 +1,77 @@
 #include "Skin.h"
-#include <glm/gtc/matrix_inverse.hpp>
 
-
-Skin::Skin(const std::string& name) :
-	name(name), skeleton(0)
+namespace pr
 {
-
-}
-
-void Skin::setSkeleton(unsigned int index)
-{
-	skeleton = index;
-}
-
-void Skin::addJoint(int index, glm::mat4 ibm)
-{
-	joints.push_back(index);
-	inverseBindMatrices.push_back(ibm);
-}
-
-void Skin::computeJoints(std::vector<Entity::Ptr>& nodes)
-{
-	jointMatrices.clear();
-	normalMatrices.clear();
-
-	Entity::Ptr parentNode = nodes[skeleton];
-
-	for (int i = 0; i < joints.size(); i++)
+	Skin::Skin(const std::string& name) : 
+		name(name), 
+		skeleton(0)
 	{
-		int jointIdx = joints[i];
-		auto node = nodes[jointIdx];
-		glm::mat4 jointIBM = inverseBindMatrices[i];
-		glm::mat4 nodeLocalToWorld = node->getComponent<Transform>()->getTransform();
-		glm::mat4 parentWorldToLocal = glm::inverse(parentNode->getComponent<Transform>()->getTransform());
-		glm::mat4 jointMatrix = nodeLocalToWorld * jointIBM;
-		jointMatrix = parentWorldToLocal * jointMatrix;
-		glm::mat3 normalMatrix = glm::inverseTranspose(glm::mat3(jointMatrix));
-		jointMatrices.push_back(jointMatrix);
-		normalMatrices.push_back(normalMatrix);
+		auto& ctx = GraphicsContext::getInstance();
+		animUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(AnimData), 0);
 	}
-}
 
-int Skin::numJoints()
-{
-	return joints.size();
-}
+	void Skin::setDescriptor(GPU::DescriptorPool::Ptr descriptorPool)
+	{
+		descriptorSet = descriptorPool->createDescriptorSet("Animation", 1);
+		descriptorSet->addDescriptor(animUBO->getDescriptor());
+		descriptorSet->update();
+	}
 
-std::vector<int> Skin::getJoints()
-{
-	return joints;
-}
+	void Skin::setSkeleton(uint32 index)
+	{
+		skeleton = index;
+	}
 
-std::vector<glm::mat4> Skin::getBoneTransform()
-{
-	return jointMatrices;
-}
+	void Skin::addJoint(uint32 index, glm::mat4 ibm)
+	{
+		joints.push_back(index);
+		inverseBindMatrices.push_back(ibm);
+	}
 
-std::vector<glm::mat3> Skin::getNormalTransform()
-{
-	return normalMatrices;
+	// computes the current joint transformations
+	void Skin::computeJoints(std::vector<Entity::Ptr>& nodes)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		jointMatrices.clear();
+		normalMatrices.clear();
+
+		auto parentNode = nodes[skeleton];
+
+		for (uint32 i = 0; i < joints.size(); i++)
+		{
+			uint32 jointIndex = joints[i];
+			auto node = nodes[jointIndex];
+			glm::mat4 jointIBM = inverseBindMatrices[i];
+			glm::mat4 nodeLocalToWorld = node->getComponent<Transform>()->getTransform();
+			glm::mat4 parentWorldToLocal = glm::inverse(parentNode->getComponent<Transform>()->getTransform());
+			glm::mat4 jointMatrix = nodeLocalToWorld * jointIBM;
+			jointMatrix = parentWorldToLocal * jointMatrix;
+			glm::mat3 normalMatrix = glm::inverseTranspose(glm::mat3(jointMatrix));
+
+			if (ctx.getCurrentAPI() == GraphicsAPI::Direct3D11)
+			{
+				jointMatrices.push_back(glm::transpose(jointMatrix));
+				normalMatrices.push_back(glm::transpose(normalMatrix));
+			}
+			else
+			{
+				jointMatrices.push_back(jointMatrix);
+				normalMatrices.push_back(normalMatrix);
+			}
+		}
+
+		AnimData animData;
+		for (int i = 0; i < jointMatrices.size(); i++)
+		{
+			animData.joints[i] = jointMatrices[i];
+			animData.normals[i] = normalMatrices[i];
+		}
+		animUBO->uploadMapped(&animData);
+	}
+
+	void Skin::bind(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	{
+		cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 2);
+	}
 }

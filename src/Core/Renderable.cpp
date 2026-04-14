@@ -1,195 +1,254 @@
 #include "Renderable.h"
-
-#include <iostream>
-
-void Renderable::setMesh(Mesh::Ptr mesh)
+#include <Graphics/GraphicsContext.h>
+namespace pr
 {
-	this->mesh = mesh;
-	auto& subMeshes = mesh->getSubMeshes();
-	for (auto& s : subMeshes)
+	Renderable::Renderable(pr::Mesh::Ptr mesh, RenderType type) : 
+		mesh(mesh),
+		type(type),
+		priority(0)
 	{
-		auto mat = s.material;
-		if (mat->isTransmissive() || mat->useBlending())
-			type = RenderType::TRANSPARENT;
-	}
-	morphTagets = mesh->useMorphTargets();
-}
-
-Renderable::~Renderable()
-{
-	//std::cout << "renderable: " << mesh->getName() << " destroyed" << std::endl;
-}
-
-void Renderable::render(Shader::Ptr shader, bool useShader)
-{
-	if (enabled)
-	{
-		shader->setUniform("ibl.diffuseMode", diffuseMode);
-		if (diffuseMode == 2)
-		{		
-			shader->setUniform("ibl.lightMapIndex", lightMapIndex);
-			shader->setUniform("ibl.lightMapST", glm::vec4(lightMapOffset, lightMapScale));
-		}
-		if (diffuseMode == 1)
+		if (mesh->hasMorphTargets())
+			morphWeights = mesh->getWeights();
+		
+		auto& subMeshes = mesh->getSubMeshes();
+		for (auto& s : subMeshes)
 		{
-			shader->setUniform("ibl.sh[0]", sh9);
+			auto mat = s.material;
+			if (mat->isTransmissive())
+				this->type = RenderType::Transparent;
+			if (mat->isTransparent())
+				priority = 1;
 		}
-		shader->setUniform("ibl.specularProbeIndex", specularProbeIndex);
 
-		//shader->setUniform("bufferOffset", bufferOffset);
-		mesh->draw(shader, useShader);
+		//auto& ctx = GraphicsContext::getInstance();
+		//modelUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(UniformData), 0);
 	}
-}
 
-void Renderable::switchMaterial(int materialIndex)
-{
-	mesh->switchVariant(materialIndex);
-}
+	Renderable::~Renderable()
+	{
+	}
 
-bool Renderable::isEnabled()
-{
-	return enabled;
-}
+	void Renderable::setMesh(pr::Mesh::Ptr mesh)
+	{
+		this->mesh = mesh;
 
-void Renderable::setPriority(unsigned int priority)
-{
-	this->renderPriority = priority;
-}
+		auto& subMeshes = mesh->getSubMeshes();
+		for (auto& s : subMeshes)
+		{
+			auto mat = s.material;
+			if (mat->isTransmissive())
+				type = RenderType::Transparent;
+		}
+	}
 
-void Renderable::setType(RenderType type)
-{
-	this->type = type;
-}
+	void Renderable::setDescriptor(GPU::DescriptorPool::Ptr descriptorPool)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		modelUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(UniformData), 0);
 
-void Renderable::setDiffuseMode(int mode)
-{
-	diffuseMode = mode;
-}
+		descriptorSet = descriptorPool->createDescriptorSet("Model", 1);
+		descriptorSet->addDescriptor(modelUBO->getDescriptor());
+		descriptorSet->update();
 
-void Renderable::setLightMapIndex(int index)
-{
-	lightMapIndex = index;
-}
+		mesh->setDescriptor(descriptorPool);
+	}
 
-void Renderable::setLightMapST(glm::vec2 offsect, glm::vec2 scale)
-{
-	lightMapOffset = offsect;
-	lightMapScale = scale;
-}
+	void Renderable::update(glm::mat4 modelMatrix)
+	{
+		UniformData model;
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			model.M = glm::transpose(modelMatrix);
+			model.N = glm::inverse(glm::mat3(modelMatrix));
+		}
+		else
+		{
+			model.M = modelMatrix;
+			model.N = glm::inverseTranspose(glm::mat3(modelMatrix));
+		}
 
-void Renderable::setReflectionProbe(std::string name, int index)
-{
-	reflName = name;
-	specularProbeIndex = index;
-}
+		if (isSkinnedMesh())
+			model.animMode = 1;
+		else if (hasMorphtargets())
+			model.animMode = 2;
+		else
+			model.animMode = 0;
 
-void Renderable::setProbeSH9(std::vector<glm::vec3>& sh9)
-{
-	this->sh9 = sh9;
-}
+		model.numMorphTargets = static_cast<int>(morphWeights.size());
+		for (int i = 0; i < morphWeights.size(); i++)
+			model.weights[i / 4][i % 4] = morphWeights[i];
 
-void Renderable::setOffset(int offset)
-{
-	bufferOffset = offset;
-}
+		model.irradianceMode = diffuseMode;
+		model.lightMapIndex = lightMapIndex;
+		model.lightMapST = glm::vec4(lightMapOffset, lightMapScale);
+		model.reflectionProbeIndex = specularProbeIndex;
+		for (int i = 0; i < sh9.size(); i++)
+			model.sh[i] = glm::vec4(sh9[i], 0.0f);
 
-void Renderable::writeUniformData(IBLUniformData& data)
-{
-	data.diffuseMode = diffuseMode;
-	data.specularProbeIndex = specularProbeIndex;
-	data.lightMapIndex = lightMapIndex;
-	data.lightMapST = glm::vec4(lightMapOffset, lightMapScale);
-	for (int i = 0; i < sh9.size(); i++)
-		data.sh[i] = glm::vec4(sh9[i], 0.0f);
-}
+		modelUBO->uploadMapped(&model);
+	}
 
-std::vector<float> Renderable::getWeights()
-{
-	return mesh->getWeights();
-}
+	void Renderable::render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	{
+		if (enabled)
+		{
+			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
+			if (skin)
+				skin->bind(cmdBuffer, pipeline);
+			mesh->draw(cmdBuffer, pipeline);
+		}
+	}
 
-void Renderable::setSkin(Skin::Ptr skin)
-{
-	this->skin = skin;
-	skinnedMesh = true;
-}
+	void Renderable::renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	{
+		if (enabled)
+		{
+			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
+			if (skin)
+				skin->bind(cmdBuffer, pipeline);
+			mesh->drawDepth(cmdBuffer, pipeline);
+		}
+	}
 
-void Renderable::setEnabled(bool enabled)
-{
-	this->enabled = enabled;
-}
+	void Renderable::setSkin(pr::Skin::Ptr skin)
+	{
+		this->skin = skin;
+	}
 
-bool Renderable::isSkinnedMesh()
-{
-	return skinnedMesh;
-}
+	void Renderable::setType(RenderType type)
+	{
+		this->type = type;
+	}
 
-bool Renderable::useMorphTargets()
-{
-	return morphTagets;
-}
+	void Renderable::setPriority(uint32 priority)
+	{
+		this->priority = priority;
+	}
 
-Skin::Ptr Renderable::getSkin()
-{
-	return skin;
-}
+	void Renderable::setDiffuseMode(int mode)
+	{
+		diffuseMode = mode;
+	}
 
-Mesh::Ptr Renderable::getMesh()
-{
-	return mesh;
-}
+	void Renderable::setLightMapIndex(int index)
+	{
+		lightMapIndex = index;
+	}
 
-Box Renderable::getBoundingBox()
-{
-	return mesh->getBoundingBox();
-}
+	void Renderable::setLightMapST(glm::vec2 offsect, glm::vec2 scale)
+	{
+		lightMapOffset = offsect;
+		lightMapScale = scale;
+	}
 
-glm::vec2 Renderable::getLMOffset()
-{
-	return lightMapOffset;
-}
+	void Renderable::setReflectionProbe(std::string name, int index)
+	{
+		reflName = name;
+		specularProbeIndex = index;
+	}
 
-glm::vec2 Renderable::getLMScale()
-{
-	return lightMapScale;
-}
+	void Renderable::setProbeSH9(std::vector<glm::vec3>& sh9)
+	{
+		this->sh9 = sh9;
+	}
 
-int Renderable::getLMIndex()
-{
-	return lightMapIndex;
-}
+	bool Renderable::isSkinnedMesh()
+	{
+		return (skin != nullptr);
+	}
 
-int Renderable::getRPIndex()
-{
-	return specularProbeIndex;
-}
+	bool Renderable::hasMorphtargets()
+	{
+		return Renderable::mesh->hasMorphTargets();
+	}
 
-int Renderable::getDiffuseMode()
-{
-	return diffuseMode;
-}
+	bool Renderable::isTransmissive() // TODO: this only works if all submeshes are transparent
+	{
+		return mesh->isTransmissive();
+	}
 
-std::string Renderable::getReflName()
-{
-	return reflName;
-}
+	void Renderable::setCurrentWeights(std::vector<float> weights)
+	{
+		morphWeights = weights;
+	}
 
-std::vector<glm::vec3> Renderable::getSH9()
-{
-	return sh9;
-}
+	pr::Skin::Ptr Renderable::getSkin()
+	{
+		return skin;
+	}
 
-void Renderable::computeJoints(std::vector<Entity::Ptr>& nodes)
-{
-	skin->computeJoints(nodes);
-}
+	Box Renderable::getBoundingBox()
+	{
+		return mesh->getBoundingBox();
+	}
 
-unsigned int Renderable::getPriority()
-{
-	return renderPriority;
-}
+	pr::Mesh::Ptr Renderable::getMesh()
+	{
+		return mesh;
+	}
 
-RenderType Renderable::getType()
-{
-	return type;
+	uint32 Renderable::getNumPrimitives()
+	{
+		return mesh->numPrimitives();
+	}
+
+	uint32 Renderable::getNumVariants()
+	{
+		return mesh->getNumVariants();
+	}
+
+	void Renderable::switchVariant(uint32 index)
+	{
+		mesh->switchVariant(index);
+	}
+
+	void Renderable::setEnabled(bool enabled)
+	{
+		this->enabled = enabled;
+	}
+
+	std::string Renderable::getShaderName()
+	{
+		return mesh->getShaderName();
+	}
+
+	uint32 Renderable::getPriority()
+	{
+		return priority;
+	}
+
+	RenderType Renderable::getType()
+	{
+		return type;
+	}
+
+	glm::vec2 Renderable::getLMOffset()
+	{
+		return lightMapOffset;
+	}
+
+	glm::vec2 Renderable::getLMScale()
+	{
+		return lightMapScale;
+	}
+
+	int Renderable::getDiffuseMode()
+	{
+		return diffuseMode;
+	}
+
+	int Renderable::getLMIndex()
+	{
+		return lightMapIndex;
+	}
+
+	int Renderable::getRPIndex()
+	{
+		return specularProbeIndex;
+	}
+
+	std::string Renderable::getReflName()
+	{
+		return reflName;
+	}
 }

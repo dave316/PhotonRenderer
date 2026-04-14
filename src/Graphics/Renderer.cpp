@@ -1,979 +1,1040 @@
 #include "Renderer.h"
-#include "MeshPrimitives.h"
-
-#include <Core/Animator.h>
-#include <Core/Lod.h>
-#include <Core/ParticleSystem.h>
-
-#include <IO/Image/ImageDecoder.h>
-#include <IO/ShaderLoader.h>
-
-#include <Math/Frustrum.h>
+#include <fstream>
+#include <IO/ImageLoader.h>
 #include <Utils/IBL.h>
+#include <filesystem>
 
-#include <glm/gtx/matrix_decompose.hpp>
+namespace fs = std::filesystem;
 
-#define STB_PERLIN_IMPLEMENTATION
-#include <stb_perlin.h>
-
-Renderer::Renderer(unsigned int width, unsigned int height) :
-	width(width), 
-	height(height)
+namespace pr
 {
-
-}
-
-Renderer::~Renderer()
-{
-
-}
-
-bool Renderer::init()
-{
-	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-	//glEnable(GL_MULTISAMPLE);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_STENCIL_TEST);
-	glStencilOp(GL_KEEP, GL_REPLACE, GL_REPLACE);
-	glDepthFunc(GL_LEQUAL);
-	glPointSize(5.0f);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-	glViewport(0, 0, width, height);
-
-	unitCube = MeshPrimitives::createCube(glm::vec3(0), 1.0f);
-	screenQuad = MeshPrimitives::createQuad(glm::vec3(0.0f), 2.0f);
-
-	initShaders();
-	initLUT();
-	initFBOs();
-
-	cameraUBO.bindBase(0);
-	lightUBO.bindBase(1);
-	modelUBO.bindBase(2);
-	reflUBO.bindBase(3);
-
-	return true;
-}
-
-void Renderer::initLUT()
-{
-	auto integrateBRDFShader = shaders["IBLIntegrateBRDF"];
-	int size = 512;
-	auto brdfFBO = Framebuffer::create(size, size);
-	brdfLUT = Texture2D::create(size, size, GL::RGBA16F);
-	brdfLUT->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-	brdfFBO->addRenderTexture(GL::COLOR0, brdfLUT);
-	brdfFBO->begin();
-	integrateBRDFShader->use();
-	screenQuad->draw();
-	brdfFBO->end();
-}
-
-void Renderer::initFBOs()
-{
-	int w = width;
-	int h = height;
-
-	screenTex = Texture2D::create(w, h, GL::RGBA32F);
-	refrTex = Texture2D::create(w, h, GL::RGBA32F);
-	refrTex->generateMipmaps();
-	refrTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-	bloomTex = Texture2D::create(w, h, GL::RGBA32F);
-	bloomTex->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-
-	screenFBO = Framebuffer::create(w, h);
-	screenFBO->addRenderTexture(GL::COLOR0, screenTex);
-	screenFBO->addRenderTexture(GL::COLOR1, refrTex);
-	screenFBO->addRenderTexture(GL::COLOR2, bloomTex);
-	screenFBO->addRenderBuffer(GL::DEPTH_STENCIL, GL::D24_S8);
-
-	postTex = Texture2D::create(w, h, GL::RGBA8);
-	postFBO = Framebuffer::create(w, h);
-	postFBO->addRenderTexture(GL::COLOR0, postTex);
-
-	outlineTex = Texture2D::create(w, h, GL::RGBA8);
-	outlineTex->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-	outlineFBO = Framebuffer::create(w, h);
-	outlineFBO->addRenderTexture(GL::COLOR0, outlineTex);
-	outlineFBO->addRenderBuffer(GL::DEPTH, GL::DEPTH24);
-
-	bloomBlurTex = Texture2D::create(w * 0.5f, h * 0.5f, GL::RGBA32F);
-	bloomBlurTex->generateMipmaps();
-	bloomBlurTex->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-	bloomBlurTex->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-	bloomFBO = Framebuffer::create(w * 0.5f, h * 0.5f);
-}
-
-void Renderer::initShaders()
-{
-	std::string shaderPath = "../../../../src/Shaders";
-	auto shaderList = IO::loadShadersFromPath(shaderPath);
-	for (auto s : shaderList)
-		shaders.insert(std::pair(s->getName(), s));
-
-	auto mat = getDefaultMaterial();
-	mat->addProperty("material.metallicFactor", 0.0f);
-
-	for (auto [name, shader] : shaders)
+	std::vector<std::string> getAllFileNames(const std::string& path, const std::string& extension)
 	{
-		if (name.substr(0, 7).compare("Default") == 0)
+		if (!fs::exists(path))
+			std::cout << "path " << path << " does not exist!" << std::endl;
+
+		if (!fs::is_directory(path))
+			std::cout << "path " << path << " is not a directory!" << std::endl;
+
+		std::vector<std::string> fileNames;
+		for (auto& file : fs::directory_iterator(path))
 		{
-			shader->setUniform("screenTex", 10);
-			shader->setUniform("irradianceMaps", 11);
-			shader->setUniform("specularMapsGGX", 12);
-			shader->setUniform("specularMapsSheen", 13);
-			shader->setUniform("brdfLUT", 14);
-			shader->setUniform("useIBL", true);
-			shader->setUniform("shadowCascades", 15); 
-			shader->setUniform("shadowMaps", 16);
-			shader->setUniform("lightMaps", 17);
-			shader->setUniform("directionMaps", 18);
-			shader->setUniform("iesProfile", 19);
-			shader->setUniform("morphTargets", 20);
-			shader->setUniform("accumFogTex", 21);
-			shader->setUniform("inScatteringTex", 22);
-			shader->setUniform("fogMaterialTex", 23);
+			if (fs::is_regular_file(file))
+			{
+				std::string fileName = file.path().filename().string();
+				if (extension.empty())
+				{
+					fileNames.push_back(fileName);
+				}
+				else
+				{
+					std::string ext = file.path().extension().string();
+					if (ext == extension)
+					{
+						fileNames.push_back(fileName);
+					}
+				}
+			}
+		}
+		return fileNames;
+	}
+
+	void loadBinary(std::string fileName, std::string& buffer)
+	{
+		std::ifstream file(fileName, std::ios::binary);
+		if (file.is_open())
+		{
+			file.seekg(0, std::ios::end);
+			unsigned int size = (unsigned int)file.tellg();
+			file.seekg(0, std::ios::beg);
+
+			buffer.resize(size);
+
+			file.read(&buffer[0], size);
+			file.close();
+		}
+		else
+		{
+			std::cout << "could not open file " << fileName << std::endl;
+		}
+	}
+
+	std::string loadTxtFile(const std::string& fileName)
+	{
+		std::ifstream file(fileName, std::ios::binary);
+		std::stringstream ss;
+
+		if (file.is_open())
+		{
+			ss << file.rdbuf();
+		}
+		else
+		{
+			std::cout << "could not open file " << fileName << std::endl;
+		}
+		return ss.str();
+	}
+
+	std::string loadExpanded(const std::string& fileName)
+	{
+		std::string code = loadTxtFile(fileName);
+		std::stringstream is(code);
+		std::string line;
+		std::string expandedCode = "";
+		std::getline(is, line);
+
+		while (std::getline(is, line))
+		{
+			if (!line.empty() && line.at(0) == '#')
+			{
+				size_t index = line.find_first_of(" ");
+				std::string directive = line.substr(0, index);
+				if (directive.compare("#include") == 0)
+				{
+					size_t start = line.find_first_of("\"") + 1;
+					size_t end = line.find_last_of("\"");
+					size_t index = fileName.find_last_of("/");
+					std::string subFile = line.substr(start, end - start);
+					std::string includeFile = fileName.substr(0, index) + "/" + subFile;
+					std::string includeCode = loadTxtFile(includeFile);
+					expandedCode += includeCode;
+				}
+				else
+				{
+					expandedCode += line + "\n";
+				}
+			}
+			else
+			{
+				expandedCode += line + "\n";
+			}
+		}
+
+		expandedCode += '\0';
+
+		return expandedCode;
+	}
+
+	void Renderer::init(Window::Ptr window, GPU::Swapchain::Ptr swapchain)
+	{
+  		auto& context = GraphicsContext::getInstance();
+
+		descriptorPool = context.createDescriptorPool();
+
+		// TODO: resize framebuffers when window size changes
+		width = window->getWidth();
+		height = window->getHeight();
+		
+		initFramebuffers();
+		initDescriptorLayouts();
+		initPipelines();
+
+		if (swapchain)
+			postProcessor.init(width, height, descriptorPool, swapchain->getFramebuffer(0));
+		else
+			postProcessor.init(width, height, descriptorPool, finalFramebuffer);
+
+		for (int i = 0; i < 2; i++)
+			commandBuffers.push_back(context.allocateCommandBuffer());
+	}
+
+	void Renderer::initFramebuffers()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		{
+			screenTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
+			screenTex->setAddressMode(GPU::AddressMode::ClampToEdge);
+			screenTex->createData();
+			screenTex->uploadData();
+
+			uint32 levels = static_cast<uint32>(std::floor(std::log2(std::max(width, height)))) + 1;
+			grabTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, levels, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled | GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst);
+			grabTex->setAddressMode(GPU::AddressMode::ClampToEdge);
+			grabTex->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+			grabTex->createData();
+			grabTex->uploadData();
+
+			brightTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
+			brightTex->setAddressMode(GPU::AddressMode::ClampToEdge);
+			brightTex->createData();
+			brightTex->uploadData();
+
+			depthTex = pr::Texture2D::create(width, height, GPU::Format::D24_S8, 1, GPU::ImageUsage::DepthStencilAttachment);
+			depthTex->createData();
+
+			finalTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
+			finalTex->createData();
+
+			auto cmdBuf = ctx.allocateCommandBuffer();
+			cmdBuf->begin();
+			screenTex->setLayoutShader(cmdBuf);
+			grabTex->setLayoutShader(cmdBuf);
+			brightTex->setLayoutShader(cmdBuf);
+			finalTex->setLayoutShader(cmdBuf);
+			cmdBuf->end();
+			cmdBuf->flush();
+
+			grabView = grabTex->getImage()->createImageView(GPU::ViewType::View2D, GPU::SubResourceRange(0, 0, 1, 1));
 			
-			mat->setUniforms(shader);
+			offscreenFramebuffer = ctx.createFramebuffer(width, height, 1, true, true);
+			offscreenFramebuffer->addAttachment(screenTex->getImageView());
+			offscreenFramebuffer->addAttachment(grabView);
+			offscreenFramebuffer->addAttachment(brightTex->getImageView());
+			offscreenFramebuffer->addAttachment(depthTex->getImageView());
+			offscreenFramebuffer->createFramebuffer();
 		}
-	}
-
-	defaultShader = shaders["Default"];
-
-	shaders["Depth"]->setUniform("morphTargets", 20);
-	shaders["DepthCubemap"]->setUniform("morphTargets", 20);
-
-	skyboxShader = shaders["Skybox"];
-	skyboxShader->setUniform("envMap", 0);
-
-	unlitShader = shaders["Unlit"];
-	unlitShader->setUniform("orthoProjection", true);
-	unlitShader->setUniform("morphTargets", 20);
-	unlitShader->setUniform("useGammaEncoding", true);
-	unlitShader->setUniform("useTex", true);
-	unlitShader->setUniform("tex", 0);
-
-	outlineShader = shaders["Outline"];
-	outlineShader->setUniform("inputTexture", 0);
-
-	postProcessShader = shaders["PostProcess"];
-	postProcessShader->setUniform("linearRGBTex", 0);
-	postProcessShader->setUniform("linearBloomTex", 1);
-	postProcessShader->setUniform("useCameraExposure", false);
-	postProcessShader->setUniform("manualExposure", 0.0f);
-
-	auto volumeScatter = shaders["VolumeScatter"];
-	volumeScatter->setUniform("irradianceMaps", 11);
-	volumeScatter->setUniform("shadowCascades", 15);
-	volumeScatter->setUniform("shadowMaps", 16);
-	volumeScatter->setUniform("fogMaterialTex", 0);
-
-	auto volumeAccum = shaders["VolumeAccum"];
-	volumeScatter->setUniform("inScatteringTex", 0);
-}
-
-void Renderer::initLights(Scene::Ptr scene, FPSCamera& camera)
-{
-	std::vector<LightUniformData> lightData;
-	float maxIntensity = 0.0;
-	for (auto [name, entity] : scene->getRootEntities())
-	{
-		auto lightEntities = entity->getChildrenWithComponent<Light>();
-		for (auto lightEntity : lightEntities)
 		{
-			auto t = lightEntity->getComponent<Transform>();
-			auto l = lightEntity->getComponent<Light>();
-
-			LightUniformData data;
-			l->writeUniformData(data, t);
-			lightData.push_back(data);
-
-			l->updateLightViewProjection(camera, t);
+			offscreenFramebuffer2 = ctx.createFramebuffer(width, height, 1, true, false);
+			offscreenFramebuffer2->addAttachment(screenTex->getImageView());
+			offscreenFramebuffer2->addAttachment(depthTex->getImageView());
+			offscreenFramebuffer2->createFramebuffer();
 		}
-	}
 
-	lightUBO.upload(lightData, GL_DYNAMIC_DRAW);
-
-	for (auto [name, entity] : scene->getRootEntities())
-	{
-		auto lightsEntity = entity->getChildrenWithComponent<Light>();
-		for (auto lightEntity : lightsEntity)
 		{
-			auto l = lightEntity->getComponent<Light>();
-			if (l->getType() == LightType::DIRECTIONAL)
-			{
-				float zFar = camera.getZFar();
-				std::vector<float> csmLevels =
-				{
-					zFar / 10.0f,
-					zFar / 5.0f,
-					zFar / 2.0f,
-				};
+			finalFramebuffer = ctx.createFramebuffer(width, height, 1, true, true);
+			finalFramebuffer->addAttachment(finalTex->getImageView());
+			finalFramebuffer->createFramebuffer();
+		}
 
-				for (auto& [_, s] : shaders)
-				{
-					s->setUniform("lightSpaceMatrices[0]", l->getViewProjections());
-					s->setUniform("cascadePlaneDistance[0]", csmLevels);
-					s->setUniform("cascadeCount", (int)csmLevels.size());
-				}
-			}
+		outline.initFramebuffers(width, height, screenTex, depthTex);
+		scatter.initFramebuffers(width, height);
+	}
+
+	void Renderer::initDescriptorLayouts()
+	{
+		{ // camera descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Vertex | GPU::ShaderStage::Fragment | GPU::ShaderStage::Compute));
+			descriptorPool->addDescriptorSetLayout("Camera", bindings);
+		}
+
+		{ // model descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Vertex | GPU::ShaderStage::Fragment));
+			descriptorPool->addDescriptorSetLayout("Model", bindings);
+		}
+
+		{ // animation descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Vertex));
+			descriptorPool->addDescriptorSetLayout("Animation", bindings);
+		}
+
+		{ // morph descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Vertex));
+			descriptorPool->addDescriptorSetLayout("Morph", bindings);
+		}
+
+		{ // material descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Vertex | GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(1, GPU::DescriptorType::CombinedImageSampler, 12, GPU::ShaderStage::Fragment));
+			bindings[1].variableCount = true;
+			descriptorPool->addDescriptorSetLayout("Material", bindings);
+		}
+
+		{ // material descriptor set (shadows)
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Vertex | GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(1, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			bindings[1].variableCount = true;
+			descriptorPool->addDescriptorSetLayout("MaterialShadow", bindings);
+		}
+
+		{ // skybox descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Vertex));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(1, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			descriptorPool->addDescriptorSetLayout("Skybox", bindings);
+		}
+
+		{ // IBL descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(1, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(3, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(4, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(5, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			descriptorPool->addDescriptorSetLayout("IBL", bindings);
+		}
+
+		{ // light descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment | GPU::ShaderStage::Compute));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(1, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment | GPU::ShaderStage::Compute));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment | GPU::ShaderStage::Compute));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(3, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment | GPU::ShaderStage::Compute));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(4, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment | GPU::ShaderStage::Compute));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(5, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment | GPU::ShaderStage::Compute));
+			descriptorPool->addDescriptorSetLayout("Light", bindings);
+		}
+
+		{ // volume descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(1, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			descriptorPool->addDescriptorSetLayout("Volume", bindings);
+		}
+
+		{ // final descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			descriptorPool->addDescriptorSetLayout("Final", bindings);
+		}
+
+		{ // outline descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			descriptorPool->addDescriptorSetLayout("Outline", bindings);
+		}
+
+		{ // scatter descriptor set
+			std::vector<GPU::DescriptorSetLayoutBinding> bindings;
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(0, GPU::DescriptorType::UniformBuffer, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(1, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			bindings.push_back(GPU::DescriptorSetLayoutBinding(2, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment));
+			descriptorPool->addDescriptorSetLayout("Scatter", bindings);
 		}
 	}
-}
 
-void Renderer::initShadows(Scene::Ptr scene)
-{
-	int numPointLights = 0;
-	for (auto [name, entity] : scene->getRootEntities())
+	void Renderer::initDescriptorSets()
 	{
-		auto lightsEntity = entity->getChildrenWithComponent<Light>();
-		for (auto lightEntity : lightsEntity)
+		descriptorSetCamera = descriptorPool->createDescriptorSet("Camera", 1);
+		descriptorSetCamera->addDescriptor(cameraUBO->getDescriptor());
+		descriptorSetCamera->update();
+
+		// skybox set
+		descriptorSetSkybox = descriptorPool->createDescriptorSet("Skybox", 1);
+		descriptorSetSkybox->addDescriptor(cameraUBO->getDescriptor());
+		descriptorSetSkybox->addDescriptor(skyboxUBO->getDescriptor());
+		descriptorSetSkybox->addDescriptor(skybox->getDescriptor());
+		descriptorSetSkybox->update();
+
+		// IBL set
+		descriptorSetIBL = descriptorPool->createDescriptorSet("IBL", 1);
+		descriptorSetIBL->addDescriptor(reflectionProbeUBO->getDescriptor());
+		descriptorSetIBL->addDescriptor(irradianceMap->getDescriptor());
+		descriptorSetIBL->addDescriptor(reflectionMaps->getDescriptor());
+		descriptorSetIBL->addDescriptor(prefilteredMapCharlie->getDescriptor());
+		descriptorSetIBL->addDescriptor(brdfLUT->getDescriptor());
+		descriptorSetIBL->addDescriptor(grabTex->getDescriptor());
+		descriptorSetIBL->update();
+
+		animDescriptorSet = descriptorPool->createDescriptorSet("Animation", 1);
+		animDescriptorSet->update();
+
+		morphDescriptorSet = descriptorPool->createDescriptorSet("Morph", 1);
+		morphDescriptorSet->update();
+	}
+
+	void Renderer::initPipelines()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		std::string shaderPath = "";
+		std::vector<std::string> filenames;
+		if (ctx.getCurrentAPI() == GraphicsAPI::Direct3D11)
 		{
-			// TODO: now there is only one directional light + CSMs. Should there be more?
-			auto l = lightEntity->getComponent<Light>();
-			if (l->getType() == LightType::DIRECTIONAL)
-			{
-				const unsigned int size = 4096;
-				csmShadowMap = Texture2DArray::create(size, size, 4, GL::DEPTH24);
-				csmShadowMap->setFilter(GL::NEAREST, GL::NEAREST);
-				csmShadowMap->setWrap(GL::CLAMP_TO_BORDER, GL::CLAMP_TO_BORDER);
-				csmShadowMap->bind();
-				GLfloat color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-				glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, color);
-
-				csmShadowFBO = Framebuffer::create(size, size);
-				csmShadowFBO->addRenderTexture(GL::DEPTH, csmShadowMap);
-				csmShadowFBO->checkStatus();
-			}
-			else
-			{
-				numPointLights++;
-			}
+			shaderPath = "../../../../cache/shaders/cso";
+			filenames = getAllFileNames(shaderPath, ".cso");
 		}
-	}
-
-	if (numPointLights > 0)
-	{
-		const unsigned int size = 1024;
-		omniShadowMap = TextureCubeMapArray::create(size, size, numPointLights, GL::DEPTH24);
-		omniShadowMap->setCompareMode();
-		{
-			omniShadowFBO = Framebuffer::create(size, size);
-			omniShadowFBO->addRenderTexture(GL::DEPTH, omniShadowMap);
-			omniShadowFBO->checkStatus();
-		}
-	}
-}
-
-void Renderer::initLightProbes(Scene::Ptr scene)
-{
-	glDisable(GL_CULL_FACE);
-
-	auto pano2cm = shaders["PanoToCubeMap"];
-	auto iblFilterShader = shaders["IBLFilter"];
-
-	auto& skyboxInfo = scene->getSkybox(); // TODO: check what format skybox is in (cross, pano, cubemap etc.)
-	if (skyboxInfo.texture)
-		skybox = IBL::convertEqui2CM(pano2cm, skyboxInfo.texture, 1024, skyboxInfo.rotation, skyboxInfo.exposure);
-	else
-		skybox = IBL::createCubemapFromColor(skyboxInfo.color * skyboxInfo.exposure, 1024, skyboxInfo.rotation); // TODO: just use the color in the shader, no need for a cubemap...
-
-	std::vector<ReflectionProbe> reflProbes;
-	std::vector<LightProbe::Ptr> lightProbes;
-	lightProbes.push_back(LightProbe::create(skybox, Box()));
-
-	ReflectionProbe globalProbe;
-	globalProbe.index = 0;
-	reflProbes.push_back(globalProbe);
-
-	std::vector<Entity::Ptr> reflectionEntities;
-	for (auto [name, entity] : scene->getRootEntities())
-	{
-		auto probes = entity->getChildrenWithComponent<LightProbe>();
-		for (int i = 0; i < probes.size(); i++)
-		{
-			auto p = probes[i];
-
-			auto t = p->getComponent<Transform>();
-			auto l = p->getComponent<LightProbe>();
-			auto bbox = l->getboundingBox();
-			auto pos = t->getPosition();
-
-			ReflectionProbe probe;
-			probe.index = i + 1; // index 0 is the skybox/global probe
-			probe.position = glm::vec4(pos, 1.0f);
-			probe.boxMin = glm::vec4(pos + bbox.getMinPoint(), 1.0f);
-			probe.boxMax = pos + bbox.getMaxPoint();
-			reflProbes.push_back(probe);
-			reflectionProbes.insert(std::make_pair(p->getName(), probe));
-
-			reflectionEntities.push_back(p);
-		}
-	}
-
-	for (auto e : reflectionEntities)
-		lightProbes.push_back(e->getComponent<LightProbe>());
-
-	reflUBO.upload(reflProbes);
-
-	glDisable(GL_DEPTH_TEST);
-
-	irradianceMaps = IBL::filterLambert(iblFilterShader, lightProbes);
-	specularMapsGGX = IBL::filterSpecularGGX(iblFilterShader, lightProbes);
-	specularMapsSheen = IBL::filterSpecularSheen(iblFilterShader, lightProbes); // TODO: only create if needed (sheen material present)
-
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);
-}
-
-void Renderer::initFogVolumes(Scene::Ptr scene)
-{
-	int s = 256;
-	fogMaterialVolume = Texture3D::create(s, s, s, GL::R16F);
-	float* buffer = new float[s * s * s];
-	for (int i = 0; i < s; i++)
-	{
-		for (int j = 0; j < s; j++)
-		{
-			for (int k = 0; k < s; k++)
-			{
-				int c = 1;
-				float x = static_cast<float>(i) / 64.0f;
-				float y = static_cast<float>(j) / 64.0f;
-				float z = static_cast<float>(k) / 64.0f;
-
-				int o;
-				float frequency = 1.0f;
-				float amplitude = 1.0f;
-				float sum = 0.0f;
-
-				for (o = 0; o < 8; o++) {
-					float r = stb_perlin_noise3_internal(x * frequency, y * frequency, z * frequency, 4, 4, 4, (unsigned char)o) * amplitude;
-					sum += (float)fabs(r);
-					frequency *= 2.0f;
-					amplitude *= 0.5f;
-				}
-				buffer[k * s * s * c + j * s * c + i * c + 0] = sum;
-			}
-		}
-	}
-	fogMaterialVolume->upload(buffer);
-	delete[] buffer;
-
-	inScatteringVolume = Texture3D::create(160, 90, 64, GL::RGBA16F);
-	inScatteringVolume->setFilter(GL::LINEAR, GL::LINEAR);
-	inScatteringVolume->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-
-	acumFogVolume = Texture3D::create(160, 90, 64, GL::RGBA16F);
-	acumFogVolume->setFilter(GL::LINEAR, GL::LINEAR);
-	acumFogVolume->setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-}
-
-void Renderer::prepare(Scene::Ptr scene)
-{
-	scene->updateAnimations(0.0f);
-
-	for (auto [_, root] : scene->getRootEntities())
-	{
-		for (auto entity : root->getChildrenWithComponent<Lod>())
-		{
-			auto t = entity->getComponent<Transform>();
-			auto lod = entity->getComponent<Lod>();
-			glm::vec3 scale = t->getScale();
-			float maxScale = glm::max(glm::max(scale.x, scale.y), scale.z);
-			lod->computeDistances(camera.getFov(), maxScale);
-		}
-	}
-
-	initLightProbes(scene);
-
-	IBL::computeSHLightprobes(scene, reflectionProbes);
-	IBL::computeProbeMapping(scene, reflectionProbes);
-
-	//auto renderQueue = scene->batchOpaqueInstances();
-	//renderer.setRenderQueue(renderQueue);
-	initLights(scene, camera);
-	initShadows(scene);
-	//initFogVolumes(scene);
-	updateShadows(scene);
-
-	setLights(scene->getNumLights());
-
-	//scene->useLightMaps();
-
-	lightMaps = scene->getLightMaps();
-	directionMaps = scene->getDirectionMaps();
-	iesProfiles = scene->getIESProfiles();
-}
-
-void Renderer::resize(unsigned int width, unsigned int height)
-{
-	this->width = width;
-	this->height = height;
-
-	initFBOs();
-}
-
-void Renderer::updateCamera(FPSCamera& camera)
-{
-	CameraUniformData cameraData;
-	camera.writeUniformData(cameraData);
-	cameraUBO.upload(&cameraData, 1);
-
-	float scale = 1.0 / log2(camera.getZFar() / camera.getZNear());
-	float bias = -(log2(camera.getZNear()) * scale);
-
-	for (auto [_, shader] : shaders)
-	{
-		shader->setUniform("scale", scale);
-		shader->setUniform("bias", bias);
-	}
-
-	this->camera = camera;
-}
-
-void Renderer::updateCamera(FPSCamera& camera, float dt)
-{
-	CameraUniformData cameraData;
-	camera.writeUniformData(cameraData);
-	cameraUBO.upload(&cameraData, 1);
-
-	this->camera = camera;
-}
-
-void Renderer::updateCamera(glm::mat4 P, glm::mat4 V, glm::vec3 pos)
-{
-	CameraUniformData cameraData;
-	cameraData.VP = P * V;
-	cameraData.V = V;
-	cameraData.P = P;
-	cameraData.position = glm::vec4(pos, 0.0f);
-	cameraUBO.upload(&cameraData, 1);
-}
-
-void Renderer::updatePostProcess(PostProcessParameters& params)
-{
-	params.setUniforms(postProcessShader);
-	float maxLuminance = params.bloomThreshold;
-	for (auto [_, shader] : shaders)
-		shader->setUniform("maxLuminance", maxLuminance);
-	shaders["Skybox"]->setUniform("maxLuminance", maxLuminance);
-}
-
-void Renderer::updateShadows(Scene::Ptr scene)
-{
-	auto depthShader = shaders["Depth"];
-	auto depthCMShader = shaders["DepthCubemap"];
-	auto depthCSMShader = shaders["DepthCSM"];
-
-	int numLights = 0;
-	std::vector<int> pointLightIdx;
-	std::vector<Light::Ptr> pointLights;
-	for (auto [_, root] : scene->getRootEntities())
-	{
-		for (auto lightEntity : root->getChildrenWithComponent<Light>())
-		{
-			auto l = lightEntity->getComponent<Light>();
-			if (l->getType() == LightType::DIRECTIONAL)
-			{
-				csmShadowFBO->begin();
-				glCullFace(GL_FRONT);
-				depthCSMShader->use();
-				depthCSMShader->setUniform("VP[0]", l->getViewProjections());
-				renderScene(scene, depthCSMShader, false);
-				csmShadowFBO->end();
-				glCullFace(GL_BACK);
-			}
-			else
-			{
-				pointLights.push_back(l);
-				pointLightIdx.push_back(numLights);
-			}
-			numLights++;
-		}
-	}
-
-	if (!pointLights.empty())
-	{
-		omniShadowFBO->begin();
-		//glCullFace(GL_FRONT);
-		depthCMShader->use();
-		for (int i = 0; i < pointLights.size(); i++)
-		{
-			auto l = pointLights[i];
-			auto idx = pointLightIdx[i];
-			depthCMShader->setUniform("lightIndex", idx);
-			depthCMShader->setUniform("VP[0]", l->getViewProjections());
-			renderScene(scene, depthCMShader, false);
-		}
-		omniShadowFBO->end();
-		//glCullFace(GL_BACK);
-	}
-}
-
-void Renderer::updateVolumes(Scene::Ptr scene)
-{
-	// TODO: sample local pm volumes
-	// TODO: accumulate inscattering and extinction
-
-
-	//GLuint timerQuery;
-	//glGenQueries(1, &timerQuery);
-	//glBeginQuery(GL_TIME_ELAPSED, timerQuery);
-
-	inScatteringVolume->bind();
-	glBindImageTexture(0, inScatteringVolume->getID(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA16F);
-
-	auto vScatterShader = getShader("VolumeScatter");
-	vScatterShader->use();
-	fogMaterialVolume->use(0);
-	glDispatchCompute(160, 90, 64);
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-	acumFogVolume->bind();
-	glBindImageTexture(0, acumFogVolume->getID(), 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA16F);
-
-	auto vAccumShader = getShader("VolumeAccum");
-	vAccumShader->use();
-	inScatteringVolume->use(0);
-	glDispatchCompute(160, 90, 1);
-	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
-	//glEndQuery(GL_TIME_ELAPSED);
-	//auto end = high_resolution_clock::now();
-	//auto t = duration_cast<milliseconds>(end - start).count();
-	//std::cout << "inscattering time: " << t << " ms" << std::endl;
-
-	//int done = 0;
-	//while (!done)
-	//	glGetQueryObjectiv(timerQuery, GL_QUERY_RESULT_AVAILABLE, &done);
-
-	//GLuint64 elapsedTime;
-	//glGetQueryObjectui64v(timerQuery, GL_QUERY_RESULT, &elapsedTime);
-
-	//double inScatter = (float)elapsedTime / 1000000.0;
-	//inScatteringTime += inScatter;
-	//numFramesScattering++;
-
-	//std::cout << "inscattering time: " << (float)elapsedTime / 1000000.0 << " ms" << std::endl;
-}
-
-void Renderer::setBloom(bool useBloom)
-{
-	this->useBloom = useBloom;
-}
-
-void Renderer::setIBL(bool useIBL)
-{
-	for (auto [_, shader] : shaders)
-		shader->setUniform("useIBL", useIBL);
-}
-
-void Renderer::setLights(int numLights)
-{
-	for (auto& [_, s] : shaders)
-		s->setUniform("numLights", numLights);
-}
-
-void Renderer::setDebugChannel(int channel)
-{
-	for (auto& [_, s] : shaders)
-		s->setUniform("debugChannel", channel);
-}
-
-void Renderer::setTonemappingOp(int index)
-{
-	for (auto& [_, s] : shaders)
-		s->setUniform("toneMappingMode", index);
-}
-
-void Renderer::setRenderQueue(std::map<std::string, std::vector<Renderable::Ptr>> renderQueue)
-{
-	this->renderQueue = renderQueue;
-}
-
-void Renderer::updateTime(float dt)
-{
-	for (auto& [_, s] : shaders)
-	{
-		s->setUniform("deltaTime", dt);
-		s->setUniform("material.time", dt);
-		s->setUniform("vertexWind.time", dt);
-	}
-}
-
-void Renderer::clear()
-{
-	//views.clear();
-	//shadowFBOs.clear();
-}
-
-void Renderer::renderBatchedScene(Scene::Ptr scene, Shader::Ptr defaultShader)
-{
-	for (auto&& [shaderName, renderList] : renderQueue)
-	{
-		Shader::Ptr shader = nullptr;
-		if (defaultShader != nullptr)
-			shader = defaultShader;
 		else
-			shader = shaders[shaderName];
-		shader->use();
-
-		for (auto r : renderList)
 		{
-			shader->setUniform("numMorphTargets", 0);
-			r->render(shader, defaultShader != nullptr);
+			shaderPath = "../../../../src/Shaders/GLSL/Generated";
+			filenames = getAllFileNames(shaderPath, ".vert");
 		}
-	}
-}
 
-void Renderer::renderScene(Scene::Ptr scene, Shader::Ptr defShader, bool transmission)
-{
-	//if(!renderQueue.empty())
-	//{
-	//	if(!transmission)
-	//		renderBatchedScene(scene, defShader);
-	//	return;
-	//}
-
-	for (auto [_, root] : scene->getRootEntities())
-	{
-		for (auto entity : root->getChildrenWithComponent<Lod>())
+		for (auto fn : filenames)
 		{
-			auto t = entity->getComponent<Transform>();
-			auto lod = entity->getComponent<Lod>();
-			lod->selectLod(camera.getPosition(), t->getTransform());
-		}
-	}
-
-	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> renderQueue;
-	if (transmission)
-		renderQueue = scene->getTransparentEntities();
-	else
-		renderQueue = scene->getOpaqueEntities();
-		//renderQueue = scene->getOpaqueEntitiesCullFrustrum(camera);
-	
-	for (auto it = renderQueue.begin(); it != renderQueue.end(); ++it)
-	{
-		auto name = it->first;
-		auto models = it->second;
-
-		Shader::Ptr shader;
-		if (defShader)
-			shader = defShader;
-		else
-			shader = shaders[name];
-
-		shader->use();
-		for (auto m : models)
-		{
-			if (!m->isActive())
+			int index = static_cast<int>(fn.find_first_of('.'));
+			std::string shaderName = fn.substr(0, index);
+			if (shaderName.substr(0, 6).compare("Volume") == 0)
 				continue;
 
-			auto r = m->getComponent<Renderable>();
-			auto t = m->getComponent<Transform>();
-			Entity::Ptr p = m;
-			while (p->getParent() != nullptr)
-				p = p->getParent();
+			GPU::VertexDescription vertexInputDescription;
+			vertexInputDescription.binding = 0;
+			vertexInputDescription.stride = sizeof(Vertex);
+			vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(1, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, color)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(2, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, normal)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(3, 0, GPU::VertexAttribFormat::Vector2F, offsetof(Vertex, texCoord0)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(4, 0, GPU::VertexAttribFormat::Vector2F, offsetof(Vertex, texCoord1)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(5, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, tangent)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(6, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, joints)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(7, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, weights)));
 
-			auto animator = p->getComponent<Animator>();
+			vertexInputDescription.inputAttributes[0].name = "POSITION";
+			vertexInputDescription.inputAttributes[1].name = "COLOR";
+			vertexInputDescription.inputAttributes[2].name = "NORMAL";
+			vertexInputDescription.inputAttributes[3].name = "TEXCOORD";
+			vertexInputDescription.inputAttributes[4].name = "TEXCOORD";
+			vertexInputDescription.inputAttributes[4].index = 1;
+			vertexInputDescription.inputAttributes[5].name = "TANGENT";
+			vertexInputDescription.inputAttributes[6].name = "BLENDINDICES";
+			vertexInputDescription.inputAttributes[7].name = "BLENDWEIGHT";
 
-			if (r->useMorphTargets())
+			std::vector<std::string> setLayouts = { "Camera", "Model", "Animation", "Morph", "Material", "IBL", "Light", "Volume", "Scatter" };
+			GPU::GraphicsPipeline::Ptr pipeline;
+
+			// TODO: add alpha blending to opaque pass for now
+			if (shaderName.find("Transmission") != std::string::npos)
 			{
-				std::vector<float> weights;
-				if (animator)
-					weights = animator->getWeights();
+				pipeline = ctx.createGraphicsPipeline(offscreenFramebuffer2, shaderName, 1);
+				pipeline->setBlending(true);
+			}
+			else
+			{
+				pipeline = ctx.createGraphicsPipeline(offscreenFramebuffer, shaderName, 3);
+			}
+
+			GraphicsAPI api = ctx.getCurrentAPI();
+			switch (api)
+			{
+				case GraphicsAPI::OpenGL:
+				{
+					std::string versionStr = "#version 460 core\n";
+					std::string defineStr = "#define USE_OPENGL\n";
+					std::string prefix = versionStr + defineStr;
+					std::cout << "compiling shader " << shaderName << std::endl;
+					pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/" + shaderName + ".vert"), GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/" + shaderName + ".frag"), GPU::ShaderStage::Fragment);
+					break;
+				}
+				case GraphicsAPI::Direct3D11:
+				{
+					std::string vsCode, psCode;
+					loadBinary(shaderPath + "/" + shaderName + ".vs.cso", vsCode);
+					loadBinary(shaderPath + "/" + shaderName + ".ps.cso", psCode);
+					pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+					break;
+				}
+				case GraphicsAPI::Vulkan:
+				{
+					std::cout << "compiling shader " << shaderName << std::endl;
+					pipeline->addShaderStage(loadTxtFile(shaderPath + "/" + shaderName + ".vert.spv"), GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(loadTxtFile(shaderPath + "/" + shaderName + ".frag.spv"), GPU::ShaderStage::Fragment);
+					break;
+				}
+			}
+
+			pipeline->setVertexInputDescripton(vertexInputDescription);
+			pipeline->setLayout(descriptorPool, setLayouts);
+			pipeline->createProgram();
+
+			pipelines.insert(std::make_pair(shaderName, pipeline));
+		}
+
+		{
+			std::string shaderName = "UnityDefaultTransparency";
+			GPU::VertexDescription vertexInputDescription;
+			vertexInputDescription.binding = 0;
+			vertexInputDescription.stride = sizeof(Vertex);
+			vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(1, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, color)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(2, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, normal)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(3, 0, GPU::VertexAttribFormat::Vector2F, offsetof(Vertex, texCoord0)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(4, 0, GPU::VertexAttribFormat::Vector2F, offsetof(Vertex, texCoord1)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(5, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, tangent)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(6, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, joints)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(7, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, weights)));
+
+			vertexInputDescription.inputAttributes[0].name = "POSITION";
+			vertexInputDescription.inputAttributes[1].name = "COLOR";
+			vertexInputDescription.inputAttributes[2].name = "NORMAL";
+			vertexInputDescription.inputAttributes[3].name = "TEXCOORD";
+			vertexInputDescription.inputAttributes[4].name = "TEXCOORD";
+			vertexInputDescription.inputAttributes[4].index = 1;
+			vertexInputDescription.inputAttributes[5].name = "TANGENT";
+			vertexInputDescription.inputAttributes[6].name = "BLENDINDICES";
+			vertexInputDescription.inputAttributes[7].name = "BLENDWEIGHT";
+
+			std::vector<std::string> setLayouts = { "Camera", "Model", "Animation", "Morph", "Material", "IBL", "Light", "Volume", "Scatter" };
+			GPU::GraphicsPipeline::Ptr pipeline = ctx.createGraphicsPipeline(offscreenFramebuffer2, shaderName, 1);
+			pipeline->setBlending(true);
+
+			GraphicsAPI api = ctx.getCurrentAPI();
+			switch (api)
+			{
+				case GraphicsAPI::OpenGL:
+				{
+					std::string versionStr = "#version 460 core\n";
+					std::string defineStr = "#define USE_OPENGL\n";
+					std::string prefix = versionStr + defineStr;
+					std::cout << "compiling shader " << shaderName << std::endl;
+					pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/UnityDefault.vert"), GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/UnityDefault.frag"), GPU::ShaderStage::Fragment);
+					break;
+				}
+				case GraphicsAPI::Direct3D11:
+				{
+					std::string shaderPath = "../../../../cache/shaders/cso";
+					std::string vsCode, psCode;
+					loadBinary(shaderPath + "/UnityDefault.vs.cso", vsCode);
+					loadBinary(shaderPath + "/UnityDefault.ps.cso", psCode);
+					pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+					break;
+				}
+				case GraphicsAPI::Vulkan:
+				{
+					std::cout << "compiling shader " << shaderName << std::endl;
+					pipeline->addShaderStage(loadTxtFile(shaderPath + "/UnityDefault.vert.spv"), GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(loadTxtFile(shaderPath + "/UnityDefault.frag.spv"), GPU::ShaderStage::Fragment);
+					break;
+				}
+			}
+
+			pipeline->setVertexInputDescripton(vertexInputDescription);
+			pipeline->setLayout(descriptorPool, setLayouts);
+			pipeline->createProgram();
+
+			pipelines.insert(std::make_pair(shaderName, pipeline));
+		}
+
+		{
+			std::string shaderName = "UnitySpecGlossTransparency";
+			GPU::VertexDescription vertexInputDescription;
+			vertexInputDescription.binding = 0;
+			vertexInputDescription.stride = sizeof(Vertex);
+			vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(1, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, color)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(2, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, normal)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(3, 0, GPU::VertexAttribFormat::Vector2F, offsetof(Vertex, texCoord0)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(4, 0, GPU::VertexAttribFormat::Vector2F, offsetof(Vertex, texCoord1)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(5, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, tangent)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(6, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, joints)));
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(7, 0, GPU::VertexAttribFormat::Vector4F, offsetof(Vertex, weights)));
+
+			vertexInputDescription.inputAttributes[0].name = "POSITION";
+			vertexInputDescription.inputAttributes[1].name = "COLOR";
+			vertexInputDescription.inputAttributes[2].name = "NORMAL";
+			vertexInputDescription.inputAttributes[3].name = "TEXCOORD";
+			vertexInputDescription.inputAttributes[4].name = "TEXCOORD";
+			vertexInputDescription.inputAttributes[4].index = 1;
+			vertexInputDescription.inputAttributes[5].name = "TANGENT";
+			vertexInputDescription.inputAttributes[6].name = "BLENDINDICES";
+			vertexInputDescription.inputAttributes[7].name = "BLENDWEIGHT";
+
+			std::vector<std::string> setLayouts = { "Camera", "Model", "Animation", "Morph", "Material", "IBL", "Light", "Volume", "Scatter" };
+			GPU::GraphicsPipeline::Ptr pipeline = ctx.createGraphicsPipeline(offscreenFramebuffer2, shaderName, 1);
+			pipeline->setBlending(true);
+
+			GraphicsAPI api = ctx.getCurrentAPI();
+			switch (api)
+			{
+				case GraphicsAPI::OpenGL:
+				{
+					std::string versionStr = "#version 460 core\n";
+					std::string defineStr = "#define USE_OPENGL\n";
+					std::string prefix = versionStr + defineStr;
+					std::cout << "compiling shader " << shaderName << std::endl;
+					pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/UnitySpecGloss.vert"), GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/UnitySpecGloss.frag"), GPU::ShaderStage::Fragment);
+					break;
+				}
+				case GraphicsAPI::Direct3D11:
+				{
+					std::string shaderPath = "../../../../cache/shaders/cso";
+					std::string vsCode, psCode;
+					loadBinary(shaderPath + "/UnitySpecGloss.vs.cso", vsCode);
+					loadBinary(shaderPath + "/UnitySpecGloss.ps.cso", psCode);
+					pipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+					break;
+				}
+				case GraphicsAPI::Vulkan:
+				{
+					std::cout << "compiling shader " << shaderName << std::endl;
+					pipeline->addShaderStage(loadTxtFile(shaderPath + "/UnitySpecGloss.vert.spv"), GPU::ShaderStage::Vertex);
+					pipeline->addShaderStage(loadTxtFile(shaderPath + "/UnitySpecGloss.frag.spv"), GPU::ShaderStage::Fragment);
+					break;
+				}
+			}
+
+			pipeline->setVertexInputDescripton(vertexInputDescription);
+			pipeline->setLayout(descriptorPool, setLayouts);
+			pipeline->createProgram();
+
+			pipelines.insert(std::make_pair(shaderName, pipeline));
+		}	
+
+		{
+			std::string shaderName = "Skybox";
+
+			GPU::VertexDescription vertexInputDescription;
+			vertexInputDescription.binding = 0;
+			vertexInputDescription.stride = sizeof(Vertex);
+			vertexInputDescription.inputRate = GPU::VertexInputeRate::Vertex;
+			vertexInputDescription.inputAttributes.push_back(GPU::VertexInputAttribute(0, 0, GPU::VertexAttribFormat::Vector3F, offsetof(Vertex, position)));
+			vertexInputDescription.inputAttributes[0].name = "POSITION";
+
+			std::vector<std::string> setLayouts = { "Skybox" };
+			skyboxPipeline = ctx.createGraphicsPipeline(offscreenFramebuffer, "Skybox", 3);
+			skyboxPipeline->setCullMode(1);
+
+			GraphicsAPI api = ctx.getCurrentAPI();
+			switch (api)
+			{
+				case GraphicsAPI::OpenGL:
+				{
+					std::string shaderPath = "../../../../src/Shaders/GLSL";
+					std::string versionStr = "#version 460 core\n";
+					std::string defineStr = "#define USE_OPENGL\n";
+					std::string prefix = versionStr + defineStr;
+					skyboxPipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/Skybox.vert"), GPU::ShaderStage::Vertex);
+					skyboxPipeline->addShaderStage(prefix + loadExpanded(shaderPath + "/Skybox.frag"), GPU::ShaderStage::Fragment);
+					break;
+				}
+				case GraphicsAPI::Direct3D11:
+				{
+					std::string shaderPath = "../../../../cache/shaders/cso";
+					std::string vsCode, psCode;
+					loadBinary(shaderPath + "/Skybox.vs.cso", vsCode);
+					loadBinary(shaderPath + "/Skybox.ps.cso", psCode);
+					skyboxPipeline->addShaderStage(vsCode, GPU::ShaderStage::Vertex);
+					skyboxPipeline->addShaderStage(psCode, GPU::ShaderStage::Fragment);
+					break;
+				}
+				case GraphicsAPI::Vulkan:
+				{
+					std::string shaderPath = "../../../../src/Shaders/GLSL";
+					skyboxPipeline->addShaderStage(loadTxtFile(shaderPath + "/Skybox.vert.spv"), GPU::ShaderStage::Vertex);
+					skyboxPipeline->addShaderStage(loadTxtFile(shaderPath + "/Skybox.frag.spv"), GPU::ShaderStage::Fragment);
+					break;
+				}
+			}
+
+			skyboxPipeline->setVertexInputDescripton(vertexInputDescription);
+			skyboxPipeline->setLayout(descriptorPool, setLayouts);
+			skyboxPipeline->createProgram();
+		}
+
+		outline.initPipelines(descriptorPool);
+		scatter.initPipelines(descriptorPool);
+
+	}
+
+	void Renderer::initScene(UserCamera& userCamera, Scene::Ptr scene)
+	{
+		std::vector<LightUniformData> lightData;
+		for (auto root : scene->getRootNodes())
+		{
+			for (auto e : root->getChildrenWithComponent<pr::Light>())
+			{
+				auto t = e->getComponent<pr::Transform>();
+				auto l = e->getComponent<pr::Light>();
+
+				LightUniformData data;
+				l->writeUniformData(data, t);
+				lightData.push_back(data);
+
+				l->updateLightViewProjection(userCamera, t);
+			}
+		}
+
+		Lights lights;
+		for (int i = 0; i < lightData.size(); i++)
+			lights.lightData[i] = lightData[i];
+		lights.numLights = (int)lightData.size();
+		lightUBO->uploadMapped(&lights);
+
+		scene->initDescriptors(descriptorPool);
+
+		//shadows.initDescriptorSets(descriptorPool);
+		//shadows.prepare(userCamera, scene);
+		//shadows.updateShadowsCSM(0, scene);
+		//shadows.updateShadowsOMNI(scene);
+
+		//// light set
+		////for (int i = 0; i < 3; i++)
+		//{
+		//	descriptorSetLight = descriptorPool->createDescriptorSet("Light", 1);
+		//	descriptorSetLight->addDescriptor(lightUBO->getDescriptor());
+		//	shadows.addDesc(descriptorSetLight);
+		//	scene->addLightDesc(descriptorSetLight);
+		//	descriptorSetLight->update();
+		//}
+	}
+
+	void Renderer::resize(uint32 width, uint32 height)
+	{
+
+	}
+
+	void Renderer::prepare(UserCamera& userCamera, pr::Scene::Ptr scene)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		std::vector<LightUniformData> lightData;
+		for (auto root : scene->getRootNodes())
+		{
+			for (auto e : root->getChildrenWithComponent<pr::Light>())
+			{
+				auto t = e->getComponent<pr::Transform>();
+				auto l = e->getComponent<pr::Light>();
+
+				LightUniformData data;
+				l->writeUniformData(data, t);
+				lightData.push_back(data);
+
+				l->updateLightViewProjection(userCamera, t);
+			}
+		}
+
+		Lights lights;
+		for (int i = 0; i < lightData.size(); i++)
+			lights.lightData[i] = lightData[i];
+		lights.numLights = (int)lightData.size();
+		lightUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(Lights), 0);
+		lightUBO->uploadMapped(&lights);
+
+		skyboxUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(Skybox), 0);
+		skyboxData.index = 0;
+		skyboxData.lod = 0;
+		skyboxUBO->uploadMapped(&skyboxData);
+
+		cameraUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(CameraData), 0);
+		cameraUBO->uploadMapped((uint8*)&camera);
+
+		unitCube = createCube(glm::vec3(0), 1.0f);
+		unitQuad = createScreenQuad();
+
+		ReflectionProbes rp;
+		std::vector<pr::TextureCubeMap::Ptr> lightProbes;
+		scene->initLightProbes(rp, lightProbes);
+
+		skybox = scene->getSkybox();
+
+		reflectionProbeUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(ReflectionProbes), 0);
+		reflectionProbeUBO->uploadMapped(&rp);
+
+		brdfLUT = IBL::generateBRDFLUT(512);
+		irradianceMap = IBL::generateIrradianceMap(skybox, 32);
+		reflectionMaps = IBL::generatePrefilteredMaps(lightProbes, 256, 8);
+		prefilteredMapCharlie = IBL::generatePrefilteredMapCharlie(skybox, 256, 4);
+
+		initDescriptorSets();
+		postProcessor.initDescriptorSets(screenTex, brightTex);
+		scene->initDescriptors(descriptorPool);
+		scene->update(0.0f);
+		scene->computeSHLightprobes();
+		scene->computeProbeMapping();
+
+		shadows.init();
+		shadows.initDescriptorSets(descriptorPool);
+		shadows.initPipelines(descriptorPool);
+		shadows.updateLights(scene);
+		shadows.buildCmdShadowsOMNI(scene);
+		shadows.buildCmdShadowsCSM(scene);
+		shadows.updateShadowsCSM(0, scene);
+		shadows.updateShadowsOMNI(scene);
+
+		// light set
+		descriptorSetLight = descriptorPool->createDescriptorSet("Light", 1);
+		descriptorSetLight->addDescriptor(lightUBO->getDescriptor());
+		shadows.addDesc(descriptorSetLight);
+		scene->addLightDesc(descriptorSetLight);
+		descriptorSetLight->update();
+
+		volumes.initDescriptorSets(descriptorPool, descriptorSetCamera, descriptorSetLight);
+		volumes.initFogVolumes(scene);
+
+		descriptorSetVolume = descriptorPool->createDescriptorSet("Volume", 1);
+		volumes.addDesc(descriptorSetVolume);
+		descriptorSetVolume->update();
+
+		outline.init(width, height);
+		outline.initDescriptorSets(descriptorPool);
+
+		scatter.init(width, height);
+		scatter.initDescriptorSets(descriptorPool);
+	}
+
+	void Renderer::buildCmdBuffer(pr::Scene::Ptr scene, GPU::Swapchain::Ptr swapchain)
+	{
+		auto opaqueNodes = scene->getOpaqueEntities();
+		auto transparentNodes = scene->getTransparentEntities();
+
+		for (int i = 0; i < commandBuffers.size(); i++)
+		{
+			auto cmdBuf = commandBuffers[i];
+
+			cmdBuf->begin();
+			cmdBuf->setViewport(0.0f, 0.0f, (float)width, (float)height);
+			cmdBuf->setScissor(0, 0, width, height);
+			cmdBuf->beginRenderPass(offscreenFramebuffer);
+
+			// opaque forward pass
+			cmdBuf->setCullMode(2);
+			for (auto&& [shaderName, renderQueue] : opaqueNodes)
+			{
+				GPU::GraphicsPipeline::Ptr pipeline = nullptr;
+				if (pipelines.find(shaderName) != pipelines.end())
+					pipeline = pipelines[shaderName];
 				else
-					weights = r->getWeights();
-				shader->setUniform("numMorphTargets", (int)weights.size());
-				if (!weights.empty())
-					shader->setUniform("morphWeights[0]", weights);
+				{
+					std::cout << "could not find pipeline with name " << shaderName << std::endl;
+					pipeline = pipelines["Default"];
+				}
+
+				cmdBuf->bindPipeline(pipeline);
+				cmdBuf->bindDescriptorSets(pipeline, descriptorSetCamera, 0);
+				cmdBuf->bindDescriptorSets(pipeline, animDescriptorSet, 2);
+				cmdBuf->bindDescriptorSets(pipeline, morphDescriptorSet, 3);
+				cmdBuf->bindDescriptorSets(pipeline, descriptorSetIBL, 5);
+				cmdBuf->bindDescriptorSets(pipeline, descriptorSetLight, 6);
+				cmdBuf->bindDescriptorSets(pipeline, descriptorSetVolume, 7);
+				cmdBuf->bindDescriptorSets(pipeline, scatter.getDescriptorSet(), 8);
+
+				for (auto e : renderQueue)
+				{
+					if (e->isActive())
+					{
+						auto r = e->getComponent<Renderable>();
+						r->render(cmdBuf, pipeline);
+					}
+				}
 			}
-			else
+
+			// skybox
+			cmdBuf->setCullMode(1);
+			cmdBuf->bindPipeline(skyboxPipeline);
+			cmdBuf->bindDescriptorSets(skyboxPipeline, descriptorSetSkybox, 0);
+			unitCube->draw(cmdBuf);
+
+			cmdBuf->endRenderPass();
+
+			// transparent forward pass
+			if (!transparentNodes.empty())
 			{
-				shader->setUniform("numMorphTargets", 0);
+				if (GraphicsContext::getInstance().getCurrentAPI() == GraphicsAPI::Direct3D11)
+					grabTex->generateMipmaps();
+				else
+					grabTex->getImage()->generateMipmaps(cmdBuf);
+
+				cmdBuf->setViewport(0.0f, 0.0f, (float)width, (float)height);
+				cmdBuf->setScissor(0, 0, width, height);
+				cmdBuf->beginRenderPass(offscreenFramebuffer2);
+				cmdBuf->setCullMode(2);
+
+				for (auto it = transparentNodes.begin(); it != transparentNodes.end(); ++it)
+				{
+					auto shaderName = it->first;
+					auto renderQueue = it->second;
+					GPU::GraphicsPipeline::Ptr pipeline = nullptr;
+					if (pipelines.find(shaderName) != pipelines.end())
+						pipeline = pipelines[shaderName];
+					else
+					{
+						std::cout << "could not find pipeline with name " << shaderName << std::endl;
+						pipeline = pipelines["Default"];
+					}						
+
+					cmdBuf->bindPipeline(pipeline);
+					cmdBuf->bindDescriptorSets(pipeline, descriptorSetCamera, 0);
+					cmdBuf->bindDescriptorSets(pipeline, animDescriptorSet, 2);
+					cmdBuf->bindDescriptorSets(pipeline, morphDescriptorSet, 3);
+					cmdBuf->bindDescriptorSets(pipeline, descriptorSetIBL, 5);
+					cmdBuf->bindDescriptorSets(pipeline, descriptorSetLight, 6);
+					cmdBuf->bindDescriptorSets(pipeline, descriptorSetVolume, 7);
+					cmdBuf->bindDescriptorSets(pipeline, scatter.getDescriptorSet(), 8);
+
+					for (auto e : renderQueue)
+					{
+						if (e->isActive())
+						{
+							auto r = e->getComponent<Renderable>();
+							r->render(cmdBuf, pipeline);
+						}
+					}
+				}
+
+				cmdBuf->endRenderPass();
 			}
 
-			int animMode = 0;
-			if (r->isSkinnedMesh())
+			auto currentModel = scene->getCurrentModel();
+			if (currentModel)
 			{
-				animMode = 1;
+				auto parent = currentModel->getParent();
+				bool activeSubTree = true;
+				while (parent != nullptr)
+				{
+					if (!parent->isActive())
+					{
+						activeSubTree = false;
+						break;
+					}						
+					parent = parent->getParent();
+				}					
 
-				auto nodes = animator->getNodes();
-				auto skin = r->getSkin();
-				skin->computeJoints(nodes);
-				auto boneTransforms = skin->getBoneTransform();
-				auto normalTransforms = skin->getNormalTransform();
-				shader->setUniform("hasAnimations", true);
-				shader->setUniform("bones[0]", boneTransforms);
-				shader->setUniform("normals[0]", normalTransforms);
-			}
+				if(currentModel->isActive() && activeSubTree)
+					outline.buildCmdBuffer(cmdBuf, currentModel);
+			}				
+
+			if (swapchain)
+				postProcessor.buildCmdForward(cmdBuf, swapchain->getFramebuffer(i));
 			else
+				postProcessor.buildCmdForward(cmdBuf, finalFramebuffer);
+
+			cmdBuf->end();
+		}
+	}
+
+	void Renderer::buildScatterCmdBuffer(pr::Scene::Ptr scene)
+	{
+		std::map<uint32, GPU::DescriptorSet::Ptr> descriptorSets;
+		descriptorSets[0] = descriptorSetCamera;
+		descriptorSets[2] = animDescriptorSet;
+		descriptorSets[3] = morphDescriptorSet;
+		descriptorSets[5] = descriptorSetIBL;
+		descriptorSets[6] = descriptorSetLight;
+		scatter.buildCmdBuffer(scene, descriptorSets);
+	}
+
+	void Renderer::buildShadowCmdBuffer(pr::Scene::Ptr scene)
+	{
+		shadows.buildCmdShadowsCSM(scene);
+		shadows.buildCmdShadowsOMNI(scene);
+	}
+
+	void Renderer::addLights(pr::Scene::Ptr scene)
+	{
+		shadows.updateLights(scene);
+		descriptorSetLight = descriptorPool->createDescriptorSet("Light", 1);
+		descriptorSetLight->addDescriptor(lightUBO->getDescriptor());
+		shadows.addDesc(descriptorSetLight);
+		scene->addLightDesc(descriptorSetLight);
+		descriptorSetLight->update();
+
+		volumes.initDescriptorSets(descriptorPool, descriptorSetCamera, descriptorSetLight);
+		volumes.buildCmdVolumes();
+	}
+
+	void Renderer::updateLights(UserCamera& userCamera, pr::Scene::Ptr scene)
+	{
+		std::vector<LightUniformData> lightData;
+		for (auto root : scene->getRootNodes())
+		{
+			for (auto e : root->getChildrenWithComponent<pr::Light>())
 			{
-				shader->setUniform("hasAnimations", false);
+				auto t = e->getComponent<pr::Transform>();
+				auto l = e->getComponent<pr::Light>();
+
+				LightUniformData data;
+				l->writeUniformData(data, t);
+				lightData.push_back(data);
+
+				l->updateLightViewProjection(userCamera, t);
 			}
+		}
 
-			ModelUniformData data;
-			data.M = t->getTransform();
-			data.N = t->getNormalMatrix();
-			data.animMode = animMode;
-			modelUBO.upload(&data, 1);
-			r->render(shader, defShader != nullptr);
+		Lights lights;
+		for (int i = 0; i < lightData.size(); i++)
+			lights.lightData[i] = lightData[i];
+		lights.numLights = (int)lightData.size();
+		lightUBO->uploadMapped(&lights);
+	}
+
+	void Renderer::updateCamera(Scene::Ptr scene, UserCamera& userCamera, float time, int debugChannel)
+	{
+		//userCamera.setAspect((float)width / (float)height);
+		camera.VP = userCamera.getViewProjectionMatrix();
+		camera.VP_I = glm::inverse(camera.VP);
+		camera.P = userCamera.getProjectionMatrix();
+		camera.P_I = glm::inverse(camera.P);
+		camera.V = userCamera.getViewMatrix();
+		camera.V_I = glm::inverse(camera.V);
+		camera.position = glm::vec4(userCamera.getPosition(), 0.0f);
+		camera.time = glm::vec4(time);
+		camera.time.w = (float)debugChannel;
+		camera.projParams = glm::vec4(1);
+		camera.zNear = userCamera.getZNear();
+		camera.zFar = userCamera.getZFar();
+		camera.scale = 1.0f / log2(userCamera.getZFar() / userCamera.getZNear());
+		camera.bias = -(log2(userCamera.getZNear()) * camera.scale);
+
+		if (GraphicsContext::getInstance().getCurrentAPI() == GraphicsAPI::Direct3D11)
+		{
+			camera.VP = glm::transpose(camera.VP);
+			camera.VP_I = glm::transpose(camera.VP_I);
+			camera.P = glm::transpose(camera.P);
+			camera.P_I = glm::transpose(camera.P_I);
+			camera.V = glm::transpose(camera.V);
+			camera.V_I = glm::transpose(camera.V_I);
+		}
+
+		for (auto root : scene->getRootNodes())
+		{
+			for (auto e : root->getChildrenWithComponent<pr::Light>())
+			{
+				auto t = e->getComponent<pr::Transform>();
+				auto l = e->getComponent<pr::Light>();
+				l->updateLightViewProjection(userCamera, t);
+			}
+		}		
+
+		cameraUBO->uploadMapped((uint8*)&camera);
+		updated = true;
+	}
+
+	void Renderer::updateCamera(Scene::Ptr scene, glm::mat4 P, glm::mat4 V, glm::vec3 pos, float time, int debugChannel)
+	{
+		camera.VP = P * V;
+		camera.VP_I = glm::inverse(camera.VP);
+		camera.P = P;
+		camera.P_I = glm::inverse(camera.P);
+		camera.V = V;
+		camera.V_I = glm::inverse(camera.V);
+		camera.position = glm::vec4(pos, 0.0f);
+		camera.time = glm::vec4(time);
+		camera.time.w = (float)debugChannel;
+		camera.projParams = glm::vec4(1);
+		camera.zNear = 0.1f;
+		camera.zFar = 1000.0f;
+		camera.scale = 1.0f / log2(camera.zFar / camera.zNear);
+		camera.bias = -(log2(camera.zNear) * camera.scale);
+
+		if (GraphicsContext::getInstance().getCurrentAPI() == GraphicsAPI::Direct3D11)
+		{
+			camera.VP = glm::transpose(camera.VP);
+			camera.VP_I = glm::transpose(camera.VP_I);
+			camera.P = glm::transpose(camera.P);
+			camera.P_I = glm::transpose(camera.P_I);
+			camera.V = glm::transpose(camera.V);
+			camera.V_I = glm::transpose(camera.V_I);
+		}
+
+		cameraUBO->uploadMapped((uint8*)&camera);
+		updated = true;
+	}
+
+	void Renderer::updateShadows(pr::Scene::Ptr scene)
+	{
+		shadows.updateShadowsCSM(0, scene);
+		shadows.updateShadowsOMNI(scene);
+	}
+
+	void Renderer::updatePost(Post& post)
+	{
+		postProcessor.updatePost(post);
+	}
+
+	void Renderer::renderToTexture(pr::Scene::Ptr scene)
+	{
+		if (updated)
+		{
+			shadows.updateShadowsCSM(0, scene);
+			shadows.updateShadowsOMNI(scene);
+			scatter.flush();			
+			volumes.updateVolumes(scene);
+			updated = false;
 		}
 	}
 }
-
-void Renderer::renderOutline(Entity::Ptr entity)
-{
-	glStencilMask(0x00);
-
-	glm::vec3 color = glm::vec3(1.0f, 0.533f, 0.0f);
-
-	outlineFBO->begin();
-	unlitShader->use();
-	unlitShader->setUniform("useTex", false);
-	unlitShader->setUniform("orthoProjection", false);
-	unlitShader->setUniform("skipEmptyFragments", false);
-	unlitShader->setUniform("solidColor", glm::pow(color, glm::vec3(2.2)));
-
-	Entity::Ptr p = entity;
-	while (p->getParent() != nullptr)
-		p = p->getParent();
-
-	auto animator = p->getComponent<Animator>();
-	auto models = entity->getChildrenWithComponent<Renderable>();
-	for (auto m : models)
-	{
-		auto r = m->getComponent<Renderable>();
-		auto t = m->getComponent<Transform>();
-
-		if (r->useMorphTargets())
-		{
-			std::vector<float> weights;
-			if (animator)
-				weights = animator->getWeights();
-			else
-				weights = r->getWeights();
-			unlitShader->setUniform("numMorphTargets", (int)weights.size());
-			if (!weights.empty())
-				unlitShader->setUniform("morphWeights[0]", weights);
-		}
-		else
-		{
-			unlitShader->setUniform("numMorphTargets", 0);
-		}
-
-		if (r->isSkinnedMesh())
-		{
-			auto nodes = animator->getNodes();
-			auto skin = r->getSkin();
-			skin->computeJoints(nodes); // TODO: this should be done on animation update, not each frame...
-			auto boneTransforms = skin->getBoneTransform();
-			auto normalTransforms = skin->getNormalTransform();
-			unlitShader->setUniform("hasAnimations", true);
-			unlitShader->setUniform("bones[0]", boneTransforms);
-			unlitShader->setUniform("normals[0]", normalTransforms);
-		}
-		else
-		{
-			unlitShader->setUniform("hasAnimations", false);
-		}
-
-		t->setUniforms(unlitShader);
-		r->render(unlitShader, true);
-	}
-	outlineFBO->end();
-
-	screenFBO->bindDraw();
-
-	// Draw selected model into stencil buffer
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	glStencilMask(0xFF);
-	glDepthMask(0x00);
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	for (auto m : models)
-	{
-		auto r = m->getComponent<Renderable>();
-		auto t = m->getComponent<Transform>();
-		t->setUniforms(unlitShader);
-		r->render(unlitShader, true);
-	}
-
-	glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-	glStencilMask(0x00);
-	glDepthMask(0xFF);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	glDisable(GL_DEPTH_TEST);
-
-	outlineShader->use();
-	outlineFBO->useTexture(GL::COLOR0, 0);
-	screenQuad->draw();
-
-	glStencilFunc(GL_ALWAYS, 1, 0xFF);
-	glStencilMask(0xFF);
-	glEnable(GL_DEPTH_TEST);
-}
-
-void Renderer::renderToScreen(Scene::Ptr scene)
-{
-	auto screenTex = renderForward(scene);
-
-	if (useBloom)
-	{
-		auto downSampleShader = shaders["DownSample"];
-		downSampleShader->setUniform("inputTexture", 0);
-
-		auto upSampleShader = shaders["DownSample"];
-		upSampleShader->setUniform("inputTexture", 0);
-		upSampleShader->setUniform("filterRadius", 0.005f);
-
-		bloomTex->use(0);
-		downSampleShader->use();
-		int maxMipLevel = 4;
-		int w = width * 0.5f;
-		int h = height * 0.5f;
-		downSampleShader->setUniform("mipLevel", 0);
-		downSampleShader->setUniform("inputResolution", glm::vec2(w, h));
-		for (unsigned int mip = 0; mip < maxMipLevel; mip++)
-		{
-			unsigned int mipWidth = w * std::pow(0.5, mip);
-			unsigned int mipHeight = h * std::pow(0.5, mip);
-			
-			bloomFBO->resize(mipWidth, mipHeight);
-			bloomFBO->addRenderTexture(GL::COLOR0, bloomBlurTex, mip);
-			bloomFBO->begin();
-
-			screenQuad->draw();
-
-			bloomFBO->end();
-
-			bloomBlurTex->use(0);
-
-			downSampleShader->setUniform("mipLevel", (int)mip);
-			downSampleShader->setUniform("inputResolution", glm::vec2(mipWidth, mipHeight));
-		}
-
-		upSampleShader->use();
-		for (unsigned int mip = maxMipLevel - 1; mip > 0; mip--)
-		{
-			upSampleShader->setUniform("mipLevel", (int)mip);
-
-			unsigned int mipWidth = w * std::pow(0.5, mip - 1);
-			unsigned int mipHeight = h * std::pow(0.5, mip - 1);
-
-			bloomFBO->resize(mipWidth, mipHeight);
-			bloomFBO->addRenderTexture(GL::COLOR0, bloomBlurTex, mip - 1);
-			bloomFBO->begin();
-
-			screenQuad->draw();
-
-			bloomFBO->end();
-		}
-	}
-
-	glViewport(0, 0, width, height);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	screenTex->use(0);
-	bloomBlurTex->use(1);
-	postProcessShader->use();
-	postProcessShader->setUniform("useBloom", useBloom);
-	screenQuad->draw();
-}
-
-Texture2D::Ptr Renderer::renderToTexture(Scene::Ptr scene)
-{
-	auto mainTex = renderForward(scene);
-
-	screenFBO->bind();
-	auto selectedModel = scene->getCurrentModel();
-	if (selectedModel != nullptr)
-		renderOutline(selectedModel);
-	screenFBO->end();
-
-	postFBO->begin();
-	screenTex->use(0);
-	unlitShader->setUniform("M", glm::mat4(1.0f));
-	unlitShader->setUniform("orthoProjection", true);
-	unlitShader->setUniform("useGammaEncoding", true);
-	unlitShader->setUniform("useTex", true);
-	unlitShader->setUniform("numMorphTargets", 0);
-	unlitShader->setUniform("hasAnimations", false);
-	unlitShader->use();
-	screenQuad->draw();
-	postFBO->end();
-
-	return postTex;
-}
-
-Texture2D::Ptr Renderer::renderForward(Scene::Ptr scene)
-{
-	// TODO: put tex units elsewhere, they only need to be set once
-	irradianceMaps->use(11);
-	specularMapsGGX->use(12);
-	specularMapsSheen->use(13);
-	brdfLUT->use(14);
-
-	if (csmShadowMap)
-		csmShadowMap->use(15);
-	if (omniShadowMap)
-		omniShadowMap->use(16);
-	if (lightMaps)
-		lightMaps->use(17);
-	if (directionMaps)
-		directionMaps->use(18);
-	if (iesProfiles)
-		iesProfiles->use(19);
-	if (acumFogVolume)
-		acumFogVolume->use(21);
-	if (inScatteringVolume)
-		inScatteringVolume->use(22);
-	if (inScatteringVolume)
-		inScatteringVolume->use(23);
-
-	glStencilMask(0xFF);
-	screenFBO->begin();
-	glStencilMask(0x00);
-	//if (useSkybox)
-	{
-		glCullFace(GL_FRONT);
-		skyboxShader->use();
-		//scene->useSkybox();
-		skybox->use(0);
-		unitCube->draw();
-		glCullFace(GL_BACK);
-	}
-
-	renderScene(scene, nullptr, false);
-	//renderBatchedScene(scene, nullptr);
-
-	for (auto [_, root] : scene->getRootEntities())
-	{
-		for (auto ps : root->getComponentsInChildren<ParticleSystem>())
-		{
-			ps->renderParticles();
-		}
-	}
-
-	if (scene->hasTransmission())
-	{
-		// This is quite expensive... find a better way to do this!
-		refrTex->generateMipmaps();
-		refrTex->use(10);
-	}
-
-	glDrawBuffer(GL_COLOR_ATTACHMENT0);
-	renderScene(scene, nullptr, true);
-
-	screenFBO->end();
-
-	return screenTex;
-}
-
-Shader::Ptr Renderer::getShader(std::string name)
-{
-	if (shaders.find(name) != shaders.end())
-		return shaders[name];
-	else
-		return nullptr;
-} 

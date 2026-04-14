@@ -1,64 +1,63 @@
 #ifndef INCLUDED_UNITYMATERIALS
 #define INCLUDED_UNITYMATERIALS
 
-#ifdef WITH_UNITY
-
 #pragma once
 
 #include "UnityYAML.h"
 
 #include <Graphics/Material.h>
-
+ 
 namespace IO
 {
 	namespace Unity
 	{
+		struct UniformProperty
+		{
+			std::string name;
+			std::string type;
+			float defaultValue;
+		};
+
 		struct Metadata
 		{
 			std::string filePath;
 			ryml::Tree root;
 		};
 
+		glm::vec3 sRGBToLinear(glm::vec3 sRGB, float gamma = 2.2f);
+		glm::vec4 sRGBAlphaToLinear(glm::vec4 sRGBAlpha, float gamma = 2.2f);
+
+		void resizeImageUint8(uint8* src, uint32 srcW, uint32 srcH, uint8* dst, uint32 dstW, uint32 dstH);
+		void resizeImageFP32(float* src, uint32 srcW, uint32 srcH, float* dst, uint32 dstW, uint32 dstH);
+		std::string loadTxtFile(const std::string& fileName);
+
 		class Materials
 		{
+		public:
+			Materials(uint32 maxTexSize) : maxTexSize(maxTexSize)
+			{}
+			void setMetadata(std::map<std::string, Metadata>& metaData)
+			{
+				this->metaData = metaData;
+			}
+
+			void addTexture(pr::Material::Ptr material, Texture& texture, float defaultValue = 0.0f, bool loadUncompressed = false);
+			pr::Texture2D::Ptr loadTextureGUID(const std::string& guid, bool loadUncompressed);
+			pr::Material::Ptr loadDefaultMaterial(Material& unityMaterial);
+			pr::Material::Ptr loadSpecGlossMaterial(Material& unityMaterial);
+			pr::Material::Ptr loadCustomMaterial(Material& unityMaterial, std::string shaderFile);
+			bool loadUniformsFromJSON(std::string jsonFileContent, std::vector<UniformProperty>& uniforms);
+			bool loadUniformsFromJSONSerialized(std::string jsonFileContent, std::vector<UniformProperty>& uniforms);
+			pr::Material::Ptr loadShadergraphMaterial(Material& unityMaterial, std::string shaderPath);
+			pr::Material::Ptr loadMaterialGUID(const std::string& guid);
+
 		private:
 			unsigned int maxTexSize = 0;
 			std::map<std::string, Metadata> metaData;
 			std::map<std::string, int> textures;
-			std::map<std::string, Texture2D::Ptr> textureCache;
-		public:
-			Materials(unsigned int maxTexSize) : maxTexSize(maxTexSize) {}
-			void setMetadata(std::map<std::string, Metadata>& metaData) 
-			{
-				this->metaData = metaData;
-			}
-			Material::Ptr loadMaterialGUID(const std::string& guid);
-
-			// default shader
-			Material::Ptr loadDefaultMaterial(UnityMaterial& unityMaterial);
-			Material::Ptr loadSpecGlossMaterial(UnityMaterial& unityMaterial);
-
-			// archviz shader
-			Material::Ptr loadLayerMaterial(UnityMaterial& unityMaterial, bool use3Layers);
-			Material::Ptr loadRainMaterial(UnityMaterial& unityMaterial);
-			Material::Ptr loadRainMaterialPOM(UnityMaterial& unityMaterial);
-			Material::Ptr loadRainRefractionMaterial(UnityMaterial& unityMaterial);
-			Material::Ptr loadPomMaterial(UnityMaterial& unityMaterial);
-			Material::Ptr loadVelvetMaterial(UnityMaterial& unityMaterial);
-			Material::Ptr loadGlassMaterial(UnityMaterial& unityMaterial);
-
-			// viking shader
-			Material::Ptr loadDefaultShaderGraph(UnityMaterial& unityMaterial);
-			Material::Ptr loadTerrainShaderGraph(UnityMaterial& unityMaterial);
-			Material::Ptr loadGrassShaderGraph(UnityMaterial& unityMaterial);
-			Material::Ptr loadShaderBakedLit(UnityMaterial& unityMaterial);
-
-			void loadTexture(Material::Ptr material, std::string texPrefix, TexEnv& texInfo, bool useTransform = true);
-			Texture2D::Ptr loadTextureGUID(const std::string& guid);
-			Texture2D::Ptr loadMetalRoughTex(const std::string& guid, std::string& occGuid, float glossMapScale);
+			std::map<std::string, pr::Texture2D::Ptr> textureCache;
 		};
 	}
 }
 
-#endif
 #endif // INCLUDED_UNITYMATERIALS

@@ -1,0 +1,390 @@
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+#ifdef USE_OPENGL
+layout(std140, binding = 0) uniform CameraUBO
+#else
+layout(std140, set = 0, binding = 0) uniform CameraUBO
+#endif
+{
+	mat4 viewProjection;
+	mat4 viewProjectionInv;
+	mat4 projection;
+	mat4 projectionInv;
+	mat4 view;
+	mat4 viewInv;
+	vec4 position;
+	vec4 time;
+	vec4 projParams;
+	float zNear;
+	float zFar;
+	float scale;
+	float bias;
+} camera;
+
+struct Light
+{
+	vec4 position;
+	vec4 direction;
+	vec4 color;
+	float intensity;
+	float range;
+	float angleScale;
+	float angleOffset;
+	int type;
+	bool on;
+	bool castShadows;
+};
+
+#define MAX_PUNCTUAL_LIGHTS 10
+
+#ifdef USE_OPENGL
+layout(std140, binding = 1) uniform LightUBO
+#else
+layout(std140, set = 1, binding = 0) uniform LightUBO
+#endif
+{
+	Light lights[MAX_PUNCTUAL_LIGHTS];
+	int numLights;
+};
+
+#define MAX_CASCADES 4
+#ifdef USE_OPENGL
+layout(std140, binding = 2) uniform ShadowUBO
+#else
+layout(std140, set = 1, binding = 1) uniform ShadowUBO
+#endif
+{
+	mat4 lightSpaceMatrices[MAX_CASCADES];
+	vec4 cascadePlaneDistance;
+	int cascadeCount;
+};
+
+#ifdef USE_OPENGL
+layout(binding = 0) uniform samplerCubeArrayShadow shadowMaps;
+layout(binding = 1) uniform sampler2DArray shadowCascades;
+layout(binding = 2) uniform sampler2DArray lightMaps;
+layout(binding = 3) uniform sampler2DArray directionMaps;
+#else
+layout(set = 1, binding = 2) uniform samplerCubeArrayShadow shadowMaps;
+layout(set = 1, binding = 3) uniform sampler2DArray shadowCascades;
+layout(set = 1, binding = 4) uniform sampler2DArray lightMaps;
+layout(set = 1, binding = 5) uniform sampler2DArray directionMaps;
+#endif
+
+//vec3 getLightmapRadiance(int index, vec2 uv, vec4 st)
+//{
+//	vec2 lightUV = uv;
+//	lightUV = vec2(lightUV.x, 1.0 - lightUV.y);
+//	lightUV = lightUV * st.zw + st.xy;
+//	lightUV.y = 1.0 - lightUV.y;
+//
+//	vec3 irradiance = texture(lightMaps, vec3(lightUV, index)).rgb;
+//
+//	vec4 dir = texture(directionMaps, vec3(lightUV, index));
+//	vec3 lightDir = dir.xyz * 2.0 - 1.0;
+//	float lightIntensity = dir.w;
+//
+//	vec3 l = normalize(vec3(-lightDir.x, lightDir.y, lightDir.z));
+//	float NoL = clamp(dot(wNormal, l), 0.0, 1.0);
+//
+//	return irradiance * lightIntensity * NoL;
+//}
+
+float getPointShadow(vec3 fragPos, int index)
+{
+	Light light = lights[index];
+	vec3 f = fragPos - light.position.xyz;
+	float len = length(f);
+	float shadow = 0.0;
+	float radius = 0.02;
+	float depth = (len / light.range) - 0.001; // TODO: add to light properties
+
+	for (int x = -1; x <= 1; x++)
+	{
+		for (int y = -1; y <= 1; y++)
+		{
+			for (int z = -1; z <= 1; z++)
+			{
+				vec3 offset = vec3(x, y, z);
+				vec3 uvw = f + offset * radius;
+				shadow += texture(shadowMaps, vec4(uvw, index), depth);
+			}
+		}
+	}
+	return shadow / 27.0;
+}
+
+float getDirectionalShadowCSM(mat4 V, vec3 wPosition, float NoL, float zFar)
+{
+	vec4 vPosition = V * vec4(wPosition, 1.0);
+	float depth = abs(vPosition.z);
+	int layer = -1;
+	for (int c = 0; c < cascadeCount; c++)
+	{
+		if(depth < cascadePlaneDistance[c])
+		{
+			layer = c;
+			break;
+		}
+	}
+	if(layer == -1)
+		//return 1.0;
+		layer = cascadeCount;
+
+	vec4 lPosition = lightSpaceMatrices[layer] * vec4(wPosition, 1.0);
+	vec3 projCoords = lPosition.xyz / lPosition.w;
+	projCoords = projCoords * 0.5 + 0.5;
+#ifndef USE_OPENGL
+	projCoords.y = 1.0 - projCoords.y;
+#endif
+	float currentDepth = projCoords.z;
+	if(currentDepth > 1.0)
+		return 0.0;
+
+	float bias = max(0.01 * (1.0 - NoL), 0.001);
+	float biasMod = 0.5;
+	if(layer == cascadeCount)
+		bias *= 1.0 / (zFar * biasMod);
+	else
+		bias *= 1.0 / cascadePlaneDistance[layer] * biasMod;
+
+	float shadow = 0.0;
+	vec2 texelSize = 1.0 / vec2(textureSize(shadowCascades, 0));
+	for (int x = -1; x <= 1; x++)
+	{
+		for (int y = -1; y <= 1; y++)
+		{
+			float depth = texture(shadowCascades, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
+			shadow += (currentDepth - bias) > depth ? 1.0 : 0.0;
+		}
+	}
+	shadow /= 9.0;
+
+	return 1.0 - shadow;
+}
+float PI = 3.14159265358979323846;
+
+float g_HenyeyGreenstein(float cosPhi, float phase)
+{
+	float g = phase;
+	float g2 = g * g;
+	return (1.0 - g2) / (4.0 * PI * pow(1.0 + g2 - (2.0 * g) * cosPhi, 1.5));
+}
+
+#ifdef USE_OPENGL
+layout(std140, binding = 3) uniform VolumeUBO
+#else
+layout(std140, set = 2, binding = 0) uniform VolumeUBO
+#endif
+{
+	vec4 scattering;
+	float absorption;
+	float phase;
+	float time;
+} volume;
+
+#ifdef USE_OPENGL
+layout(binding = 4) uniform sampler3D scatteringExtinction;
+layout(binding = 5) uniform sampler3D emissivePhase;
+layout(binding = 6, rgba16f) uniform image3D inScatteringTex;
+#else
+layout(set = 2, binding = 1) uniform sampler3D scatteringExtinction;
+layout(set = 2, binding = 2) uniform sampler3D emissivePhase;
+layout(set = 2, binding = 3, rgba16f) uniform image3D inScatteringTex;
+#endif
+
+vec3 lineZPlaneIntersection(vec3 a, vec3 b, float zDistance)
+{
+	vec3 normal = vec3(0,0,1);
+	vec3 line = b - a;
+	float t = (zDistance - dot(normal, a)) / dot(normal, line);
+	return a + t * line;
+}
+
+float max3(vec3 v)
+{
+	return max(max(v.x, v.y), v.z);
+}
+
+float getAttenuation(Light light, vec3 lightDir)
+{
+	float rangeAttenuation = 1.0;
+	float spotAttenuation = 1.0;
+	if (light.type != 0)
+	{
+		float dist = length(lightDir);
+		if (light.range < 0.0)
+			rangeAttenuation = 1.0 / pow(dist, 2.0);
+		else
+		{
+			float invSquareRange = 1.0 / (light.range * light.range); // can be precomputed on CPU
+			float squaredDistance = dot(lightDir, lightDir);
+			float factor = squaredDistance * invSquareRange;
+			float smoothFactor = clamp(1.0 - factor * factor, 0.0, 1.0);
+			float attenuation = 1.0 / max(squaredDistance, 0.0001);
+			rangeAttenuation = attenuation * smoothFactor * smoothFactor;
+		}			
+	}
+
+	if (light.type == 2)
+	{
+		float cd = dot(normalize(light.direction.xyz), normalize(-lightDir));
+		float attenuation = clamp(cd * light.angleScale + light.angleOffset, 0.0, 1.0);
+		spotAttenuation = attenuation * attenuation;
+	}
+	return rangeAttenuation * spotAttenuation;
+}
+
+float volumetricShadow(vec3 from, vec3 to)
+{
+	float numSteps = 16.0;
+	float shadow = 1.0;
+	float d = length(to-from) / numSteps;
+	for (float s = 0.5; s < (numSteps - 0.1); s += 1.0)
+	{
+		vec3 pos = from + (to-from) * (s / numSteps);
+		vec4 viewPos = camera.view * vec4(pos, 1.0);
+		vec4 clipPos = camera.projection * vec4(viewPos.xyz, 1.0);
+		vec3 clipCoors = clipPos.xyz / clipPos.w;
+		vec3 ndc = clipCoors * 0.5 + 0.5;
+		ndc.z = clamp(log2(-viewPos.z)*camera.scale+camera.bias, 0.0, 1.0);
+		float sigmaE = texture(scatteringExtinction, ndc.xyz).a;
+		shadow *= exp(-sigmaE * d);
+	}
+	return shadow;
+}
+
+void main()
+{
+	ivec3 globalIndex = ivec3(gl_WorkGroupID.xyz);
+
+	vec3 eye = vec3(0);
+	float zNear = camera.zNear;
+	float zFar = camera.zFar;
+
+	vec2 pointNDC = (vec2(globalIndex.xy) + vec2(0.5)) / vec2(gl_NumWorkGroups.xy); // normalized coords [0..1]
+	vec4 pointClip = vec4(pointNDC * 2.0 - 1.0, -1.0, 1.0);
+	vec4 pointView = camera.projectionInv * pointClip; // inverse projection -> view space
+	pointView /= pointView.w; // perspective divide
+
+	float tNear = -zNear * pow(zFar / zNear, float(globalIndex.z) / float(gl_NumWorkGroups.z));
+	float tFar = -zNear * pow(zFar / zNear, float(globalIndex.z + 1) / float(gl_NumWorkGroups.z));
+
+	vec3 pNear = lineZPlaneIntersection(eye, pointView.xyz, tNear);
+	vec3 pFar = lineZPlaneIntersection(eye, pointView.xyz, tFar);
+	float s = distance(pFar, pNear);
+	vec3 center = (pFar + pNear) / 2.0;
+
+	vec3 wPosition = vec3(camera.viewInv * vec4(center, 1.0)); // inverse view -> world space
+	vec3 viewVec = camera.position.xyz - wPosition;
+	vec3 viewDir = normalize(viewVec);
+
+	vec3 ndc = vec3(globalIndex) / vec3(gl_NumWorkGroups.xyz);
+	vec4 scatterExt = texture(scatteringExtinction, ndc);
+	vec4 emissPhase = texture(emissivePhase, ndc);
+	vec3 sigmaS = scatterExt.rgb;
+	float sigmaE = scatterExt.a;
+	vec3 emission = emissPhase.rgb;
+	float phase = emissPhase.a;
+
+	vec3 Li = emission;
+//	Li += vec3(0.5, 1.0, 0.1) * 0.01; 
+//	if (sigmaS.r > 0.02)
+//		Li *= 10;
+	//if(sigmaE > 0.0)
+	{
+		for(int i = 0; i < numLights; i++)
+		{
+			Light light = lights[i];
+
+			vec3 viewVec = camera.position.xyz - wPosition;
+			vec3 lightVec = light.position.xyz - wPosition;
+
+			float visibility = 1.0;
+			if(light.type == 0)
+			{
+				vec3 lightVec = -light.direction.xyz;
+				float lightDist = 1.0;
+				vec3 l = normalize(lightVec);
+				vec3 v = normalize(viewVec);
+				
+				vec4 vPosition = camera.view * vec4(wPosition, 1.0);
+				float depth = abs(vPosition.z);
+				int layer = -1;
+				for (int c = 0; c < cascadeCount; c++)
+				{
+					if(depth < cascadePlaneDistance[c])
+					{
+						layer = c;
+						break;
+					}
+				}
+				if(layer == -1)
+					layer = cascadeCount;
+		
+				vec4 lPosition = lightSpaceMatrices[layer] * vec4(wPosition, 1.0);
+				vec3 projCoords = lPosition.xyz / lPosition.w;
+				projCoords = projCoords * 0.5 + 0.5;
+#ifndef USE_OPENGL
+				projCoords.y = 1.0 - projCoords.y;
+#endif
+				float shadowDepth = texture(shadowCascades, vec3(projCoords.xy, layer)).r;
+
+				float shadow = 0.0;
+				vec2 texelSize = 1.0 / vec2(textureSize(shadowCascades, 0));
+				for (int x = -1; x <= 1; x++)
+				{
+					for (int y = -1; y <= 1; y++)
+					{
+						float depth = texture(shadowCascades, vec3(projCoords.xy + vec2(x, y) * texelSize, layer)).r;
+						shadow += (projCoords.z) > depth ? 1.0 : 0.0;
+					}
+				}
+				visibility = 1.0 - shadow / 9.0;
+				//visibility *= volumetricShadow(wPosition, light.position.xyz);
+				vec3 lightIntensity = light.color.rgb * light.intensity;
+				float g = g_HenyeyGreenstein(dot(v, l), phase);
+				vec3 Lin = visibility * lightIntensity * getAttenuation(light, lightVec);
+				Li += Lin * sigmaS * g;
+			}
+			else
+			{
+				float lightDist = length(lightVec);
+				if (lightDist > light.range)
+					continue;
+				vec3 l = lightVec / lightDist;
+				vec3 v = normalize(viewVec);
+
+				float zValue = float(globalIndex.z) / float(gl_NumWorkGroups.z);
+				vec3 f = -lightVec;
+				float bias = 0.0001;
+				float depth = (lightDist / light.range) - bias; // TODO: add to light properties
+				float shadow = 0.0;
+				float radius = zValue * 0.1;
+				for (int x = -1; x <= 1; x++)
+				{
+					for (int y = -1; y <= 1; y++)
+					{
+						for (int z = -1; z <= 1; z++)
+						{
+							vec3 offset = vec3(x, y, z);
+							vec3 uvw = f + offset * radius;
+							shadow += texture(shadowMaps, vec4(uvw, i), depth);
+						}
+					}
+				}
+				visibility = shadow / 27.0;
+				visibility *= volumetricShadow(wPosition, light.position.xyz);
+
+				vec3 lightIntensity = light.color.rgb * light.intensity;
+				float g = g_HenyeyGreenstein(dot(v, l), phase);
+				vec3 Lin = visibility * lightIntensity * getAttenuation(light, lightVec) * sigmaS * g;
+				Li += Lin;
+			}		
+		}
+	}
+
+	imageStore(inScatteringTex, globalIndex, vec4(Li, sigmaE));
+}

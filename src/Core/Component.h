@@ -5,11 +5,19 @@
 
 #include <memory>
 
-class Component
+namespace pr
 {
-public:
-	virtual ~Component() = 0;
-	typedef std::shared_ptr<Component> Ptr;
-};
+	class Component
+	{
+	public:
+		Component();
+		virtual ~Component() = 0;
+		unsigned int getID();
+		typedef std::shared_ptr<Component> Ptr;
+	private:
+		unsigned int id;
+		static unsigned int globalIDCount;
+	};
+}
 
 #endif // INCLUDED_COMPONENT

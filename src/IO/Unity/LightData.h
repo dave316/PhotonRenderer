@@ -1,5 +1,5 @@
-#ifndef INCLUDED_LIGHTDATA
-#define INCLUDED_LIGHTDATA
+#ifndef INCLUDED_LIGHTDATAOLD
+#define INCLUDED_LIGHTDATAOLD
 
 #pragma once
 
@@ -15,9 +15,9 @@ namespace IO
 	{
 		struct LightMapData
 		{
-			int index;
-			glm::vec2 scale;
-			glm::vec2 offset;
+			int index = 0;
+			glm::vec2 scale = glm::vec2(1);
+			glm::vec2 offset = glm::vec2(0);
 			int64_t meshRendererID = 0;
 		};
 
@@ -65,4 +65,4 @@ namespace IO
 	}
 }
 
-#endif // INCLUDED_LIGHTDATA
+#endif // INCLUDED_LIGHTDATAOLD

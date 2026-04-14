@@ -1,6 +1,6 @@
-#ifdef WITH_UNITY
-
 #include "UnityYAML.h"
+
+#include <sstream>
 
 namespace IO
 {
@@ -95,7 +95,7 @@ namespace IO
 			return true;
 		}
 
-		bool read(ryml::ConstNodeRef n, UTransform* value)
+		bool read(ryml::ConstNodeRef n, Transform* value)
 		{
 			if (n.has_child("m_PrefabParentObject"))
 			{
@@ -116,7 +116,8 @@ namespace IO
 				n["m_GameObject"] >> value->gameObject;
 				n["m_Children"] >> value->children;
 				n["m_Father"] >> value->father;
-				n["m_RootOrder"] >> value->rootOrder;
+				if (n.has_child("m_RootOrder"))
+					n["m_RootOrder"] >> value->rootOrder;
 
 				auto x = n["m_LocalRotation"];
 				read(n["m_LocalRotation"], value->localRotation);
@@ -222,7 +223,7 @@ namespace IO
 			return true;
 		}
 
-		bool read(ryml::ConstNodeRef n, ULight* value)
+		bool read(ryml::ConstNodeRef n, Light* value)
 		{
 			n["m_Type"] >> value->type;
 			n["m_Shape"] >> value->shape;
@@ -232,7 +233,7 @@ namespace IO
 			return true;
 		}
 
-		bool read(ryml::ConstNodeRef n, TexEnv* value)
+		bool read(ryml::ConstNodeRef n, Texture* value)
 		{
 			n["m_Texture"] >> value->texture;
 			read(n["m_Offset"], value->offset);
@@ -240,10 +241,26 @@ namespace IO
 			return true;
 		}
 
-		bool read(ryml::ConstNodeRef n, UnityMaterial* value)
+		bool read(ryml::ConstNodeRef n, Material* value)
 		{
 			n["m_Name"] >> value->name;
 			n["m_Shader"] >> value->shader;
+			if (n.has_child("m_ShaderKeywords") && !n["m_ShaderKeywords"].val_is_null())
+			{
+				std::string keywords;
+				n["m_ShaderKeywords"] >> keywords;
+				std::stringstream ss(keywords);
+				std::string kw;
+				while (ss >> kw)
+					value->keywords.insert(kw);
+			}
+			if (n.has_child("m_ValidKeywords"))
+			{
+				std::vector<std::string> keywords;
+				n["m_ValidKeywords"] >> keywords;
+				for (auto kw : keywords)
+					value->keywords.insert(kw);
+			}				
 			auto& propsNode = n["m_SavedProperties"];
 			//propsNode["m_TexEnvs"] >> value->texEnvs;
 			
@@ -254,7 +271,7 @@ namespace IO
 				std::string texName;
 				c4::from_chars(t.key(), &texName);
 
-				TexEnv texEnv;
+				Texture texEnv;
 				t >> texEnv;
 				if(texEnv.texture.fileID > 0)
 					value->texEnvs.insert(std::make_pair(texName, texEnv));
@@ -291,7 +308,7 @@ namespace IO
 		{
 			n["target"] >> value->target;
 			n["propertyPath"] >> value->propertyPath;
-			if(n["value"].has_val())
+			if(n["value"].has_val() && !n["value"].val_is_null())
 				n["value"] >> value->value;
 			n["objectReference"] >> value->objectReference;
 			return true;
@@ -354,7 +371,7 @@ namespace IO
 			return true;
 		}
 
-		bool read(ryml::ConstNodeRef n, UBoxCollider* value)
+		bool read(ryml::ConstNodeRef n, BoxCollider* value)
 		{
 			read(n["m_Size"], value->size);
 			read(n["m_Center"], value->center);
@@ -362,5 +379,3 @@ namespace IO
 		}
 	}
 }
-
-#endif

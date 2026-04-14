@@ -4,50 +4,38 @@
 #pragma once
 
 #include "Component.h"
-#include "Transform.h"
-#include "Light.h"
 
 #include <Graphics/Animation.h>
-#include <Graphics/Skin.h>
 
-class Animator : public Component
+namespace pr
 {
-private:
-	std::vector<Entity::Ptr> nodes;
-	std::vector<Camera::Ptr> cameras;
-	std::vector<Light::Ptr> lights;
-	std::vector<Material::Ptr> materials;
-	std::vector<Animation::Ptr> animations;
-	bool playing = false;
-	bool playAllAnimations = false;
-	unsigned int currentAnimation = 0;
-	unsigned int numBones = 0;
-
-public:
-	Animator(bool playAllAnimations) : playAllAnimations(playAllAnimations) {}
-	void setNodes(std::vector<Entity::Ptr>& nodes);
-	void setCameras(std::vector<Camera::Ptr>& cameras);
-	void setLights(std::vector<Light::Ptr>& lights);
-	void setMaterials(std::vector<Material::Ptr>& materials);
-	void addAnimation(Animation::Ptr animation);
-	void update(float dt);
-	void play();
-	void stop();
-	void switchAnimation(unsigned int index);
-	int numAnimations();
-	bool isFinished();
-	void clear();
-	void printInfo();
-	std::vector<float> getWeights();
-	std::vector<Entity::Ptr> getNodes();
-	std::vector<Material::Ptr> getMaterials();
-	std::vector<std::string> getAnimationNames();
-	typedef std::shared_ptr<Animator> Ptr;
-	static Ptr create(bool playAllAnimations)
+	class Animator : public Component
 	{
-		return std::make_shared<Animator>(playAllAnimations);
-	}
+	public:
+		Animator(bool playAllAnimations);
+		void setNodes(std::vector<pr::Entity::Ptr>& nodes);
+		void setComponents(std::map<uint32, pr::Component::Ptr> components);
+		void addAnimation(pr::Animation::Ptr animation);
+		void update(float dt);
+		void switchAnimation(uint32 index);
+		uint32 getNumAnimations();
+		std::vector<pr::Entity::Ptr> getNodes();
+		std::vector<float> getWeights();
+		std::vector<std::string> getAnimationNames();
 
-};
+		typedef std::shared_ptr<Animator> Ptr;
+		static Ptr create(bool playAllAnimations)
+		{
+			return std::make_shared<Animator>(playAllAnimations);
+		}
+
+	private:
+		std::map<uint32, pr::Component::Ptr> components;
+		std::vector<pr::Entity::Ptr> nodes;
+		std::vector<pr::Animation::Ptr> animations;
+		uint32 currentAnimation = 0;
+		bool playAllAnimations = false;
+	};
+}
 
 #endif // INCLUDED_ANIMATOR

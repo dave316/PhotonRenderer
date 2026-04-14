@@ -1,34 +1,38 @@
 #include "LightProbe.h"
 
-LightProbe::LightProbe(TextureCubeMap::Ptr cubeMap, Box boundingBox) :
-	cubeMap(cubeMap),
-	boundingBox(boundingBox)
+namespace pr
 {
-	cubeMap->generateMipmaps();
-	cubeMap->setFilter(GL::LINEAR_MIPMAP_LINEAR, GL::LINEAR);
-}
+	LightProbe::LightProbe(TextureCubeMap::Ptr cubeMap, Box boundingBox) :
+		cubeMap(cubeMap),
+		boundingBox(boundingBox)
+	{
+		cubeMap->generateMipmaps();
+		cubeMap->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
 
-LightProbe::~LightProbe()
-{
+	}
 
-}
+	LightProbe::~LightProbe()
+	{
 
-void LightProbe::use(GLuint unit)
-{
-	cubeMap->use(unit);
-}
+	}
 
-int LightProbe::getFaceSize()
-{
-	return cubeMap->getFaceSize();
-}
+	//void LightProbe::use(GLuint unit)
+	//{
+	//	cubeMap->use(unit);
+	//}
 
-Box LightProbe::getboundingBox()
-{
-	return boundingBox;
-}
+	//int LightProbe::getFaceSize()
+	//{
+	//	return cubeMap->getFaceSize();
+	//}
 
-TextureCubeMap::Ptr LightProbe::getCubeMap()
-{
-	return cubeMap;
+	Box LightProbe::getboundingBox()
+	{
+		return boundingBox;
+	}
+
+	TextureCubeMap::Ptr LightProbe::getCubeMap()
+	{
+		return cubeMap;
+	}
 }

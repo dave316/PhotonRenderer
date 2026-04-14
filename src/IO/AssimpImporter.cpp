@@ -1,8 +1,8 @@
-#ifdef WITH_ASSIMP
+//#ifdef WITH_ASSIMP
 
 #include "AssimpImporter.h"
-
-#include <IO/Image/ImageDecoder.h>
+#include <stb_image.h>
+//#include <IO/Image/ImageDecoder.h>
 
 #include <assimp/Importer.hpp>
 #include <algorithm>
@@ -23,7 +23,7 @@ namespace IO
 
 	}
 
-	Entity::Ptr AssimpImporter::importModel(const std::string& fullPath, float globalScale, bool useUnitScale)
+	pr::Entity::Ptr AssimpImporter::importModel(const std::string& fullPath, float globalScale, bool useUnitScale)
 	{
 		auto p = fs::path(fullPath);
 		path = p.parent_path().string();
@@ -43,7 +43,7 @@ namespace IO
 		scaleFactor = globalScale;
 		if (useUnitScale)
 		{
-			for (int i = 0; i < pScene->mMetaData->mNumProperties; i++)
+			for (uint32 i = 0; i < pScene->mMetaData->mNumProperties; i++)
 			{
 				std::string key = pScene->mMetaData->mKeys[i].C_Str();
 				if (key.compare("UnitScaleFactor") == 0)
@@ -84,19 +84,20 @@ namespace IO
 
 		if (!animations.empty())
 		{
-			auto animator = Animator::create(skins.empty());
+			//auto animator = Animator::create(skins.empty());
+			auto animator = pr::Animator::create(skins.empty());
 			animator->setNodes(entities);
 			for (auto a : animations)
 				animator->addAnimation(a);
 			root->addComponent(animator);
 		}
 
-		root->setURI(fullPath);
+		//root->setURI(fullPath);
 
 		return root;
 	}
 
-	void AssimpImporter::setExternalMaterials(std::vector<Material::Ptr>& materials)
+	void AssimpImporter::setExternalMaterials(std::vector<pr::Material::Ptr>& materials)
 	{
 		this->materials = materials;
 	}
@@ -177,153 +178,182 @@ namespace IO
 		return defaultValue;
 	}
 
-	void AssimpImporter::loadAnimations(const aiScene* pScene)
+	//void AssimpImporter::loadAnimations(const aiScene* pScene)
+	//{
+	//	for (int i = 0; i < pScene->mNumAnimations; i++)
+	//	{
+	//		const aiAnimation* pAnim = pScene->mAnimations[i];
+	//		std::string name(pAnim->mName.C_Str());
+	//		float duration = pAnim->mDuration;
+	//		float ticks = pAnim->mTicksPerSecond;
+	//		float durationInSeconds = duration / ticks;
+	//		auto animation = pr::Animation::create();
+	//		animation->setDuration(durationInSeconds);
+
+	//		for (int j = 0; j < pAnim->mNumChannels; j++)
+	//		{
+	//			const aiNodeAnim* pNodeAnim = pAnim->mChannels[j];
+	//			std::string nodeName = pNodeAnim->mNodeName.C_Str();
+	//			unsigned int targetNodeIndex = nodeIndices[nodeName];
+
+	//			//Channel channel;
+	//			auto translationChannel = Channel<glm::vec3>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_POSITION, targetNodeIndex);
+	//			for (int k = 0; k < pNodeAnim->mNumPositionKeys; k++)
+	//			{
+	//				float time = pNodeAnim->mPositionKeys[k].mTime / ticks;
+	//				glm::vec3 position = toVec3(pNodeAnim->mPositionKeys[k].mValue);
+	//				std::vector<glm::vec3> positions;
+	//				positions.push_back(position);
+	//				translationChannel->addValue(time, positions);
+	//			}
+
+	//			auto rotationChannel = Channel<glm::quat>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_ROTATION, targetNodeIndex);
+	//			for (int k = 0; k < pNodeAnim->mNumRotationKeys; k++)
+	//			{
+	//				float time = pNodeAnim->mRotationKeys[k].mTime / ticks;
+	//				glm::quat rotation = toQuat(pNodeAnim->mRotationKeys[k].mValue);
+	//				std::vector<glm::quat> rotations;
+	//				rotations.push_back(rotation);
+	//				rotationChannel->addValue(time, rotations);
+	//			}
+
+	//			auto scaleChannel = Channel<glm::vec3>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_SCALE, targetNodeIndex);
+	//			for (int k = 0; k < pNodeAnim->mNumScalingKeys; k++)
+	//			{
+	//				float time = pNodeAnim->mScalingKeys[k].mTime / ticks;
+	//				glm::vec3 scale = toVec3(pNodeAnim->mScalingKeys[k].mValue);
+	//				std::vector<glm::vec3> scales;
+	//				scales.push_back(scale);
+	//				scaleChannel->addValue(time, scales);
+	//			}
+
+	//			animation->addChannel(translationChannel);
+	//			animation->addChannel(rotationChannel);
+	//			animation->addChannel(scaleChannel);
+	//		}
+	//		animations.push_back(animation);
+	//	}
+	//}
+
+	//void AssimpImporter::loadSkins(const aiScene* pScene)
+	//{
+	//	// TODO: add support for multiple skins, check amarture and create arrays for each skin
+	//	auto skin = Skin::create("");
+	//	for (int i = 0; i < pScene->mNumMeshes; i++)
+	//	{
+	//		const aiMesh* pMesh = pScene->mMeshes[i];
+	//		if (!pMesh->HasBones())
+	//			continue;
+
+	//		for (int j = 0; j < pMesh->mNumBones; j++)
+	//		{
+	//			const aiBone* pBone = pMesh->mBones[j];
+
+	//			// TODO: check if OLDScene node and amarture are presents
+	//			std::string boneName(pBone->mName.C_Str());
+	//			std::string nodeName = boneName;
+	//			if (!rigPrefix.empty())
+	//				if(nodeName.compare(0, rigPrefix.size(), rigPrefix) != 0)
+	//					nodeName = rigPrefix + "_" + nodeName;
+
+	//			if (jointIndices.find(boneName) == jointIndices.end())
+	//			{
+	//				unsigned int nodeIndex = 0;
+	//				if (nodeIndices.find(nodeName) == nodeIndices.end())
+	//					std::cout << "cannot find node with name " << nodeName << std::endl;
+	//				else
+	//				{
+	//					nodeIndex = nodeIndices[nodeName];
+	//					unsigned int jointIndex = jointIndices.size();
+	//					skin->addJoint(nodeIndex, toMat4(pBone->mOffsetMatrix));
+	//					jointIndices.insert(std::make_pair(boneName, jointIndex));
+	//				}
+	//			}
+	//		}
+	//	}
+
+	//	skin->setSkeleton(0); // TODO: set correct amarture as root node
+	//	if(skin->numJoints() > 0)
+	//		skins.push_back(skin);
+	//}
+
+	uint8* loadFromFile(std::string filename, uint32& width, uint32& height)
 	{
-		for (int i = 0; i < pScene->mNumAnimations; i++)
-		{
-			const aiAnimation* pAnim = pScene->mAnimations[i];
-			std::string name(pAnim->mName.C_Str());
-			float duration = pAnim->mDuration;
-			float ticks = pAnim->mTicksPerSecond;
-			float durationInSeconds = duration / ticks;
-			auto animation = Animation::create(name);
-			animation->setDuration(durationInSeconds);
+		int w = 0;
+		int h = 0;
+		int c = 0;
 
-			for (int j = 0; j < pAnim->mNumChannels; j++)
-			{
-				const aiNodeAnim* pNodeAnim = pAnim->mChannels[j];
-				std::string nodeName = pNodeAnim->mNodeName.C_Str();
-				unsigned int targetNodeIndex = nodeIndices[nodeName];
+		stbi_set_flip_vertically_on_load(false);
 
-				//Channel channel;
-				auto translationChannel = Channel<glm::vec3>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_POSITION, targetNodeIndex);
-				for (int k = 0; k < pNodeAnim->mNumPositionKeys; k++)
-				{
-					float time = pNodeAnim->mPositionKeys[k].mTime / ticks;
-					glm::vec3 position = toVec3(pNodeAnim->mPositionKeys[k].mValue);
-					std::vector<glm::vec3> positions;
-					positions.push_back(position);
-					translationChannel->addValue(time, positions);
-				}
+		uint8* rawData = stbi_load(filename.c_str(), &w, &h, &c, 4);
 
-				auto rotationChannel = Channel<glm::quat>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_ROTATION, targetNodeIndex);
-				for (int k = 0; k < pNodeAnim->mNumRotationKeys; k++)
-				{
-					float time = pNodeAnim->mRotationKeys[k].mTime / ticks;
-					glm::quat rotation = toQuat(pNodeAnim->mRotationKeys[k].mValue);
-					std::vector<glm::quat> rotations;
-					rotations.push_back(rotation);
-					rotationChannel->addValue(time, rotations);
-				}
+		//std::cout << "tex size: " << w << "x" << h << "x" << c << std::endl;
 
-				auto scaleChannel = Channel<glm::vec3>::create(Interpolation::LINEAR, AnimAttribute::TRANSFORM_SCALE, targetNodeIndex);
-				for (int k = 0; k < pNodeAnim->mNumScalingKeys; k++)
-				{
-					float time = pNodeAnim->mScalingKeys[k].mTime / ticks;
-					glm::vec3 scale = toVec3(pNodeAnim->mScalingKeys[k].mValue);
-					std::vector<glm::vec3> scales;
-					scales.push_back(scale);
-					scaleChannel->addValue(time, scales);
-				}
+		width = w;
+		height = h;
 
-				animation->addChannel(translationChannel);
-				animation->addChannel(rotationChannel);
-				animation->addChannel(scaleChannel);
-			}
-			animations.push_back(animation);
-		}
+		return rawData;
 	}
 
-	void AssimpImporter::loadSkins(const aiScene* pScene)
-	{
-		// TODO: add support for multiple skins, check amarture and create arrays for each skin
-		auto skin = Skin::create("");
-		for (int i = 0; i < pScene->mNumMeshes; i++)
-		{
-			const aiMesh* pMesh = pScene->mMeshes[i];
-			if (!pMesh->HasBones())
-				continue;
+	//void AssimpImporter::setTextureInfo(const aiScene* pScene, const aiMaterial* pMaterial, aiTextureType aiTexType, pr::Material::Ptr material, std::string texUniform, bool sRGB)
+	//{
+	//	if (pMaterial->GetTextureCount(aiTexType) > 0) // TODO: check if more than one texture
+	//	{
+	//		aiString texFilename;
+	//		pMaterial->GetTexture(aiTexType, 0, &texFilename);
+	//		//std::cout << texUniform << " filename: " << texFilename.C_Str() << std::endl;
+	//		std::string filename = std::string(texFilename.C_Str());
+	//		std::replace(filename.begin(), filename.end(), '\\', '/');
+	//		filename.erase(std::remove(filename.begin(), filename.end(), '\t'), filename.end());
+	//		std::string fullPath = path + "/" + filename;
 
-			for (int j = 0; j < pMesh->mNumBones; j++)
-			{
-				const aiBone* pBone = pMesh->mBones[j];
+	//		pr::Texture2D::Ptr tex = nullptr;
+	//		//if (hasEmbeddedTextures)
+	//		//{
+	//		//	const aiTexture* aiTex = pScene->GetEmbeddedTexture(filename.c_str());
+	//		//	//tex = IO_Legacy::loadTextureFromMemory((unsigned char*)aiTex->pcData, aiTex->mWidth, sRGB);
 
-				// TODO: check if OLDScene node and amarture are presents
-				std::string boneName(pBone->mName.C_Str());
-				std::string nodeName = boneName;
-				if (!rigPrefix.empty())
-					if(nodeName.compare(0, rigPrefix.size(), rigPrefix) != 0)
-						nodeName = rigPrefix + "_" + nodeName;
+	//		//	auto img = IO::decodeFromMemory((uint8*)aiTex->pcData, aiTex->mWidth);
+	//		//	tex = img->upload(sRGB);
+	//		//}
+	//		//else
+	//		{
+	//			// TODO: check filter&wrap parameters and set defaults!
+	//			//Image2D<unsigned char> image(fullPath);
+	//			//tex = image.upload(sRGB);
 
-				if (jointIndices.find(boneName) == jointIndices.end())
-				{
-					unsigned int nodeIndex = 0;
-					if (nodeIndices.find(nodeName) == nodeIndices.end())
-						std::cout << "cannot find node with name " << nodeName << std::endl;
-					else
-					{
-						nodeIndex = nodeIndices[nodeName];
-						unsigned int jointIndex = jointIndices.size();
-						skin->addJoint(nodeIndex, toMat4(pBone->mOffsetMatrix));
-						jointIndices.insert(std::make_pair(boneName, jointIndex));
-					}
-				}
-			}
-		}
+	//			//std::cout << "loading texture " << fullPath << std::endl;
 
-		skin->setSkeleton(0); // TODO: set correct amarture as root node
-		if(skin->numJoints() > 0)
-			skins.push_back(skin);
-	}
+	//			//auto img = IO::decodeFromFile(fullPath);
+	//			//tex = img->upload(sRGB);
 
-	void AssimpImporter::setTextureInfo(const aiScene* pScene, const aiMaterial* pMaterial, aiTextureType aiTexType, Material::Ptr material, std::string texUniform, bool sRGB)
-	{
-		if (pMaterial->GetTextureCount(aiTexType) > 0) // TODO: check if more than one texture
-		{
-			aiString texFilename;
-			pMaterial->GetTexture(aiTexType, 0, &texFilename);
-			//std::cout << texUniform << " filename: " << texFilename.C_Str() << std::endl;
-			std::string filename = std::string(texFilename.C_Str());
-			std::replace(filename.begin(), filename.end(), '\\', '/');
-			filename.erase(std::remove(filename.begin(), filename.end(), '\t'), filename.end());
-			std::string fullPath = path + "/" + filename;
+	//			uint32 width, height;
+	//			auto data = loadFromFile(fullPath, width, height);
+	//			uint32 dataSize = width * height * 4;
 
-			Texture2D::Ptr tex = nullptr;
-			if (hasEmbeddedTextures)
-			{
-				const aiTexture* aiTex = pScene->GetEmbeddedTexture(filename.c_str());
-				//tex = IO_Legacy::loadTextureFromMemory((unsigned char*)aiTex->pcData, aiTex->mWidth, sRGB);
+	//			GPU::ImageUsage flags = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
+	//			GPU::Format format = sRGB ? GPU::Format::SRGBA8 : GPU::Format::RGBA8;
 
-				auto img = IO::decodeFromMemory((uint8*)aiTex->pcData, aiTex->mWidth);
-				tex = img->upload(sRGB);
-			}
-			else
-			{
-				// TODO: check filter&wrap parameters and set defaults!
-				//Image2D<unsigned char> image(fullPath);
-				//tex = image.upload(sRGB);
+	//			tex = pr::Texture2D::create(width, height, format);
+	//			tex->upload(data, dataSize);
+	//			//textures[idx] = texture;
+	//		}
 
-				//std::cout << "loading texture " << fullPath << std::endl;
-
-				auto img = IO::decodeFromFile(fullPath);
-				tex = img->upload(sRGB);
-			}
-
-			if (tex == nullptr)
-				material->addProperty(texUniform + ".use", false);
-			else
-			{
-				material->addTexture(texUniform + ".tSampler", tex);
-				material->addProperty(texUniform + ".use", true);
-				material->addProperty(texUniform + ".uvIndex", 0);// TODO: get UV index from assimp
-				material->addProperty(texUniform + ".uvTransform", glm::mat3(1.0f)); // TODO: assimp has not support for tex transform yet...
-			}
-		}
-		else
-		{
-			material->addProperty(texUniform + ".use", false);
-		}
-	}
+	//		//if (tex == nullptr)
+	//		//	material->addProperty(texUniform + ".use", false);
+	//		//else
+	//		//{
+	//		//	material->addTexture(texUniform + ".tSampler", tex);
+	//		//	material->addProperty(texUniform + ".use", true);
+	//		//	material->addProperty(texUniform + ".uvIndex", 0);// TODO: get UV index from assimp
+	//		//	material->addProperty(texUniform + ".uvTransform", glm::mat3(1.0f)); // TODO: assimp has not support for tex transform yet...
+	//		//}
+	//	}
+	//	//else
+	//	//{
+	//	//	material->addProperty(texUniform + ".use", false);
+	//	//}
+	//}
 
 	void AssimpImporter::loadMaterials(const aiScene* pScene)
 	{
@@ -334,10 +364,26 @@ namespace IO
 
 		for (uint32_t i = 0; i < pScene->mNumMaterials; i++)
 		{
+			//PBRMaterial mat;
+
 			const aiMaterial* pMaterial = pScene->mMaterials[i];
 			//auto material = getDefaultMaterial();
-			auto material = Material::create();
+			//auto material = pr::Material::create("Default", "Default");
 			std::string name = getStringFromMaterial(pMaterial, AI_MATKEY_NAME);
+
+			auto material = pr::Material::create(name, "UnityDefault");
+			material->addProperty("baseColor", glm::vec4(1));
+			material->addProperty("emissive", glm::vec4(glm::vec3(0), 1));
+			material->addProperty("glossiness", 1.0f);
+			material->addProperty("glossMapScale", 1.0f);
+			material->addProperty("metallic", 0.0f);
+			material->addProperty("occlusion", 1.0f);
+			material->addProperty("normalScale", 1.0f);
+			material->addProperty("alphaMode", 0);
+			material->addProperty("alphaCutOff", 0.5f);
+			material->addProperty("ior", 1.5f);
+			for (int i = 0; i < 5; i++)
+				material->addTexture("", nullptr);
 
 			// blending and face culling
 			std::string alphaMode = getStringFromMaterial(pMaterial, "$mat.gltf.alphaMode", 0, 0);
@@ -352,27 +398,33 @@ namespace IO
 			if (alphaMode.compare("BLEND") == 0)
 			{
 				alphaModeEnum = 2;
-				material->setBlending(true);
+				//material->setBlending(true);
 			}
 
 			material->setDoubleSided(doubleSided);
-			material->addProperty("material.alphaMode", alphaModeEnum);
-			material->addProperty("material.alphaCutOff", alphaCutOff);
+			//material->addProperty("material.alphaMode", alphaModeEnum);
+			//material->addProperty("material.alphaCutOff", alphaCutOff);
+			//material->data.alphaCutOff = alphaCutOff;
+			//material->data.alphaMode = alphaModeEnum;
 
 			// PBR material
 			glm::vec4 baseColor = getVec4FromMaterial(pMaterial, AI_MATKEY_BASE_COLOR);
 			float roughnessFactor = getFloatFromMaterial(pMaterial, AI_MATKEY_ROUGHNESS_FACTOR);
 			float metallicFactor  = getFloatFromMaterial(pMaterial, AI_MATKEY_METALLIC_FACTOR);
 			glm::vec3 emissiveFactor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_EMISSIVE, glm::vec3(0.0f));
-			material->addProperty("material.baseColorFactor", baseColor);
-			material->addProperty("material.roughnessFactor", roughnessFactor);
-			material->addProperty("material.metallicFactor", metallicFactor);
-			material->addProperty("material.emissiveFactor", emissiveFactor);
-			material->addProperty("material.emissiveStrength", 1.0f);
-			material->addProperty("material.occlusionStrength", 1.0f);
+			//material->addProperty("material.baseColorFactor", baseColor);
+			//material->addProperty("material.roughnessFactor", roughnessFactor);
+			//material->addProperty("material.metallicFactor", metallicFactor);
+			//material->addProperty("material.emissiveFactor", emissiveFactor);
+			//material->addProperty("material.emissiveStrength", 1.0f);
+			//material->addProperty("material.occlusionStrength", 1.0f);
+			//material->data.baseColor = baseColor;
+			//material->data.roughness = roughnessFactor;
+			//material->data.metallic = metallicFactor;
+			//material->data.emissive = glm::vec4(emissiveFactor, 1.0f);
+			//material->setParameters(mat);
 
 			//setTextureInfo(pScene, pMaterial, aiTextureType_BASE_COLOR, material, "baseColorTex", true);
-			//setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "baseColorTex", true);
 			//if(pMaterial->GetTextureCount(aiTextureType_NORMALS) > 0)
 			//	setTextureInfo(pScene, pMaterial, aiTextureType_NORMALS, material, "normalTex");
 			//else
@@ -381,41 +433,41 @@ namespace IO
 			//setTextureInfo(pScene, pMaterial, aiTextureType_LIGHTMAP, material, "occlusionTex");
 			//setTextureInfo(pScene, pMaterial, aiTextureType_EMISSIVE, material, "emissiveTex", true);
 	
-			material->addProperty("material.normalScale", 1.0f); // TODO: add to normal tex info
-			material->addProperty("material.unlit", false);
-			material->addProperty("material.ior", 1.5f);
+			//material->addProperty("material.normalScale", 1.0f); // TODO: add to normal tex info
+			//material->addProperty("material.unlit", false);
+			//material->addProperty("material.ior", 1.5f);
 
-			int shadingModel = -1;
-			pMaterial->Get(AI_MATKEY_SHADING_MODEL, shadingModel);
+			//int shadingModel = -1;
+			//pMaterial->Get(AI_MATKEY_SHADING_MODEL, shadingModel);
 
-			if (shadingModel != 11) // Phong shading -> use PBR spec gloss material
-			{
-				glm::vec3 diffuseColor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_DIFFUSE);
-				glm::vec3 specularColor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_SPECULAR);
-				float opacity = getFloatFromMaterial(pMaterial, AI_MATKEY_OPACITY);
-				float shininess = getFloatFromMaterial(pMaterial, AI_MATKEY_SHININESS, 0.0f);
-				float shininessStrength = getFloatFromMaterial(pMaterial, AI_MATKEY_SHININESS_STRENGTH, 0.0f) / 100.0f;
-				float glossFactor = shininessStrength * (shininess > 0.0f ? glm::log2(shininess) / 8.0f : 1.0f);
-				if (glossFactor == 0.0) // it makes no sense that there is specular color when the glossiness is zero anyway...
-					specularColor = glm::vec3(0);
+			//if (shadingModel != 11) // Phong shading -> use PBR spec gloss material
+			//{
+			//	glm::vec3 diffuseColor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_DIFFUSE);
+			//	glm::vec3 specularColor = getVec3FromMaterial(pMaterial, AI_MATKEY_COLOR_SPECULAR);
+			//	float opacity = getFloatFromMaterial(pMaterial, AI_MATKEY_OPACITY);
+			//	float shininess = getFloatFromMaterial(pMaterial, AI_MATKEY_SHININESS, 0.0f);
+			//	float shininessStrength = getFloatFromMaterial(pMaterial, AI_MATKEY_SHININESS_STRENGTH, 0.0f) / 100.0f;
+			//	float glossFactor = shininessStrength * (shininess > 0.0f ? glm::log2(shininess) / 8.0f : 1.0f);
+			//	if (glossFactor == 0.0) // it makes no sense that there is specular color when the glossiness is zero anyway...
+			//		specularColor = glm::vec3(0);
 
-				material->addProperty("material.diffuseFactor", glm::vec4(diffuseColor, opacity));
-				material->addProperty("material.specularFactor", specularColor);
-				material->addProperty("material.glossFactor", glossFactor);
+			//	material->addProperty("material.diffuseFactor", glm::vec4(diffuseColor, opacity));
+			//	material->addProperty("material.specularFactor", specularColor);
+			//	material->addProperty("material.glossFactor", glossFactor);
 
-				//std::cout << "shininess: " << shininess << std::endl;
-				//std::cout << "shininessStrength: " << shininessStrength << std::endl;
-				//std::cout << "specularColor: " << specularColor.x << " " << specularColor.y << " " << specularColor.z << std::endl;
+			//	//std::cout << "shininess: " << shininess << std::endl;
+			//	//std::cout << "shininessStrength: " << shininessStrength << std::endl;
+			//	//std::cout << "specularColor: " << specularColor.x << " " << specularColor.y << " " << specularColor.z << std::endl;
 
-				setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "diffuseTex", true);
-				setTextureInfo(pScene, pMaterial, aiTextureType_SPECULAR, material, "specGlossTex", true);
+			//	//setTextureInfo(pScene, pMaterial, aiTextureType_DIFFUSE, material, "diffuseTex", true);
+			//	//setTextureInfo(pScene, pMaterial, aiTextureType_SPECULAR, material, "specGlossTex", true);
 
-				material->setShader("Default_SPECGLOSS");
-			}
-			else // for every other shading model use default PBR metal rough mat
-			{
-				material->setShader("Default");
-			}
+			//	material->setShader("Default_SPECGLOSS");
+			//}
+			//else // for every other shading model use default PBR metal rough mat
+			//{
+			//	material->setShader("Default");
+			//}
 
 			//std::cout << "loading material " << name << std::endl;
 			//for (int i = 0; i < pMaterial->mNumProperties; i++)
@@ -446,12 +498,12 @@ namespace IO
 	void AssimpImporter::loadTextures(const aiScene* pScene)
 	{
 		// TODO: load textures from file/memory before
-		for (int i = 0; i < pScene->mNumTextures; i++)
+		for (uint32 i = 0; i < pScene->mNumTextures; i++)
 		{
 			aiTexture* aiTex = pScene->mTextures[i];
 			std::string filename = std::string(aiTex->mFilename.C_Str());
 			std::cout << filename << std::endl;
-			int w, h, c;
+			//int w, h, c;
 			//unsigned char* rawData = stbi_load_from_memory((unsigned char*)aiTex->pcData, aiTex->mWidth, &w, &h, &c, 0);
 			//auto image = ImageRGB8UC::create(w, h);
 			//uint32_t size = image->getWidth() * image->getHeight() * image->getChannels();
@@ -488,12 +540,12 @@ namespace IO
 					glm::vec3 t = toVec3(pMesh->mTangents[j]);
 					glm::vec3 b = toVec3(pMesh->mBitangents[j]);
 					glm::vec3 n = v.normal;
-					float handeness = glm::sign(glm::dot(n, glm::cross(t, b)));
+					float handeness = -glm::sign(glm::dot(n, glm::cross(t, b)));
 					v.tangent = glm::vec4(t, handeness);
 				}
 
 				boundingBox.expand(v.position); // TODO: assimp has a AABB stored, check this first
-				surface.addVertex(v);
+				surface.vertices.push_back(v);
 			}
 
 			for (uint32_t j = 0; j < pMesh->mNumFaces; j++)
@@ -504,13 +556,16 @@ namespace IO
 					std::cout << "error: non triangle faces are not supported!" << std::endl;
 					continue; // TODO: add if lines or points!
 				}
-				TriangleIndices t(face.mIndices[0], face.mIndices[1], face.mIndices[2]);
-				surface.addTriangle(t);
+				//TriangleIndices t(face.mIndices[0], face.mIndices[1], face.mIndices[2]);
+				//surface.addTriangle(t);
+				surface.indices.push_back(face.mIndices[0]);
+				surface.indices.push_back(face.mIndices[1]);
+				surface.indices.push_back(face.mIndices[2]);
 			}
 
 			if (pMesh->HasBones())
 			{
-				for (int j = 0; j < pMesh->mNumBones; j++)
+				for (uint32 j = 0; j < pMesh->mNumBones; j++)
 				{
 					const aiBone* pBone = pMesh->mBones[j];
 					std::string boneName(pBone->mName.C_Str());
@@ -519,7 +574,7 @@ namespace IO
 					//	continue;
 
 					unsigned int jointIndex = jointIndices[boneName];
-					for (int k = 0; k < pBone->mNumWeights; k++)
+					for (uint32 k = 0; k < pBone->mNumWeights; k++)
 					{
 						unsigned int vertexID = pBone->mWeights[k].mVertexId;
 						float vertexWeight = pBone->mWeights[k].mWeight;
@@ -527,12 +582,12 @@ namespace IO
 						int index = 0;
 						while (index < 4)
 						{
-							if (surface.vertices[vertexID].boneWeights[index] > 0.0f)
+							if (surface.vertices[vertexID].weights[index] > 0.0f)
 								index++;
 							else
 							{
-								surface.vertices[vertexID].boneIDs[index] = jointIndex;
-								surface.vertices[vertexID].boneWeights[index] = vertexWeight;
+								surface.vertices[vertexID].joints[index] = static_cast<float>(jointIndex);
+								surface.vertices[vertexID].weights[index] = vertexWeight;
 								break;
 							}
 						}
@@ -542,13 +597,13 @@ namespace IO
 				{
 					float weightSum = 0.0f;
 					for (int k = 0; k < 4; k++)
-						weightSum += surface.vertices[j].boneWeights[k];
-					surface.vertices[j].boneWeights /= weightSum;
+						weightSum += surface.vertices[j].weights[k];
+					surface.vertices[j].weights /= weightSum;
 				}
 			}
 
-			if (!pMesh->HasNormals())
-				materials[pMesh->mMaterialIndex]->addProperty("material.computeFlatNormals", true);
+			//if (!pMesh->HasNormals())
+				//materials[pMesh->mMaterialIndex]->addProperty("material.computeFlatNormals", true);
 			if (!pMesh->HasTangentsAndBitangents())
 				surface.calcTangentSpace();
 
@@ -556,30 +611,44 @@ namespace IO
 			//if (pMesh->mMaterialIndex < materials.size())
 			//	mat = materials[pMesh->mMaterialIndex];
 
+			surface.minPoint = boundingBox.getMinPoint();
+			surface.maxPoint = boundingBox.getMaxPoint();
+
 			std::string name(pMesh->mName.C_Str());
+
+			//if (meshNames.find(name) != meshNames.end())
+			//{
+			//	meshNames[name]++;
+			//	name += " " + std::to_string(meshNames[name]);
+			//}				
+			//else
+			//	meshNames.insert(std::make_pair(name, 0));
+
 			//std::cout << "mesh: " << name << " has " << pMesh->mNumVertices << " vertices, and " << pMesh->mNumFaces << " faces" << std::endl;
-			auto prim = Primitive::create(name, surface, 4);
-			prim->setBoundingBox(boundingBox.getMinPoint(), boundingBox.getMaxPoint());
+			auto prim = pr::Primitive::create(name, surface, GPU::Topology::Triangles);
+			prim->createData();
+			prim->uploadData();
+			//prim->setBoundingBox(boundingBox.getMinPoint(), boundingBox.getMaxPoint());
 			meshes.push_back(prim);
 			matIndices.push_back(pMesh->mMaterialIndex);
 		}
 	}
 
-	Entity::Ptr AssimpImporter::collapse(Entity::Ptr node)
-	{
-		if (node->numChildren() == 1 && node->getComponent<Transform>()->getLocalTransform() == glm::mat4(1.0f))
-		{
-			auto c = node->getChild(0);
-			c->setParent(node->getParent());
-			return collapse(c);
-		}
-		else
-		{
-			for (int i = 0; i < node->numChildren(); i++)
-				collapse(node->getChild(i));
-		}
-		return node;
-	}
+	//Entity::Ptr AssimpImporter::collapse(Entity::Ptr node)
+	//{
+	//	if (node->numChildren() == 1 && node->getComponent<Transform>()->getLocalTransform() == glm::mat4(1.0f))
+	//	{
+	//		auto c = node->getChild(0);
+	//		c->setParent(node->getParent());
+	//		return collapse(c);
+	//	}
+	//	else
+	//	{
+	//		for (int i = 0; i < node->numChildren(); i++)
+	//			collapse(node->getChild(i));
+	//	}
+	//	return node;
+	//}
 
 	void AssimpImporter::traverse(const aiNode* pNode, unsigned int& index)
 	{
@@ -592,17 +661,17 @@ namespace IO
 		}
 	}
 
-	Entity::Ptr AssimpImporter::traverse(const aiNode* pNode, Entity::Ptr parent)
+	pr::Entity::Ptr AssimpImporter::traverse(const aiNode* pNode, pr::Entity::Ptr parent)
 	{
 		std::string name(pNode->mName.C_Str());
 		glm::mat4 localTransform = toMat4(pNode->mTransformation);
 
-		auto entity = Entity::create(name, parent);
-		auto t = entity->getComponent<Transform>();
+		auto entity = pr::Entity::create(name, parent);
+		auto t = entity->getComponent<pr::Transform>();
 		t->setLocalTransform(localTransform);
 
-		std::vector<Primitive::Ptr> nodeMeshes;
-		for (int i = 0; i < pNode->mNumMeshes; i++)
+		std::vector<pr::Primitive::Ptr> nodeMeshes;
+		for (uint32 i = 0; i < pNode->mNumMeshes; i++)
 		{
 			auto mesh = meshes[pNode->mMeshes[i]];
 			nodeMeshes.push_back(mesh);
@@ -610,11 +679,12 @@ namespace IO
 
 		if (!nodeMeshes.empty())
 		{
-			auto r = Renderable::create();
-			auto mesh = Mesh::create("");
+			auto mesh = pr::Mesh::create("");
+			auto r = pr::Renderable::create(mesh);
+			
 			//for (auto prim : nodeMeshes)
 			//	mesh->addPrimitive(prim);
-			r->setMesh(mesh);
+			//r->setMesh(mesh);
 
 			if (skins.size() > 0)
 				r->setSkin(skins[0]); // TODO: multiple skins...
@@ -632,7 +702,7 @@ namespace IO
 
 		return entity;
 	}
-	Entity::Ptr AssimpImporter::traversePretransform(const aiNode* pNode, Entity::Ptr parent, glm::mat4 nodeTransform, glm::mat4 meshTransform)
+	pr::Entity::Ptr AssimpImporter::traversePretransform(const aiNode* pNode, pr::Entity::Ptr parent, glm::mat4 nodeTransform, glm::mat4 meshTransform)
 	{
 		std::string nodeName(pNode->mName.C_Str());
 		glm::mat4 localNodeTransform = nodeTransform;
@@ -666,7 +736,7 @@ namespace IO
 				//std::cout << "transform type " << transformType << " not supported!" << std::endl;
 			}
 
-			std::vector<Entity::Ptr> children;
+			std::vector<pr::Entity::Ptr> children;
 			for (uint32_t i = 0; i < pNode->mNumChildren; i++)
 			{
 				children.push_back(traversePretransform(pNode->mChildren[i], parent, localNodeTransform, localMeshTransform));
@@ -688,13 +758,13 @@ namespace IO
 				nodeName = nodeName + " " + std::to_string(nodeNames[nodeName]);
 			}
 
-			auto entity = Entity::create(nodeName, parent);
-			auto t = entity->getComponent<Transform>();
+			auto entity = pr::Entity::create(nodeName, parent);
+			auto t = entity->getComponent<pr::Transform>();
 			t->setLocalTransform(localNodeTransform);
 
-			std::vector<Primitive::Ptr> nodeMeshes;
-			std::vector<Material::Ptr> nodeMats;
-			for (int i = 0; i < pNode->mNumMeshes; i++)
+			std::vector<pr::Primitive::Ptr> nodeMeshes;
+			std::vector<pr::Material::Ptr> nodeMats;
+			for (uint32 i = 0; i < pNode->mNumMeshes; i++)
 			{
 				auto mesh = meshes[pNode->mMeshes[i]];
 				auto mat = materials[matIndices[pNode->mMeshes[i]]];
@@ -705,8 +775,8 @@ namespace IO
 
 			if (!nodeMeshes.empty())
 			{
-				auto r = Renderable::create();
-				auto mesh = Mesh::create("");
+				
+				auto mesh = pr::Mesh::create("");
 				//std::cout << "node " << name << " submeshes: " << nodeMeshes.size() << std::endl;
 				for (int i = 0; i < nodeMeshes.size(); i++)
 				{
@@ -716,15 +786,23 @@ namespace IO
 					auto surf = prim->getSurface();
 					auto bbox = prim->getBoundingBox();
 
+					//auto newPrim = pr::Primitive::create(meshName, surf, 4, mat);
+					//newPrim->preTransform(localMeshTransform);
+					//mesh->addPrimitive(newPrim);
 					//std::cout << "node: " << nodeName << " mesh name: " << meshName << std::endl;
-					SubMesh s;
-					s.primitive = Primitive::create(meshName, surf, 4);
+					pr::SubMesh s;
+					s.primitive = pr::Primitive::create(nodeName, surf, GPU::Topology::Triangles);
 					s.primitive->preTransform(localMeshTransform);
 					//s.primitive->setBoundingBox(bbox);
+
+					s.primitive->createData();
+					s.primitive->uploadData();
+
 					s.material = mat;
 					mesh->addSubMesh(s);
 				}
-				r->setMesh(mesh);
+				//r->setMesh(mesh);
+				auto r = pr::Renderable::create(mesh);
 
 				if (skins.size() > 0)
 					r->setSkin(skins[0]); // TODO: multiple skins...
@@ -745,12 +823,17 @@ namespace IO
 		}
 	}
 
-	Entity::Ptr AssimpImporter::loadScene(const aiScene* pScene)
+	pr::Entity::Ptr AssimpImporter::loadScene(const aiScene* pScene)
 	{
 		// TODO: load other stuff (lights, cameras,...)
 
 		return traversePretransform(pScene->mRootNode, nullptr, glm::mat4(1.0f), glm::mat4(1.0f));
 	}
+
+	std::vector<pr::Material::Ptr> AssimpImporter::getMaterials()
+	{
+		return materials;
+	}
 }
 
-#endif
+//#endif

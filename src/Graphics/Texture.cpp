@@ -1,331 +1,640 @@
 #include "Texture.h"
 
-Texture2D::Texture2D(unsigned int width, unsigned int height, GL::TextureFormat format) :
-	width(width),
-	height(height),
-	format(format),
-	offset(0.0f),
-	scale(1.0f),
-	rotation(0.0f)
+namespace pr
 {
-	texture.upload2D(nullptr, width, height, format);
-	texture.setFilter(GL::LINEAR, GL::LINEAR);
-	texture.setWrap(GL::REPEAT, GL::REPEAT);
-}
-
-void Texture2D::upload(void* data)
-{
-	texture.upload2D(data, width, height, format);
-}
-
-void Texture2D::download(void* data)
-{
-	texture.download(data, format);
-}
-
-void Texture2D::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
-{
-	texture.setFilter(minFilter, magFilter);
-}
-
-void Texture2D::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT)
-{
-	texture.setWrap(wrapS, wrapT);
-}
-
-void Texture2D::generateMipmaps()
-{
-	texture.generateMipmaps();
-}
-
-void Texture2D::bind()
-{
-	texture.bind();
-}
-
-void Texture2D::use(GLuint unit)
-{
-	texture.use(unit);
-}
-
-GLuint Texture2D::getID()
-{
-	return texture;
-}
-
-void Texture2D::setOffset(glm::vec2 offset)
-{
-	this->offset = offset;
-}
-
-void Texture2D::setRotation(float rotation)
-{
-	this->rotation = rotation;
-}
-
-void Texture2D::setScale(glm::vec2 scale)
-{
-	this->scale = scale;
-}
-
-glm::mat3 Texture2D::getUVTransform()
-{
-	glm::mat3 T(1.0f);
-	T[2][0] = offset.x;
-	T[2][1] = offset.y;
-
-	glm::mat3 S(1.0f);
-	S[0][0] = scale.x;
-	S[1][1] = scale.y;
-
-	glm::mat3 R(1.0f);
-	R[0][0] = glm::cos(rotation);
-	R[1][0] = glm::sin(rotation);
-	R[0][1] = -glm::sin(rotation);
-	R[1][1] = glm::cos(rotation);
-
-	return T * R * S;
-}
-
-Texture3D::Texture3D(unsigned int width, unsigned int height, unsigned depth, GL::TextureFormat format) :
-	width(width),
-	height(height),
-	depth(depth),
-	format(format)
-{
-	texture.upload3D(nullptr, width, height, depth, format);
-	texture.setFilter(GL::LINEAR, GL::LINEAR);
-	texture.setWrap(GL::REPEAT, GL::REPEAT, GL::REPEAT);
-}
-
-void Texture3D::upload(void* data)
-{
-	texture.upload3D(data, width, height, depth, format);
-}
-
-void Texture3D::download(void* data)
-{
-	texture.download(data, format);
-}
-
-void Texture3D::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
-{
-	texture.setFilter(minFilter, magFilter);
-}
-
-void Texture3D::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR)
-{
-	texture.setWrap(wrapS, wrapT, wrapR);
-}
-
-void Texture3D::generateMipmaps()
-{
-	texture.generateMipmaps();
-}
-
-void Texture3D::bind()
-{
-	texture.bind();
-}
-
-void Texture3D::use(GLuint unit)
-{
-	texture.use(unit);
-}
-
-GLuint Texture3D::getID()
-{
-	return texture;
-}
-
-const unsigned int NUM_CUBEMAP_FACES = 6;
-
-TextureCubeMap::TextureCubeMap(unsigned int width, unsigned int height, GL::TextureFormat format) :
-	width(width),
-	height(height),
-	levels(1),
-	format(format)
-{
-	for (int f = 0; f < NUM_CUBEMAP_FACES; f++)
-		texture.upload2D(nullptr, width, height, format, GL::POS_X + f);
-
-	setFilter(GL::LINEAR, GL::LINEAR);
-	setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-}
-
-void TextureCubeMap::uploadFace(int face, void* data)
-{
-	texture.upload2D(data, width, height, format, GL::POS_X + face);
-}
-
-void TextureCubeMap::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
-{
-	texture.setFilter(minFilter, magFilter);
-}
-
-void TextureCubeMap::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR)
-{
-	texture.setWrap(wrapS, wrapT, wrapR);
-}
-
-void TextureCubeMap::setCompareMode()
-{
-	texture.setCompareMode();
-}
-
-void TextureCubeMap::generateMipmaps()
-{
-	texture.generateMipmaps();
-	levels = log2(width) + 1;
-}
-
-void TextureCubeMap::use(GLuint unit)
-{
-	texture.use(unit);
-}
-
-void TextureCubeMap::bind()
-{
-	texture.bind();
-}
-
-void TextureCubeMap::setLevels(int levels)
-{
-	this->levels = levels;
-}
-
-unsigned int TextureCubeMap::getFaceSize()
-{
-	return width;
-}
-
-unsigned int TextureCubeMap::getLevels()
-{
-	return levels;
-}
-
-GLuint TextureCubeMap::getID()
-{
-	return texture;
-}
-
-TextureCubeMap::Ptr TextureCubeMap::copy()
-{
-	auto cubeMap = TextureCubeMap::create(width, height, GL::RGB32F);
-	cubeMap->bind();
-
-	GLuint fboID;
-	glGenFramebuffers(1, &fboID);
-	glBindFramebuffer(GL_FRAMEBUFFER, fboID);
-
-	for (int level = 0; level <= levels; level++)
+	Texture2D::Texture2D(uint32 width, uint32 height, GPU::Format format, uint32 levels)
 	{
-		int mipSize = width / std::pow(2, level);
-		for (int f = 0; f < 6; f++)
+		auto& ctx = GraphicsContext::getInstance();
+
+		params.type = GPU::ViewType::View2D;
+		params.format = format;
+		params.extent = GPU::Extent3D(width, height, 1);
+		params.layers = 1;
+		params.levels = levels;
+		params.usage = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
+
+		//image = ctx.createImage(params);
+		//view = image->createImageView();
+		//sampler = ctx.createSampler(levels);
+	}
+
+	Texture2D::Texture2D(uint32 width, uint32 height, GPU::Format format, uint32 levels, GPU::ImageUsage usage)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		params.type = GPU::ViewType::View2D;
+		params.format = format;
+		params.extent = GPU::Extent3D(width, height, 1);
+		params.layers = 1;
+		params.levels = levels;
+		params.usage = usage;
+
+		//image = ctx.createImage(params);
+		//view = image->createImageView();
+		//sampler = ctx.createSampler(levels);
+	}
+
+	Texture2D::~Texture2D() {}
+
+	void Texture2D::upload(uint8* data, uint32 size, uint32 level)
+	{
+		this->data = new uint8[size];
+		this->size = size;
+		std::memcpy(this->data, data, size);
+		//auto& ctx = GraphicsContext::getInstance();
+		//auto cmdBuf = ctx.allocateCommandBuffer();
+		//image->uploadData(cmdBuf, data, size, 0, level);
+	}
+
+	void Texture2D::setAddressMode(GPU::AddressMode modeU, GPU::AddressMode modeV, GPU::AddressMode modeW)
+	{
+		//sampler->setAddressMode(modeU, modeV, modeW);
+		this->modeU = modeU;
+		this->modeV = modeV;
+		this->modeW = modeW;
+	}
+
+	void Texture2D::setAddressMode(GPU::AddressMode mode)
+	{
+		//sampler->setAddressMode(mode);
+		setAddressMode(mode, mode, mode);
+	}
+
+	void Texture2D::setFilter(GPU::Filter minFilter, GPU::Filter magFilter)
+	{
+		//sampler->setFilter(minFilter, magFilter);
+		this->minFilter = minFilter;
+		this->magFilter = magFilter;
+	}
+
+	void Texture2D::generateMipmaps()
+	{
+		genMipmaps = true;
+		//if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		//{
+		//	auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
+		//	dxImageView->generateMipmaps();
+		//}
+		//else
+		//{
+		//	auto& ctx = GraphicsContext::getInstance();
+		//	auto cmdBuf = ctx.allocateCommandBuffer();
+		//	cmdBuf->begin();
+		//	image->generateMipmaps(cmdBuf);
+		//	cmdBuf->end();
+		//	cmdBuf->flush();
+		//}
+	}
+
+	void Texture2D::setLayout()
+	{
+		image->setImageLayout();
+	}
+
+	void Texture2D::setLayoutShader(GPU::CommandBuffer::Ptr cmdBuf)
+	{
+		image->layoutTransitionShader(cmdBuf);
+	}
+
+	void Texture2D::setLayoutStorage(GPU::CommandBuffer::Ptr cmdBuf)
+	{
+		image->layoutTransitionStorage(cmdBuf);
+	}
+
+	GPU::Image::Ptr Texture2D::getImage()
+	{
+		return image;
+	}
+
+	GPU::ImageView::Ptr Texture2D::getImageView()
+	{
+		return view;
+	}
+
+	GPU::ImageDescriptor::Ptr Texture2D::getDescriptor()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		return ctx.createImageDescriptor(image, view, sampler);
+	}
+
+	GPU::ImageDescriptor::Ptr Texture2D::getDescriptor(GPU::ImageView::Ptr view)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		return ctx.createImageDescriptor(image, view, sampler);
+	}
+
+	void Texture2D::createData()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(params.levels);
+
+		loadedOnGPU = true;
+	}
+
+	void Texture2D::uploadData()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		if (data != nullptr)
 		{
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + f, getID(), level);
-			glCopyTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + f, level, GL_RGB32F, 0, 0, mipSize, mipSize, 0);
+			auto cmdBuf = ctx.allocateCommandBuffer();
+			image->uploadData(cmdBuf, data, size, 0, 0);
+		}
+
+		if (genMipmaps)
+		{
+			if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+			{
+				auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
+				dxImageView->generateMipmaps();
+			}
+			else
+			{
+				auto& ctx = GraphicsContext::getInstance();
+				auto cmdBuf = ctx.allocateCommandBuffer();
+				cmdBuf->begin();
+				image->generateMipmaps(cmdBuf);
+				cmdBuf->end();
+				cmdBuf->flush();
+			}
+		}
+
+		sampler->setFilter(minFilter, magFilter);
+		sampler->setAddressMode(modeU, modeV, modeW);
+	}
+
+	void Texture2D::destroyData()
+	{
+		loadedOnGPU = false;
+	}
+
+	Texture3D::Texture3D(uint32 width, uint32 height, uint32 depth, GPU::Format format, uint32 levels)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		GPU::ImageParameters params;
+		params.type = GPU::ViewType::View3D;
+		params.format = format;
+		params.extent = GPU::Extent3D(width, height, depth);
+		params.layers = 1;
+		params.levels = levels;
+		params.usage = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
+
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
+	}
+
+	Texture3D::Texture3D(uint32 width, uint32 height, uint32 depth, GPU::Format format, uint32 levels, GPU::ImageUsage usage)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		GPU::ImageParameters params;
+		params.type = GPU::ViewType::View3D;
+		params.format = format;
+		params.extent = GPU::Extent3D(width, height, depth);
+		params.layers = 1;
+		params.levels = levels;
+		params.usage = usage;
+
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
+	}
+
+	Texture3D::~Texture3D()
+	{
+
+	}
+
+	void Texture3D::upload(uint8* data, uint32 size, uint32 level)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		image->uploadArray(cmdBuf, data, size);
+	}
+
+	void Texture3D::setAddressMode(GPU::AddressMode modeU, GPU::AddressMode modeV, GPU::AddressMode modeW)
+	{
+		sampler->setAddressMode(modeU, modeV, modeW);
+	}
+
+	void Texture3D::setAddressMode(GPU::AddressMode mode)
+	{
+		sampler->setAddressMode(mode);
+	}
+
+	void Texture3D::setFilter(GPU::Filter minFilter, GPU::Filter magFilter)
+	{
+		sampler->setFilter(minFilter, magFilter);
+	}
+
+	void Texture3D::generateMipmaps()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		cmdBuf->begin();
+		image->generateMipmaps(cmdBuf);
+		cmdBuf->end();
+		cmdBuf->flush();
+	}
+
+	void Texture3D::setLayout()
+	{
+		image->setImageLayout();
+	}
+
+	void Texture3D::setLayoutShader(GPU::CommandBuffer::Ptr cmdBuf)
+	{
+		image->layoutTransitionShader(cmdBuf);
+	}
+
+	void Texture3D::setLayoutStorage(GPU::CommandBuffer::Ptr cmdBuf)
+	{
+		image->layoutTransitionStorage(cmdBuf);
+	}
+
+	GPU::Image::Ptr Texture3D::getImage()
+	{
+		return image;
+	}
+
+	GPU::ImageView::Ptr Texture3D::getImageView()
+	{
+		return view;
+	}
+
+	GPU::ImageDescriptor::Ptr Texture3D::getDescriptor()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		return ctx.createImageDescriptor(image, view, sampler);
+	}
+
+	GPU::ImageDescriptor::Ptr Texture3D::getDescriptor(GPU::ImageView::Ptr view)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		return ctx.createImageDescriptor(image, view, sampler);
+	}
+
+	void Texture3D::createData()
+	{
+
+	}
+
+	void Texture3D::uploadData()
+	{
+
+	}
+
+	void Texture3D::destroyData()
+	{
+
+	}
+
+	Texture2DArray::Texture2DArray(uint32 width, uint32 height, uint32 layers, GPU::Format format, uint32 levels)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		GPU::ImageParameters params;
+		params.type = GPU::ViewType::View2DArray;
+		params.format = format;
+		params.extent = GPU::Extent3D(width, height, 1);
+		params.layers = layers;
+		params.levels = levels;
+		params.usage = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
+
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
+	}
+
+	Texture2DArray::Texture2DArray(uint32 width, uint32 height, uint32 layers, GPU::Format format, uint32 levels, GPU::ImageUsage usage)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		GPU::ImageParameters params;
+		params.type = GPU::ViewType::View2DArray;
+		params.format = format;
+		params.extent = GPU::Extent3D(width, height, 1);
+		params.layers = layers;
+		params.levels = levels;
+		params.usage = usage;
+
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
+	}
+
+	Texture2DArray::~Texture2DArray() {}
+
+	void Texture2DArray::upload(uint8* data, uint32 size)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		image->uploadArray(cmdBuf, data, size);
+	}
+
+	void Texture2DArray::setAddressMode(GPU::AddressMode modeU, GPU::AddressMode modeV, GPU::AddressMode modeW)
+	{
+		sampler->setAddressMode(modeU, modeV, modeW);
+	}
+
+	void Texture2DArray::setAddressMode(GPU::AddressMode mode)
+	{
+		sampler->setAddressMode(mode);
+	}
+
+	void Texture2DArray::setFilter(GPU::Filter minFilter, GPU::Filter magFilter)
+	{
+		sampler->setFilter(minFilter, magFilter);
+	}
+
+	void Texture2DArray::generateMipmaps()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		cmdBuf->begin();
+		image->generateMipmaps(cmdBuf);
+		cmdBuf->end();
+		cmdBuf->flush();
+	}
+
+	void Texture2DArray::setLayout()
+	{
+		image->setImageLayout();
+	}
+
+	void Texture2DArray::setLayoutShader(GPU::CommandBuffer::Ptr cmdBuf)
+	{
+		image->layoutTransitionShader(cmdBuf);
+	}
+
+	void Texture2DArray::setLayoutStorage(GPU::CommandBuffer::Ptr cmdBuf)
+	{
+		image->layoutTransitionStorage(cmdBuf);
+	}
+
+	GPU::Image::Ptr Texture2DArray::getImage()
+	{
+		return image;
+	}
+
+	GPU::ImageView::Ptr Texture2DArray::getImageView()
+	{
+		return view;
+	}
+
+	GPU::ImageDescriptor::Ptr Texture2DArray::getDescriptor()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		return ctx.createImageDescriptor(image, view, sampler);
+	}
+
+	void Texture2DArray::createData()
+	{
+
+	}
+
+	void Texture2DArray::uploadData()
+	{
+
+	}
+
+	void Texture2DArray::destroyData()
+	{
+
+	}
+
+	TextureCubeMap::TextureCubeMap(uint32 size, GPU::Format format, uint32 levels) :
+		size(size)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		GPU::ImageParameters params;
+		params.type = GPU::ViewType::ViewCubeMap;
+		params.format = format;
+		params.extent = GPU::Extent3D(size, size, 1);
+		params.layers = 6;
+		params.levels = levels;
+		params.usage = GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
+
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
+	}
+
+	TextureCubeMap::TextureCubeMap(uint32 size, GPU::Format format, uint32 levels, GPU::ImageUsage usage) :
+		size(size)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+
+		GPU::ImageParameters params;
+		params.type = GPU::ViewType::ViewCubeMap;
+		params.format = format;
+		params.extent = GPU::Extent3D(size, size, 1);
+		params.layers = 6;
+		params.levels = levels;
+		params.usage = usage;
+
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
+	}
+
+	TextureCubeMap::~TextureCubeMap() {}
+
+	void TextureCubeMap::upload(uint8* data, uint32 size, uint32 face, uint32 level)
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		image->uploadData(cmdBuf, data, size, face, level);
+	}
+
+	void TextureCubeMap::setAddressMode(GPU::AddressMode modeU, GPU::AddressMode modeV, GPU::AddressMode modeW)
+	{
+		sampler->setAddressMode(modeU, modeV, modeW);
+	}
+
+	void TextureCubeMap::setAddressMode(GPU::AddressMode mode)
+	{
+		sampler->setAddressMode(mode);
+	}
+
+	void TextureCubeMap::setFilter(GPU::Filter minFilter, GPU::Filter magFilter)
+	{
+		sampler->setFilter(minFilter, magFilter);
+	}
+
+	void TextureCubeMap::setCompareMode()
+	{
+		sampler->setCompareMode(true);
+		sampler->setCompareOp(GPU::CompareOp::LessOrEqual);
+	}
+
+	void TextureCubeMap::generateMipmaps()
+	{
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
+			dxImageView->generateMipmaps();
+		}
+		else
+		{
+			auto& ctx = GraphicsContext::getInstance();
+			auto cmdBuf = ctx.allocateCommandBuffer();
+			cmdBuf->begin();
+			image->generateMipmaps(cmdBuf);
+			cmdBuf->end();
+			cmdBuf->flush();
 		}
 	}
 
-	glDeleteFramebuffers(1, &fboID);
+	void TextureCubeMap::setLayout()
+	{
+		image->setImageLayout();
+	}
 
-	return cubeMap;
-}
+	GPU::Image::Ptr TextureCubeMap::getImage()
+	{
+		return image;
+	}
 
-Texture2DArray::Texture2DArray(unsigned int width, unsigned int height, unsigned int layers, GL::TextureFormat format) :
-	width(width),
-	height(height),
-	layers(layers),
-	format(format)
-{
-	texture.upload3D(nullptr, width, height, layers, format);
-	texture.setFilter(GL::LINEAR, GL::LINEAR);
-	texture.setWrap(GL::REPEAT, GL::REPEAT);
-}
+	GPU::ImageView::Ptr TextureCubeMap::getImageView()
+	{
+		return view;
+	}
 
-void Texture2DArray::upload(void* data)
-{
-	texture.upload3D(data, width, height, layers, format);
-}
+	GPU::ImageDescriptor::Ptr TextureCubeMap::getDescriptor()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		return ctx.createImageDescriptor(image, view, sampler);
+	}
 
-void Texture2DArray::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
-{
-	texture.setFilter(minFilter, magFilter);
-}
+	void TextureCubeMap::createData()
+	{
 
-void Texture2DArray::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT)
-{
-	texture.setWrap(wrapS, wrapT);
-}
+	}
 
-void Texture2DArray::generateMipmaps()
-{
-	texture.generateMipmaps();
-}
+	void TextureCubeMap::uploadData()
+	{
 
-void Texture2DArray::bind()
-{
-	texture.bind();
-}
+	}
 
-void Texture2DArray::use(GLuint unit)
-{
-	texture.use(unit);
-}
+	void TextureCubeMap::destroyData()
+	{
 
-GLuint Texture2DArray::getID()
-{
-	return texture;
-}
+	}
 
-TextureCubeMapArray::TextureCubeMapArray(unsigned int width, unsigned int height, unsigned int layers, GL::TextureFormat format) : 
-	width(width),
-	height(height),
-	layers(layers),
-	format(format)
-{
-	texture.upload3D(nullptr, width, height, layers * NUM_CUBEMAP_FACES, format);
-	texture.setFilter(GL::LINEAR, GL::LINEAR);
-	texture.setWrap(GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE, GL::CLAMP_TO_EDGE);
-}
+	TextureCubeMapArray::TextureCubeMapArray(uint32 size, uint32 layers, GPU::Format format, uint32 levels)
+	{
+		auto& ctx = GraphicsContext::getInstance();
 
-void TextureCubeMapArray::upload(void* data)
-{
-	texture.upload3D(data, width, height, layers * NUM_CUBEMAP_FACES, format);
-}
+		GPU::ImageParameters params;
+		params.type = GPU::ViewType::ViewCubeMapArray;
+		params.format = format;
+		params.extent = GPU::Extent3D(size, size, 1);
+		params.layers = 6 * layers;
+		params.levels = levels;
+		params.usage = GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
 
-void TextureCubeMapArray::setFilter(GL::TextureFilter minFilter, GL::TextureFilter magFilter)
-{
-	texture.setFilter(minFilter, magFilter);
-}
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
+	}
 
-void TextureCubeMapArray::setWrap(GL::TextureWrap wrapS, GL::TextureWrap wrapT, GL::TextureWrap wrapR)
-{
-	texture.setWrap(wrapS, wrapT, wrapR);
-}
+	TextureCubeMapArray::TextureCubeMapArray(uint32 size, uint32 layers, GPU::Format format, uint32 levels, GPU::ImageUsage usage)
+	{
+		auto& ctx = GraphicsContext::getInstance();
 
-void TextureCubeMapArray::setCompareMode()
-{
-	texture.setCompareMode();
-}
+		GPU::ImageParameters params;
+		params.type = GPU::ViewType::ViewCubeMapArray;
+		params.format = format;
+		params.extent = GPU::Extent3D(size, size, 1);
+		params.layers = 6 * layers;
+		params.levels = levels;
+		params.usage = usage;
 
-void TextureCubeMapArray::generateMipmaps()
-{
-	texture.generateMipmaps();
-}
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
+	}
 
-void TextureCubeMapArray::bind()
-{
-	texture.bind();
-}
+	TextureCubeMapArray::~TextureCubeMapArray()
+	{
 
-void TextureCubeMapArray::use(GLuint unit)
-{
-	texture.use(unit);
-}
+	}
 
-GLuint TextureCubeMapArray::getID()
-{
-	return texture;
+	void TextureCubeMapArray::upload(uint8* data, uint32 size, uint32 face, uint32 level)
+	{
+
+	}
+
+	void TextureCubeMapArray::setAddressMode(GPU::AddressMode modeU, GPU::AddressMode modeV, GPU::AddressMode modeW)
+	{
+		sampler->setAddressMode(modeU, modeV, modeW);
+	}
+
+	void TextureCubeMapArray::setAddressMode(GPU::AddressMode mode)
+	{
+		sampler->setAddressMode(mode);
+	}
+
+	void TextureCubeMapArray::setFilter(GPU::Filter minFilter, GPU::Filter magFilter)
+	{
+		sampler->setFilter(minFilter, magFilter);
+	}
+
+	void TextureCubeMapArray::setCompareMode()
+	{
+		sampler->setCompareMode(true);
+		sampler->setCompareOp(GPU::CompareOp::LessOrEqual);
+	}
+
+	void TextureCubeMapArray::generateMipmaps()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		cmdBuf->begin();
+		image->generateMipmaps(cmdBuf);
+		cmdBuf->end();
+		cmdBuf->flush();
+	}
+
+	void TextureCubeMapArray::setLayout()
+	{
+		image->setImageLayout();
+	}
+
+	GPU::Image::Ptr TextureCubeMapArray::getImage()
+	{
+		return image;
+	}
+
+	GPU::ImageView::Ptr TextureCubeMapArray::getImageView()
+	{
+		return view;
+	}
+
+	GPU::ImageDescriptor::Ptr TextureCubeMapArray::getDescriptor()
+	{
+		auto& ctx = GraphicsContext::getInstance();
+		return ctx.createImageDescriptor(image, view, sampler);
+	}
+
+	void TextureCubeMapArray::createData()
+	{
+
+	}
+
+	void TextureCubeMapArray::uploadData()
+	{
+
+	}
+
+	void TextureCubeMapArray::destroyData()
+	{
+
+	}
 }
