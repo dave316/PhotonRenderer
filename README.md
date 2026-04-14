@@ -1,5 +1,5 @@
 # PhotonRenderer
-This is a OpenGL Renderer with support for PBR materials and image based lighting (IBL).
+This is a OpenGL Renderer with support for PBR materials and image based lighting (IBL). Recommended
 
 ## Dependencies
 - ASSIMP
