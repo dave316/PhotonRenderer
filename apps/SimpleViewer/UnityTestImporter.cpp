@@ -129,7 +129,7 @@ pr::Texture2D::Ptr UnityTestImporter::loadTextureGUID(Unity::YAML::Metadata meta
 	}
 	sRGB = texImporter->mipmaps.value.sRGBTexture;
 
-	//maxSize = std::min(maxSize, maxTexSize);
+	//maxSize = 1024; //std::min(maxSize, maxTexSize);
 
 	std::string ext = metadata.extension;
 

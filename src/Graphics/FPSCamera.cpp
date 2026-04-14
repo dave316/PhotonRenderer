@@ -29,7 +29,7 @@ void FPSCamera::init(glm::vec3 pos, glm::vec3 direction, glm::vec3 up, float fov
 
 	yaw = -90.0f;
 	pitch = 0.0f;
-	movementSpeed = 20.0f;
+	movementSpeed = 5.0f;
 	rotationSpeed = 0.1f;
 	velocity = movementSpeed * 0.1f;
 }

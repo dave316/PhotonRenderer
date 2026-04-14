@@ -151,8 +151,8 @@ float getPointShadow(vec3 fragPos, int index)
 	vec3 f = fragPos - light.position.xyz;
 	float len = length(f);
 	float shadow = 0.0;
-	float radius = 0.002;
-	float depth = (len / light.range) - 0.0001; // TODO: add to light properties
+	float radius = 0.01;
+	float depth = (len / light.range) - 0.001; // TODO: add to light properties
 
 	for (int x = -1; x <= 1; x++)
 	{
@@ -1405,12 +1405,12 @@ float diffuseTransmissionThickness = 1.0;
 		directColor += color;
 	}
 
-	vec3 color = surface.emission + indirectColor + directColor;
+	vec3 color = surface.emission + 0.01 * indirectColor + directColor;
 #ifdef TRANSLUCENCY
 	color += getSubsurfaceScattering(gl_FragCoord, surface.attenuation.a, surface.translucencyColor, surface.multiScatter);
 #endif
 
-//	color = applyFogScattering(color);
+	color = applyFogScattering(color);
 	if (length(n) > 0.0) // TODO: this is a workaround to render meshes unlit when the normal is zero
 		fragColor = vec4(color, surface.alpha);
 	else

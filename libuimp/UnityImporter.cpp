@@ -1268,11 +1268,12 @@ namespace Unity
 			std::cout << id << " " << name << std::endl;
 
 		std::string lightAssetFn = assetPath + "/Viking Village/Scenes/The_Viking_Village/LightingData.asset.txt";
+		//std::string lightAssetFn = assetPath + "/ArchVizPRO Interior Vol.6/3D SCENE/AVP6_Desktop/LightingData.asset.txt";
 		lightData.loadAsset(lightAssetFn);
 
 		auto scene = Scene::create(renderSettings);
-		//scene->addRoot(traverse(1308100271, nullptr));
-		//scene->addRoot(traverse(810077401, nullptr));
+		//scene->addRoot(traverse(1308100271, nullptr, db));
+		//scene->addRoot(traverse(810077401, nullptr, db));
 		 
 		//scene->addRoot(traverse(2075706406, nullptr));
 		//scene->addRoot(traverse(2103635834, nullptr));

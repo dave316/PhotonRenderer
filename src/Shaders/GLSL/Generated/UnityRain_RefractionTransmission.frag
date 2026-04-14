@@ -693,7 +693,7 @@ void surf( Input i , inout SurfaceOutputStandard o )
 	// Obtain Offset Y coordinate from current tile linear index
 	float fblinearindextoy48 = round( mod( ( fbcurrenttileindex48 - fblinearindextox48 ) / _ColumsRow, _ColumsRow ) );
 	// Reverse Y to get tiles from Top to Bottom
-	fblinearindextoy48 = (_ColumsRow-1) - fblinearindextoy48;
+	// fblinearindextoy48 = (_ColumsRow-1) - fblinearindextoy48;
 	// Multiply Offset Y by rowoffset
 	float fboffsety48 = fblinearindextoy48 * fbrowsoffset48;
 	// UV Offset
@@ -751,7 +751,7 @@ Surface evalMaterial()
 	unitySurface.Emission = vec3(0);
 	unitySurface.Metallic = 0.0;
 	unitySurface.Smoothness = 0.0;
-	unitySurface.Occlusion = 1.0;
+	unitySurface.Occlusion = 0.0;
 	unitySurface.Alpha = 1.0;
 	unitySurface.AlphaClipThreshold = 0.5;
 	surf(unityInput, unitySurface);

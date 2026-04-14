@@ -694,7 +694,7 @@ void surf( Input i , inout SurfaceOutputStandard o )
 	// Obtain Offset Y coordinate from current tile linear index
 	float fblinearindextoy58 = round( mod( ( fbcurrenttileindex58 - fblinearindextox58 ) / 8.0, 8.0 ) );
 	// Reverse Y to get tiles from Top to Bottom
-	fblinearindextoy58 = (8.0-1) - fblinearindextoy58;
+	// fblinearindextoy58 = (8.0-1) - fblinearindextoy58;
 	// Multiply Offset Y by rowoffset
 	float fboffsety58 = fblinearindextoy58 * fbrowsoffset58;
 	// UV Offset

@@ -30,7 +30,7 @@ namespace pr
 		csmViewsUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(CSMViews), 0);
 		csmDataUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(CSMData), 0);
 
-		size = 1024;
+		size = 4096;
 		omniShadowMap = TextureCubeMapArray::create(size, 1, GPU::Format::DEPTH32, 1, GPU::ImageUsage::DepthStencilAttachment | GPU::ImageUsage::Sampled);
 		omniShadowMap->setAddressMode(GPU::AddressMode::ClampToEdge);
 		omniShadowMap->setFilter(GPU::Filter::Linear, GPU::Filter::Linear);
@@ -237,7 +237,7 @@ namespace pr
 			}
 		}
 
-		uint32 size = 1024;
+		uint32 size = 4096;
 		omniShadowMap = TextureCubeMapArray::create(size, (uint32)(lights.size() > 0 ? lights.size() : 1), GPU::Format::DEPTH32, 1, GPU::ImageUsage::DepthStencilAttachment | GPU::ImageUsage::Sampled);
 		omniShadowMap->setAddressMode(GPU::AddressMode::ClampToEdge);
 		omniShadowMap->setFilter(GPU::Filter::Linear, GPU::Filter::Linear);
@@ -317,7 +317,7 @@ namespace pr
 	void Shadows::updateShadowsOMNI(pr::Scene::Ptr scene)
 	{
 		auto& ctx = GraphicsContext::getInstance();
-		uint32 size = 1024;
+		uint32 size = 4096;
 		std::vector<glm::vec3> lightPositions;
 		std::vector<pr::Light::Ptr> lights;
 		for (auto entity : scene->getRootNodes())
@@ -391,7 +391,7 @@ namespace pr
 
 	void Shadows::buildCmdShadowsOMNI(pr::Scene::Ptr scene)
 	{
-		uint32 size = 1024;
+		uint32 size = 4096;
 		omniCmdBufs.clear();
 
 		auto& ctx = GraphicsContext::getInstance();

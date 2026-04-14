@@ -34,9 +34,9 @@ bool Application::init()
 	renderer = pr::Renderer::create();
 	renderer->init(window, swapchain);
 
-	initScene();
+	//initScene();
 	//initUnitySceneOLD();
-	//initUnitySceneNEW();
+	initUnitySceneNEW();
 
 	renderer->prepare(camera, scene);
 	renderer->buildCmdBuffer(scene, swapchain);
@@ -116,16 +116,16 @@ void Application::initScene()
 	t->setLocalPosition(glm::vec3(0, 5, 0));
 	scene->addRoot(mainLight);
 
-	glm::vec3 positions[8] = {
-	glm::vec3(-9,1.5,-3.5),
-	glm::vec3(-9,1.5,3.5),
-	glm::vec3(9,1.5,-3.5),
-	glm::vec3(9,1.5,3.5),
-	glm::vec3(-9,4,-3.5),
-	glm::vec3(-9,4,3.5),
-	glm::vec3(9,4,-3.5),
-	glm::vec3(9,4,3.5),
-	};
+	//glm::vec3 positions[8] = {
+	//glm::vec3(-9,1.5,-3.5),
+	//glm::vec3(-9,1.5,3.5),
+	//glm::vec3(9,1.5,-3.5),
+	//glm::vec3(9,1.5,3.5),
+	//glm::vec3(-9,4,-3.5),
+	//glm::vec3(-9,4,3.5),
+	//glm::vec3(9,4,-3.5),
+	//glm::vec3(9,4,3.5),
+	//};
 
 	//for (int i = 0; i < 4; i++)
 	//{
@@ -160,19 +160,19 @@ void Application::initScene()
 			scene->addRoot(fogEntity);
 		}
 
-		//{
-		//	auto fogEntity = pr::Entity::create("Fog", nullptr);
-		//	auto t = fogEntity->getComponent<pr::Transform>();
-		//	t->setLocalPosition(glm::vec3(0, 3, 0));
-		//	t->setLocalScale(glm::vec3(2));
-		//	auto volume = pr::FogVolume::create();
-		//	//volume->setEmissive(glm::vec3(0,1,0));
-		//	volume->setScattering(glm::vec3(0, 1, 0));
-		//	//volume->setPhase(0.25f);
-		//	volume->setDensitySphere(5.0f);
-		//	fogEntity->addComponent(volume);
-		//	scene->addRoot(fogEntity);
-		//}
+	//	{
+	//		auto fogEntity = pr::Entity::create("Fog", nullptr);
+	//		auto t = fogEntity->getComponent<pr::Transform>();
+	//		t->setLocalPosition(glm::vec3(0, 3, 0));
+	//		t->setLocalScale(glm::vec3(2));
+	//		auto volume = pr::FogVolume::create();
+	//		//volume->setEmissive(glm::vec3(0,1,0));
+	//		volume->setScattering(glm::vec3(0, 1, 0));
+	//		//volume->setPhase(0.25f);
+	//		volume->setDensitySphere(5.0f);
+	//		fogEntity->addComponent(volume);
+	//		scene->addRoot(fogEntity);
+	//	}
 
 	//	{
 	//		auto fogEntity = pr::Entity::create("Fog", nullptr);
@@ -189,7 +189,6 @@ void Application::initScene()
 	//		scene->addRoot(fogEntity);
 	//	}
 	}
-	//scene->update(0.0f);
 
 	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
 	auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
@@ -355,7 +354,7 @@ void Application::initUnitySceneNEW()
 	//panoTex->upload(data, dataSize);
 	//panoTex->createData();
 	//panoTex->uploadData();
-	//auto skybox = IBL::convertEqui2CM(panoTex, 1024);
+	//auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
 	//scene->setSkybox(skybox);
 }
 
