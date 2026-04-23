@@ -262,14 +262,33 @@ bool Application::loadGLTFModel(const std::string& name, const std::string& full
 		cameras.clear();
 		materials.clear();
 		scenes.clear();
+
 		scenes = importedScenes;
+		sceneIndex = defaultScene;
+		for (auto root : scenes[sceneIndex]->getRootNodes())
+		{
+			for (auto r : root->getComponentsInChildren<pr::Renderable>())
+			{
+				auto mesh = r->getMesh();
+				for (auto& sm : mesh->getSubMeshes())
+				{
+					sm.primitive->createData();
+					sm.primitive->uploadData();
+					for (auto tex : sm.material->getTextures())
+					{
+						tex->createData();
+						tex->uploadData();
+					}
+				}
+			}
+		}
+
+		renderer->initScene(userCamera, scenes[sceneIndex]);
 		for (auto scene : scenes)
 		{
 			scene->setSkybox(environments[environmentIndex].envMap);
 			scene->update(0.0f);
-		}			
-
-		sceneIndex = defaultScene;
+		}
 
 		for (auto root : scenes[sceneIndex]->getRootNodes())
 		{
@@ -305,8 +324,7 @@ bool Application::loadGLTFModel(const std::string& name, const std::string& full
 			animations = animator->getAnimationNames();
 		else
 			animations.push_back("None");
-
-		renderer->initScene(userCamera, scenes[sceneIndex]);
+				
 		renderer->buildCmdBuffer(scenes[sceneIndex]);
 		renderer->buildScatterCmdBuffer(scenes[sceneIndex]);
 

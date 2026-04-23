@@ -79,7 +79,7 @@ void Application::initScene()
 	////scene->update(0.0f);
 
 	std::string assetPath = "../../../../assets";
-	std::string modelName = "Sponza";
+	std::string modelName = "EmissiveStrengthTest";
 	IO::glTF::Importer importer;
 	std::vector<pr::Scene::Ptr> scenes;
 	importer.importModel(assetPath + "/glTF-Sample-Assets/Models/" + modelName + "/glTF/" + modelName + ".gltf", scenes);
@@ -104,17 +104,17 @@ void Application::initScene()
 		}
 	}
 
-	auto light = pr::Light::create(pr::LightType::POINT, glm::vec3(1), 200.0f, 100.0f);
-	light->setColorTemp(10000);
-	light->setLuminousPower(1500);
-	//light->setLuminousPower(25);
-	mainLight = pr::Entity::create("sun", nullptr);
-	auto t = mainLight->getComponent<pr::Transform>();
-	mainLight->addComponent(light);
-	//t->setLocalRotation(glm::angleAxis(glm::radians(85.0f), glm::vec3(-1, 0, 0)) * glm::angleAxis(glm::radians(35.0f), glm::vec3(0, 1, 0)));
-	//t->setLocalRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)));
-	t->setLocalPosition(glm::vec3(0, 5, 0));
-	scene->addRoot(mainLight);
+	//auto light = pr::Light::create(pr::LightType::POINT, glm::vec3(1), 200.0f, 100.0f);
+	//light->setColorTemp(10000);
+	//light->setLuminousPower(1500);
+	////light->setLuminousPower(25);
+	//mainLight = pr::Entity::create("sun", nullptr);
+	//auto t = mainLight->getComponent<pr::Transform>();
+	//mainLight->addComponent(light);
+	////t->setLocalRotation(glm::angleAxis(glm::radians(85.0f), glm::vec3(-1, 0, 0)) * glm::angleAxis(glm::radians(35.0f), glm::vec3(0, 1, 0)));
+	////t->setLocalRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)));
+	//t->setLocalPosition(glm::vec3(0, 5, 0));
+	//scene->addRoot(mainLight);
 
 	//glm::vec3 positions[8] = {
 	//glm::vec3(-9,1.5,-3.5),
@@ -145,20 +145,20 @@ void Application::initScene()
 	//	scene->addRoot(lightEntity);
 	//}
 
-	{
-		{
-			auto fogEntity = pr::Entity::create("Fog", nullptr);
-			auto t = fogEntity->getComponent<pr::Transform>();
-			t->setLocalPosition(glm::vec3(-30, 3, 0));
-			t->setLocalScale(glm::vec3(2));
-			auto volume = pr::FogVolume::create();
-			//volume->setEmissive(glm::vec3(0, 0, 1));
-			volume->setScattering(glm::vec3(1, 0, 0));
-			//volume->setPhase(0.75f);
-			volume->setDensityPerlinNoise(3.0f);
-			fogEntity->addComponent(volume);
-			scene->addRoot(fogEntity);
-		}
+	//{
+	//	{
+	//		auto fogEntity = pr::Entity::create("Fog", nullptr);
+	//		auto t = fogEntity->getComponent<pr::Transform>();
+	//		t->setLocalPosition(glm::vec3(-30, 3, 0));
+	//		t->setLocalScale(glm::vec3(2));
+	//		auto volume = pr::FogVolume::create();
+	//		//volume->setEmissive(glm::vec3(0, 0, 1));
+	//		volume->setScattering(glm::vec3(1, 0, 0));
+	//		//volume->setPhase(0.75f);
+	//		volume->setDensityPerlinNoise(3.0f);
+	//		fogEntity->addComponent(volume);
+	//		scene->addRoot(fogEntity);
+	//	}
 
 	//	{
 	//		auto fogEntity = pr::Entity::create("Fog", nullptr);
@@ -188,7 +188,7 @@ void Application::initScene()
 	//		fogEntity->addComponent(volume);
 	//		scene->addRoot(fogEntity);
 	//	}
-	}
+	//}
 
 	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
 	auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);

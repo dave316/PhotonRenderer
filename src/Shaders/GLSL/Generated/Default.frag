@@ -1405,12 +1405,12 @@ float diffuseTransmissionThickness = 1.0;
 		directColor += color;
 	}
 
-	vec3 color = surface.emission + 0.01 * indirectColor + directColor;
+	vec3 color = surface.emission + indirectColor + directColor;
 #ifdef TRANSLUCENCY
 	color += getSubsurfaceScattering(gl_FragCoord, surface.attenuation.a, surface.translucencyColor, surface.multiScatter);
 #endif
 
-	color = applyFogScattering(color);
+//	color = applyFogScattering(color);
 	if (length(n) > 0.0) // TODO: this is a workaround to render meshes unlit when the normal is zero
 		fragColor = vec4(color, surface.alpha);
 	else

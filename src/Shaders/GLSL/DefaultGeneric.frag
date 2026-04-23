@@ -1,4 +1,5 @@
 #version 460 core
+#define OPAQUE
 
 #extension GL_EXT_nonuniform_qualifier : enable
 

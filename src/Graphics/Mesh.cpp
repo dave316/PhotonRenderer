@@ -36,7 +36,7 @@ namespace pr
 			// TODO: There is a problem when primitives have different materials because
 			// now the shader is set for the whole mesh! It would be better to extract
 			// the primitives/materials and group/sort according to shader/material!
-			if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
+			//if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
 			//if (mat)
 			{
 				if (mat->isDoubleSided())

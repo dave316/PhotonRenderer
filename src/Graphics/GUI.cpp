@@ -123,9 +123,9 @@ namespace pr
 
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 		io.FontGlobalScale = scale;
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-		io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
+		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		//io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
 
 		auto& ctx = GraphicsContext::getInstance();
 		
@@ -175,7 +175,7 @@ namespace pr
 		ImGuiIO& io = ImGui::GetIO();
 		std::string assetPath = "../../../../assets";
 		std::string fn = assetPath + "/Roboto-Medium.ttf";
-		io.Fonts->AddFontFromFileTTF(fn.c_str(), 28.0f * scale);
+		io.Fonts->AddFontFromFileTTF(fn.c_str(), 20.0f * scale);
 
 		uint8* fontData;
 		int texWidth, texHeight;
@@ -411,6 +411,7 @@ namespace pr
 					cmdBuf->setScissor(x, y, cw, ch);
 
 					auto texID = static_cast<uint32>(pcmd->GetTexID());
+					//std::cout << "tex ID: " << texID << std::endl;
 					if (texDescriptorSets.find(texID) != texDescriptorSets.end())
 						cmdBuf->bindDescriptorSets(guiPipeline, texDescriptorSets[texID], 0);
 					else
