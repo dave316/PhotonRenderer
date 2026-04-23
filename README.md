@@ -38,6 +38,8 @@ Open CMake-GUI
 ## Running
 Download sample [assets](https://files.icg.tugraz.at/f/60a18ad065a146e8a997/) and extract in the root folder. Run the solution and you should see something like this.
 
+![Example](images/example.png) 
+
 ## Features
 ### Rendering
 - Tiled Forward+ and Deferred rendering paths
