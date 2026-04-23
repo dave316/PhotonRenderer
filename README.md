@@ -61,13 +61,10 @@ Download sample [assets](https://files.icg.tugraz.at/f/60a18ad065a146e8a997/) an
   
 ## Examples
 ### PBR Materials
-![Abalone](images/abalone.png)
-![Chess](images/chess.png)
-![Dragon](images/dragon.png)
-![Helmet](images/flight_helmet.png)
+![Abalone](images/abalone.png) ![Chess](images/chess.png)
+![Dragon](images/dragon.png) ![Helmet](images/flight_helmet.png)
 
 ### Volumetric Fog & Shadows
-![Sponza](images/sponza.png)
-![Fog](images/fog.png)
+![Sponza](images/sponza.png) ![Fog](images/fog.png)
 ![Shadows](images/shadows.png)
 
