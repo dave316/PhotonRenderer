@@ -1,3 +1,4 @@
+#ifdef WITH_IMGUI
 #include "GUI.h"
 #include <Utils/IBL.h>
 #include <Platform/Win32/Win32Window.h>
@@ -501,3 +502,4 @@ namespace pr
 		commandBuffers[0]->flush();
 	}
 }
+#endif

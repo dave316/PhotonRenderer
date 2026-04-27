@@ -7,7 +7,7 @@
 #include <Core/LightProbe.h>
 #include <Graphics/Texture.h>
 #include <GPU/DescriptorPool.h>
-#include <IO/Unity/LightData.h>
+//#include <IO/Unity/LightData.h>
 
 namespace pr
 {
@@ -27,12 +27,12 @@ namespace pr
 		ReflectionProbe probes[32];
 	};
 
-	struct SHLightProbes
-	{
-		std::vector<IO::Unity::Tetrahedron> tetrahedras;
-		std::vector<IO::Unity::SH9> coeffs;
-		std::vector<glm::vec3> positions;
-	};
+	//struct SHLightProbes
+	//{
+	//	std::vector<IO::Unity::Tetrahedron> tetrahedras;
+	//	std::vector<IO::Unity::SH9> coeffs;
+	//	std::vector<glm::vec3> positions;
+	//};
 
 	class Scene
 	{
@@ -46,10 +46,10 @@ namespace pr
 		void setSkybox(pr::TextureCubeMap::Ptr skybox);
 		void setLightMaps(pr::Texture2DArray::Ptr lightMaps);
 		void setDirMaps(pr::Texture2DArray::Ptr dirMaps);
-		void setSHProbes(pr::SHLightProbes& probes);
+		//void setSHProbes(pr::SHLightProbes& probes);
 		void initDescriptors(GPU::DescriptorPool::Ptr descriptorPool);
 		void initLightProbes(ReflectionProbes& rp, std::vector<pr::TextureCubeMap::Ptr>& lightProbes);
-		void computeSHLightprobes();
+		//void computeSHLightprobes();
 		void computeProbeMapping();
 		void checkWindingOrder();
 		void update(float dt);
@@ -96,7 +96,7 @@ namespace pr
 		// Lightmaps
 		pr::Texture2DArray::Ptr lightMaps;
 		pr::Texture2DArray::Ptr directionMaps;
-		pr::SHLightProbes shProbes;
+		//pr::SHLightProbes shProbes;
 		std::map<std::string, ReflectionProbe> reflectionProbes;
 	};
 }

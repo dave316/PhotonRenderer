@@ -724,7 +724,7 @@ namespace pr
 		postProcessor.initDescriptorSets(screenTex, brightTex);
 		scene->initDescriptors(descriptorPool);
 		scene->update(0.0f);
-		scene->computeSHLightprobes();
+		//scene->computeSHLightprobes();
 		scene->computeProbeMapping();
 
 		shadows.init();

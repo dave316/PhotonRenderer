@@ -8,8 +8,10 @@
 #include <sstream>
 #include <filesystem>
 
+#ifdef WITH_DRACO
 #include <draco/mesh/mesh.h>
 #include <draco/compression/decode.h>
+#endif
 
 #include "TangentSpace.h"
 
@@ -574,6 +576,8 @@ namespace IO
 					surface.indices.push_back(i);
 		}
 
+#ifdef WITH_DRACO
+
 		void Importer::loadCompressedSurface(TriangleSurface& surface, Primitive& primitive)
 		{
 			auto draco = primitive.draco.value();
@@ -867,6 +871,7 @@ namespace IO
 				}					
 			}
 		}
+#endif
 
 		void Importer::loadMeshes(std::string& path)
 		{
@@ -918,9 +923,9 @@ namespace IO
 					auto& gltfPrimitve = gltfMesh.primitives[primIdx];
 
 					TriangleSurface surface;
-					if (gltfPrimitve.draco.has_value())
-						loadCompressedSurface(surface, gltfPrimitve);
-					else
+					//if (gltfPrimitve.draco.has_value())
+					//	loadCompressedSurface(surface, gltfPrimitve);
+					//else
 						loadSurface(surface, gltfPrimitve);
 
 					std::vector<MorphTarget> morphTargets;
@@ -1036,7 +1041,9 @@ namespace IO
 					img = IO::ImageLoader::decodeJPGFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
 				else if (gltfImage.mimeType.compare("image/png") == 0)
 					img = IO::ImageLoader::decodePNGFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
-				else if (gltfImage.mimeType.compare("image/webp") == 0)
+				else
+					std::cout << "error: not supported mime type: " << gltfImage.mimeType << std::endl;
+/*				else if (gltfImage.mimeType.compare("image/webp") == 0)
 					img = IO::ImageLoader::decodeWebPFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
 				else if (gltfImage.mimeType.compare("image/ktx2") == 0)
 				{
@@ -1044,7 +1051,7 @@ namespace IO
 					textures[index]->setAddressMode(GPU::AddressMode::Repeat);
 					textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
 					return;
-				}					
+				}*/					
 			}
 			else
 			{
@@ -1071,15 +1078,18 @@ namespace IO
 						img = IO::ImageLoader::decodeJPGFromMemory((uint8*)dataBinary.data(), dataBinary.size());
 					else if (mimeType.compare("image/png") == 0)
 						img = IO::ImageLoader::decodePNGFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-					else if (mimeType.compare("image/webp") == 0)
-						img = IO::ImageLoader::decodeWebPFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-					else if (mimeType.compare("image/ktx2") == 0)
-					{
-						textures[index] = IO::ImageLoader::decodeKTXFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-						textures[index]->setAddressMode(GPU::AddressMode::Repeat);
-						textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-						return;
-					}
+					//else if (mimeType.compare("image/webp") == 0)
+					//	img = IO::ImageLoader::decodeWebPFromMemory((uint8*)dataBinary.data(), dataBinary.size());
+					//else if (mimeType.compare("image/ktx2") == 0)
+					//{
+					//	textures[index] = IO::ImageLoader::decodeKTXFromMemory((uint8*)dataBinary.data(), dataBinary.size());
+					//	textures[index]->setAddressMode(GPU::AddressMode::Repeat);
+					//	textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+					//	return;
+					//}
+					else
+						std::cout << "error: not supported mime type: " << gltfImage.mimeType << std::endl;
+
 				}
 				else
 				{
@@ -1090,14 +1100,14 @@ namespace IO
 
 					//std::cout << "loading texture " << fn << std::endl;
 
-					if (extension.compare(".ktx2") == 0)
-					{
-						textures[index] = IO::ImageLoader::loadKTXFromFile(fn);
-						textures[index]->setAddressMode(GPU::AddressMode::Repeat);
-						textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-						return;
-					}
-					else
+					//if (extension.compare(".ktx2") == 0)
+					//{
+					//	textures[index] = IO::ImageLoader::loadKTXFromFile(fn);
+					//	textures[index]->setAddressMode(GPU::AddressMode::Repeat);
+					//	textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+					//	return;
+					//}
+					//else
 					{
 						img = IO::ImageLoader::loadFromFile(fn);
 					}				

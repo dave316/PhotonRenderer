@@ -1,7 +1,7 @@
 #ifndef INCLUDED_ASSIMPIMPORTER
 #define INCLUDED_ASSIMPIMPORTER
 
-//#ifdef WITH_ASSIMP
+#ifdef WITH_ASSIMP
 
 #include <Core/Renderable.h>
 #include <Core/Animator.h>
@@ -74,6 +74,6 @@ namespace IO
 	};
 }
 
-//#endif
+#endif
 
 #endif // INCLUDED_ASSIMPIMPORTER

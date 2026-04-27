@@ -1,5 +1,5 @@
 #include "Application.h"
-#include "UnityTestImporter.h"
+//#include "UnityTestImporter.h"
 
 #include <IO/GLTFImporter.h>
 #include <Core/FogVolume.h>
@@ -34,9 +34,9 @@ bool Application::init()
 	renderer = pr::Renderer::create();
 	renderer->init(window, swapchain);
 
-	//initScene();
+	initScene();
 	//initUnitySceneOLD();
-	initUnitySceneNEW();
+	//initUnitySceneNEW();
 
 	renderer->prepare(camera, scene);
 	renderer->buildCmdBuffer(scene, swapchain);
@@ -204,159 +204,159 @@ void Application::initScene()
 	scene->setSkybox(skybox);
 }
 
-void Application::initUnitySceneOLD()
-{
-	pr::Light::lightForward = glm::vec3(0, 0, 1);
-
-	//std::string unityAssetPath = "C:/workspace/code/Archviz/Assets";
-	//std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
-	//std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
-
-	std::string unityAssetPath = "C:/workspace/code/VikingVillage/Assets";
-	std::string unityPrefabPath = unityAssetPath + "/Viking Village/Prefabs";
-	std::string unitySceneFile = "Viking Village/Scenes/The_Viking_Village.unity";
-
-	IO::Unity::Importer sceneImporter(8192);
-	scene = sceneImporter.loadScene(unityAssetPath, unitySceneFile);
-	scene->checkWindingOrder();
-	sceneImporter.clear();
-
-	//IO::Unity::Importer sceneImporter(8192);
-	//sceneImporter.loadMetadata(unityAssetPath);
-	////scene = sceneImporter.loadScene(unityAssetPath, unitySceneFile);
-	//auto root = sceneImporter.loadPrefab(unityPrefabPath + "/Buildings/pf_build_crane_01.prefab");
-	//for (auto r : root->getComponentsInChildren<pr::Renderable>())
-	//	r->setDiffuseMode(0);
-	//scene = pr::Scene::create("scene");
-	//scene->addRoot(root);
-	//sceneImporter.clear();
-
-	//for (auto entity : scene->getRootNodes())
-	//{
-	//	auto name = entity->getName();
-	//	auto models = entity->getChildrenWithComponent<pr::Renderable>();
-	//	for (auto m : models)
-	//	{
-	//		auto r = m->getComponent<pr::Renderable>();
-	//		if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
-	//		{
-	//			r->setType(pr::RenderType::Opaque);
-	//			r->setPriority(1);
-	//		}
-	//		if (name.compare("3D HOUSE") == 0)
-	//		{
-	//			auto modelName = m->getName();
-	//			if (modelName.length() == 16)
-	//			{
-	//				auto prefix = m->getName().substr(0, 14);
-	//				if (prefix.compare("Glass_Exterior") == 0)
-	//				{
-	//					r->setType(pr::RenderType::Opaque);
-	//					r->setPriority(2);
-	//				}
-	//			}
-	//			else if (modelName.length() == 23)
-	//			{
-	//				auto prefix = modelName.substr(0, 21);
-	//				if (prefix.compare("Window_Glass_Interior") == 0)
-	//				{
-	//					r->setType(pr::RenderType::Opaque);
-	//					r->setPriority(2);
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-
-	std::string assetPath = "../../../../assets";
-	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
-	auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
-	uint32 width = panoImg->getWidth();
-	uint32 height = panoImg->getHeight();
-	uint8* data = panoImg->getRawPtr();
-	uint32 dataSize = width * height * sizeof(float) * 4;
-	auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
-	panoTex->upload(data, dataSize);
-	panoTex->createData();
-	panoTex->uploadData();
-	auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
-	scene->setSkybox(skybox);
-}
-
-void Application::initUnitySceneNEW()
-{
-	pr::Light::lightForward = glm::vec3(0, 0, 1);
-
-	//std::string unityAssetPath = "c:/workspace/code/Archviz/Assets";
-	//std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
-	//std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
-
-	std::string unityAssetPath = "C:/workspace/code/VikingVillage/Assets";
-	std::string unityPrefabPath = unityAssetPath + "/Viking Village/Prefabs";
-	std::string unitySceneFile = "Viking Village/Scenes/The_Viking_Village.unity";
-
-	UnityTestImporter importer;
-	scene = importer.importScene(unityAssetPath, unitySceneFile);
-	scene->checkWindingOrder();
-
-	//UnityTestImporter importer;
-	//auto root = importer.importPrefab(unityAssetPath, "/Viking Village/Prefabs/Buildings/pf_build_blacksmith_01.prefab");
-	//for (auto r : root->getComponentsInChildren<pr::Renderable>())
-	//	r->setDiffuseMode(0);
-	//scene = pr::Scene::create("scene");
-	//scene->addRoot(root);
-
-	//for (auto entity : scene->getRootNodes())
-	//{
-	//	auto name = entity->getName();
-	//	auto models = entity->getChildrenWithComponent<pr::Renderable>();
-	//	for (auto m : models)
-	//	{
-	//		auto r = m->getComponent<pr::Renderable>();
-	//		if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
-	//		{
-	//			r->setType(pr::RenderType::Opaque);
-	//			r->setPriority(1);
-	//		}
-	//		if (name.compare("3D HOUSE") == 0)
-	//		{
-	//			auto modelName = m->getName();
-	//			if (modelName.length() == 16)
-	//			{
-	//				auto prefix = m->getName().substr(0, 14);
-	//				if (prefix.compare("Glass_Exterior") == 0)
-	//				{
-	//					r->setType(pr::RenderType::Opaque);
-	//					r->setPriority(2);
-	//				}
-	//			}
-	//			else if (modelName.length() == 23)
-	//			{
-	//				auto prefix = modelName.substr(0, 21);
-	//				if (prefix.compare("Window_Glass_Interior") == 0)
-	//				{
-	//					r->setType(pr::RenderType::Opaque);
-	//					r->setPriority(2);
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-
-	//std::string assetPath = "../../../../assets";
-	//std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
-	//auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
-	//uint32 width = panoImg->getWidth();
-	//uint32 height = panoImg->getHeight();
-	//uint8* data = panoImg->getRawPtr();
-	//uint32 dataSize = width * height * sizeof(float) * 4;
-	//auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
-	//panoTex->upload(data, dataSize);
-	//panoTex->createData();
-	//panoTex->uploadData();
-	//auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
-	//scene->setSkybox(skybox);
-}
+//void Application::initUnitySceneOLD()
+//{
+//	pr::Light::lightForward = glm::vec3(0, 0, 1);
+//
+//	//std::string unityAssetPath = "C:/workspace/code/Archviz/Assets";
+//	//std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
+//	//std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
+//
+//	std::string unityAssetPath = "C:/workspace/code/VikingVillage/Assets";
+//	std::string unityPrefabPath = unityAssetPath + "/Viking Village/Prefabs";
+//	std::string unitySceneFile = "Viking Village/Scenes/The_Viking_Village.unity";
+//
+//	IO::Unity::Importer sceneImporter(8192);
+//	scene = sceneImporter.loadScene(unityAssetPath, unitySceneFile);
+//	scene->checkWindingOrder();
+//	sceneImporter.clear();
+//
+//	//IO::Unity::Importer sceneImporter(8192);
+//	//sceneImporter.loadMetadata(unityAssetPath);
+//	////scene = sceneImporter.loadScene(unityAssetPath, unitySceneFile);
+//	//auto root = sceneImporter.loadPrefab(unityPrefabPath + "/Buildings/pf_build_crane_01.prefab");
+//	//for (auto r : root->getComponentsInChildren<pr::Renderable>())
+//	//	r->setDiffuseMode(0);
+//	//scene = pr::Scene::create("scene");
+//	//scene->addRoot(root);
+//	//sceneImporter.clear();
+//
+//	//for (auto entity : scene->getRootNodes())
+//	//{
+//	//	auto name = entity->getName();
+//	//	auto models = entity->getChildrenWithComponent<pr::Renderable>();
+//	//	for (auto m : models)
+//	//	{
+//	//		auto r = m->getComponent<pr::Renderable>();
+//	//		if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
+//	//		{
+//	//			r->setType(pr::RenderType::Opaque);
+//	//			r->setPriority(1);
+//	//		}
+//	//		if (name.compare("3D HOUSE") == 0)
+//	//		{
+//	//			auto modelName = m->getName();
+//	//			if (modelName.length() == 16)
+//	//			{
+//	//				auto prefix = m->getName().substr(0, 14);
+//	//				if (prefix.compare("Glass_Exterior") == 0)
+//	//				{
+//	//					r->setType(pr::RenderType::Opaque);
+//	//					r->setPriority(2);
+//	//				}
+//	//			}
+//	//			else if (modelName.length() == 23)
+//	//			{
+//	//				auto prefix = modelName.substr(0, 21);
+//	//				if (prefix.compare("Window_Glass_Interior") == 0)
+//	//				{
+//	//					r->setType(pr::RenderType::Opaque);
+//	//					r->setPriority(2);
+//	//				}
+//	//			}
+//	//		}
+//	//	}
+//	//}
+//
+//	std::string assetPath = "../../../../assets";
+//	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
+//	auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
+//	uint32 width = panoImg->getWidth();
+//	uint32 height = panoImg->getHeight();
+//	uint8* data = panoImg->getRawPtr();
+//	uint32 dataSize = width * height * sizeof(float) * 4;
+//	auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
+//	panoTex->upload(data, dataSize);
+//	panoTex->createData();
+//	panoTex->uploadData();
+//	auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
+//	scene->setSkybox(skybox);
+//}
+//
+//void Application::initUnitySceneNEW()
+//{
+//	pr::Light::lightForward = glm::vec3(0, 0, 1);
+//
+//	//std::string unityAssetPath = "c:/workspace/code/Archviz/Assets";
+//	//std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
+//	//std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
+//
+//	std::string unityAssetPath = "C:/workspace/code/VikingVillage/Assets";
+//	std::string unityPrefabPath = unityAssetPath + "/Viking Village/Prefabs";
+//	std::string unitySceneFile = "Viking Village/Scenes/The_Viking_Village.unity";
+//
+//	UnityTestImporter importer;
+//	scene = importer.importScene(unityAssetPath, unitySceneFile);
+//	scene->checkWindingOrder();
+//
+//	//UnityTestImporter importer;
+//	//auto root = importer.importPrefab(unityAssetPath, "/Viking Village/Prefabs/Buildings/pf_build_blacksmith_01.prefab");
+//	//for (auto r : root->getComponentsInChildren<pr::Renderable>())
+//	//	r->setDiffuseMode(0);
+//	//scene = pr::Scene::create("scene");
+//	//scene->addRoot(root);
+//
+//	//for (auto entity : scene->getRootNodes())
+//	//{
+//	//	auto name = entity->getName();
+//	//	auto models = entity->getChildrenWithComponent<pr::Renderable>();
+//	//	for (auto m : models)
+//	//	{
+//	//		auto r = m->getComponent<pr::Renderable>();
+//	//		if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
+//	//		{
+//	//			r->setType(pr::RenderType::Opaque);
+//	//			r->setPriority(1);
+//	//		}
+//	//		if (name.compare("3D HOUSE") == 0)
+//	//		{
+//	//			auto modelName = m->getName();
+//	//			if (modelName.length() == 16)
+//	//			{
+//	//				auto prefix = m->getName().substr(0, 14);
+//	//				if (prefix.compare("Glass_Exterior") == 0)
+//	//				{
+//	//					r->setType(pr::RenderType::Opaque);
+//	//					r->setPriority(2);
+//	//				}
+//	//			}
+//	//			else if (modelName.length() == 23)
+//	//			{
+//	//				auto prefix = modelName.substr(0, 21);
+//	//				if (prefix.compare("Window_Glass_Interior") == 0)
+//	//				{
+//	//					r->setType(pr::RenderType::Opaque);
+//	//					r->setPriority(2);
+//	//				}
+//	//			}
+//	//		}
+//	//	}
+//	//}
+//
+//	//std::string assetPath = "../../../../assets";
+//	//std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
+//	//auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
+//	//uint32 width = panoImg->getWidth();
+//	//uint32 height = panoImg->getHeight();
+//	//uint8* data = panoImg->getRawPtr();
+//	//uint32 dataSize = width * height * sizeof(float) * 4;
+//	//auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
+//	//panoTex->upload(data, dataSize);
+//	//panoTex->createData();
+//	//panoTex->uploadData();
+//	//auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
+//	//scene->setSkybox(skybox);
+//}
 
 void Application::setupInput()
 {
@@ -392,17 +392,17 @@ void Application::setupInput()
 	});
 }
 
-void Application::updateGUI()
-{
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
-
-	bool show_demo_window = false;
-	if (show_demo_window)
-		ImGui::ShowDemoWindow(&show_demo_window);
-
-	ImGui::Render();
-}
+//void Application::updateGUI()
+//{
+//	ImGui_ImplWin32_NewFrame();
+//	ImGui::NewFrame();
+//
+//	bool show_demo_window = false;
+//	if (show_demo_window)
+//		ImGui::ShowDemoWindow(&show_demo_window);
+//
+//	ImGui::Render();
+//}
 
 void Application::loop()
 {

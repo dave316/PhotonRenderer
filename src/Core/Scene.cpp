@@ -56,10 +56,10 @@ namespace pr
 		this->directionMaps = dirMaps;
 	}
 
-	void Scene::setSHProbes(pr::SHLightProbes& probes)
-	{
-		this->shProbes = probes;
-	}
+	//void Scene::setSHProbes(pr::SHLightProbes& probes)
+	//{
+	//	this->shProbes = probes;
+	//}
 
 	void Scene::initDescriptors(GPU::DescriptorPool::Ptr descriptorPool)
 	{
@@ -174,126 +174,126 @@ namespace pr
 		}
 	}
 
-	void Scene::computeSHLightprobes()
-	{
-		auto tetrahedrons = shProbes.tetrahedras;
-		auto probeCoeffs = shProbes.coeffs;
-		auto positions = shProbes.positions;
+	//void Scene::computeSHLightprobes()
+	//{
+	//	auto tetrahedrons = shProbes.tetrahedras;
+	//	auto probeCoeffs = shProbes.coeffs;
+	//	auto positions = shProbes.positions;
 
-		if (tetrahedrons.empty() || probeCoeffs.empty() || positions.empty())
-			return;
+	//	if (tetrahedrons.empty() || probeCoeffs.empty() || positions.empty())
+	//		return;
 
-		std::set<int> indices;
+	//	std::set<int> indices;
 
-		int index = 0;
-		for (auto root : rootNodes)
-		{
-			auto rendEnts = root->getChildrenWithComponent<Renderable>();
-			for (auto e : rendEnts)
-			{
-				auto r = e->getComponent<Renderable>();
-				auto mesh = r->getMesh();
-				if (e->isActive() && r->isEnabled())
-				{
-					if (r->getDiffuseMode() == 2)
-					{
-						//std::cout << "mesh " << e->getName() << " uses lightmapping." << std::endl;
-					}
-					else
-					{
-						//std::cout << "mesh " << e->getName() << " uses lightprobes." << std::endl;
-						glm::vec3 pos = glm::vec3(0);
-						if (!r->getReflName().empty())
-						{
-							auto name = r->getReflName();
-							if (reflectionProbes.find(name) != reflectionProbes.end())
-								pos = reflectionProbes[name].position;
-						}
-						else
-						{
-							auto M = e->getComponent<Transform>()->getTransform();
-							Box meshbox;
-							for (auto s : mesh->getSubMeshes())
-							{
-								auto surf = s.primitive->getSurface();
-								for (auto v : surf.vertices)
-								{
-									glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0f));
-									meshbox.expand(pos);
-								}
-							}
-							pos = meshbox.getCenter();
-						}
+	//	int index = 0;
+	//	for (auto root : rootNodes)
+	//	{
+	//		auto rendEnts = root->getChildrenWithComponent<Renderable>();
+	//		for (auto e : rendEnts)
+	//		{
+	//			auto r = e->getComponent<Renderable>();
+	//			auto mesh = r->getMesh();
+	//			if (e->isActive() && r->isEnabled())
+	//			{
+	//				if (r->getDiffuseMode() == 2)
+	//				{
+	//					//std::cout << "mesh " << e->getName() << " uses lightmapping." << std::endl;
+	//				}
+	//				else
+	//				{
+	//					//std::cout << "mesh " << e->getName() << " uses lightprobes." << std::endl;
+	//					glm::vec3 pos = glm::vec3(0);
+	//					if (!r->getReflName().empty())
+	//					{
+	//						auto name = r->getReflName();
+	//						if (reflectionProbes.find(name) != reflectionProbes.end())
+	//							pos = reflectionProbes[name].position;
+	//					}
+	//					else
+	//					{
+	//						auto M = e->getComponent<Transform>()->getTransform();
+	//						Box meshbox;
+	//						for (auto s : mesh->getSubMeshes())
+	//						{
+	//							auto surf = s.primitive->getSurface();
+	//							for (auto v : surf.vertices)
+	//							{
+	//								glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0f));
+	//								meshbox.expand(pos);
+	//							}
+	//						}
+	//						pos = meshbox.getCenter();
+	//					}
 
-						IO::Unity::SH9 probe;
-						auto p = glm::vec3(-pos.x, pos.y, pos.z);
-						for (int i = 0; i < tetrahedrons.size(); i++)
-						{
-							auto& t = tetrahedrons[i];
-							if (t.indices[3] < 0)
-								continue;
+	//					IO::Unity::SH9 probe;
+	//					auto p = glm::vec3(-pos.x, pos.y, pos.z);
+	//					for (int i = 0; i < tetrahedrons.size(); i++)
+	//					{
+	//						auto& t = tetrahedrons[i];
+	//						if (t.indices[3] < 0)
+	//							continue;
 
-							auto p3 = positions[t.indices[3]];
-							auto R = glm::transpose(glm::mat3(t.matrix));
-							auto bc = R * (p - p3);
-							float a = bc.x;
-							float b = bc.y;
-							float c = bc.z;
-							float d = 1.0f - a - b - c;
+	//						auto p3 = positions[t.indices[3]];
+	//						auto R = glm::transpose(glm::mat3(t.matrix));
+	//						auto bc = R * (p - p3);
+	//						float a = bc.x;
+	//						float b = bc.y;
+	//						float c = bc.z;
+	//						float d = 1.0f - a - b - c;
 
-							if (a >= 0 && b >= 0 && c >= 0 && d >= 0) // point is inside tetrahedra
-							{
-								indices.insert(i);
+	//						if (a >= 0 && b >= 0 && c >= 0 && d >= 0) // point is inside tetrahedra
+	//						{
+	//							indices.insert(i);
 
-								auto p0 = positions[t.indices[0]];
-								auto p1 = positions[t.indices[1]];
-								auto p2 = positions[t.indices[2]];
+	//							auto p0 = positions[t.indices[0]];
+	//							auto p1 = positions[t.indices[1]];
+	//							auto p2 = positions[t.indices[2]];
 
-								auto& sh0 = probeCoeffs[t.indices[0]].coefficients;
-								auto& sh1 = probeCoeffs[t.indices[1]].coefficients;
-								auto& sh2 = probeCoeffs[t.indices[2]].coefficients;
-								auto& sh3 = probeCoeffs[t.indices[3]].coefficients;
-								for (int i = 0; i < 27; i++)
-									probe.coefficients[i] = sh0[i] * a + sh1[i] * b + sh2[i] * c + sh3[i] * d;
+	//							auto& sh0 = probeCoeffs[t.indices[0]].coefficients;
+	//							auto& sh1 = probeCoeffs[t.indices[1]].coefficients;
+	//							auto& sh2 = probeCoeffs[t.indices[2]].coefficients;
+	//							auto& sh3 = probeCoeffs[t.indices[3]].coefficients;
+	//							for (int i = 0; i < 27; i++)
+	//								probe.coefficients[i] = sh0[i] * a + sh1[i] * b + sh2[i] * c + sh3[i] * d;
 
-								//std::cout << "probe idx: " << pIdx << " tetrahedron: " << i << std::endl;
-								break;
-							}
-						}
+	//							//std::cout << "probe idx: " << pIdx << " tetrahedron: " << i << std::endl;
+	//							break;
+	//						}
+	//					}
 
-						std::vector<glm::vec3> sh(9);
-						for (int k = 0; k < 9; k++)
-						{
-							sh[k].r = probe.coefficients[k];
-							sh[k].g = probe.coefficients[k + 9];
-							sh[k].b = probe.coefficients[k + 18];
-						}
+	//					std::vector<glm::vec3> sh(9);
+	//					for (int k = 0; k < 9; k++)
+	//					{
+	//						sh[k].r = probe.coefficients[k];
+	//						sh[k].g = probe.coefficients[k + 9];
+	//						sh[k].b = probe.coefficients[k + 18];
+	//					}
 
-						r->setDiffuseMode(1);
-						r->setProbeSH9(sh);
+	//					r->setDiffuseMode(1);
+	//					r->setProbeSH9(sh);
 
-						//SubMesh m;
-						//m.primitive = MeshPrimitives::createUVSphere(pos, 0.1f, 16, 16);
-						//m.material = getDefaultMaterial();
-						//m.material->addProperty("material.baseColorFactor", glm::vec4(1, 1, 1, 1));
-						//m.material->addProperty("material.roughnessFactor", 1.0f);
-						//m.material->addProperty("material.metallicFactor", 0.0f);
+	//					//SubMesh m;
+	//					//m.primitive = MeshPrimitives::createUVSphere(pos, 0.1f, 16, 16);
+	//					//m.material = getDefaultMaterial();
+	//					//m.material->addProperty("material.baseColorFactor", glm::vec4(1, 1, 1, 1));
+	//					//m.material->addProperty("material.roughnessFactor", 1.0f);
+	//					//m.material->addProperty("material.metallicFactor", 0.0f);
 
-						//auto meshLP = Mesh::create("lightprobe");
-						//meshLP->addSubMesh(m);
+	//					//auto meshLP = Mesh::create("lightprobe");
+	//					//meshLP->addSubMesh(m);
 
-						//auto lpEntity = Entity::create("lightprobe_" + e->getName(), nullptr);
-						//auto lpRend = lpEntity->addComponent<Renderable>();
-						//lpRend->setMesh(meshLP);
-						//lpRend->setDiffuseMode(1);
-						//lpRend->setProbeSH9(sh);
-						//scene->addRootEntity("mesh_lightprobe_" + std::to_string(index), lpEntity);
-						//index++;
-					}
-				}
-			}
-		}
-	}
+	//					//auto lpEntity = Entity::create("lightprobe_" + e->getName(), nullptr);
+	//					//auto lpRend = lpEntity->addComponent<Renderable>();
+	//					//lpRend->setMesh(meshLP);
+	//					//lpRend->setDiffuseMode(1);
+	//					//lpRend->setProbeSH9(sh);
+	//					//scene->addRootEntity("mesh_lightprobe_" + std::to_string(index), lpEntity);
+	//					//index++;
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 
 	void Scene::computeProbeMapping()
 	{

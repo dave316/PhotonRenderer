@@ -8,8 +8,8 @@ option(BUILD_GLTFVIEWER "GLTF Model viewer" OFF)
 option(BUILD_EDITOR "Simple Scene Editor" OFF)
 
 # graphic APIs
-option(BUILD_BACKEND_VULKAN, "Build Vulkan backend", OFF)
-option(BUILD_BACKEND_D3D11, "Build Direct3D 11 backend", OFF)
+option(BUILD_BACKEND_VULKAN "Build Vulkan backend" OFF)
+option(BUILD_BACKEND_D3D11 "Build Direct3D 11 backend" OFF)
 
 # optional libraries
 option(WITH_ASSIMP_IMPORTER "Support assimp imported models" OFF)

@@ -1,4 +1,4 @@
-//#ifdef WITH_ASSIMP
+#ifdef WITH_ASSIMP
 
 #include "AssimpImporter.h"
 #include <stb_image.h>
@@ -836,4 +836,4 @@ namespace IO
 	}
 }
 
-//#endif
+#endif

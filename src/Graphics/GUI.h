@@ -3,6 +3,8 @@
 
 #pragma once
 
+#ifdef WITH_IMGUI
+
 #include <Graphics/Mesh.h>
 #include <imgui_impl_win32.h>
 
@@ -54,5 +56,7 @@ namespace pr
 		uint32 indexCount = 0;
 	};
 }
+
+#endif
 
 #endif // INCLUDED_GUI

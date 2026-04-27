@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <IO/Unity/UnityImporter.h>
 #include <Graphics/FPSCamera.h>
 #include <Core/Renderable.h>
 #include <Core/Entity.h>

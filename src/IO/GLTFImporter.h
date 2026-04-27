@@ -1477,7 +1477,7 @@ namespace IO
 			}
 
 			void loadSurface(TriangleSurface& surface, Primitive& primitive);
-			void loadCompressedSurface(TriangleSurface& surface, Primitive& primitive);
+			//void loadCompressedSurface(TriangleSurface& surface, Primitive& primitive);
 			void loadMeshes(std::string& path);
 			void addTexture(std::string name, std::string path, pr::Material::Ptr material, std::optional<TextureInfo> texInfo, bool useSRGB, bool isMainTex = false);
 			void addTexture(std::string name, std::string path, pr::Material::Ptr material, std::optional<NormalTextureInfo> texInfo);
