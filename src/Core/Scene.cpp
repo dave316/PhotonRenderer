@@ -4,7 +4,7 @@
 #include <Core/Renderable.h>
 #include <Graphics/Intersection.h>
 #include <set>
-#include <ktx.h>
+
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/constants.hpp>
 namespace pr

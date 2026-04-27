@@ -17,10 +17,10 @@ endforeach()
 
 include_directories("../../src")
 include_directories("../../src/3rdParty")
-include_directories("../../libuimp")
+#include_directories("../../libuimp")
 
 add_executable(SimpleViewer ${SRC_LIST})
-target_link_libraries(SimpleViewer PRIVATE libphoton libuimp)
+target_link_libraries(SimpleViewer PRIVATE libphoton)
 
 if(WIN32)
 	set_target_properties(SimpleViewer PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")

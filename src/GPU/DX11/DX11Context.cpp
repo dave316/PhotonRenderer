@@ -105,6 +105,7 @@ namespace DX11
 		nextCmdBuf->flush();
 	}
 
+#ifdef WITH_IMGUI
 	void Context::createWindow(ImGuiViewport* viewport)
 	{
 		ViewportData* vd = new ViewportData;
@@ -254,4 +255,5 @@ namespace DX11
 				vd->swapChain->Present(0, 0);
 		}
 	}
+#endif
 }

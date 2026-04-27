@@ -15,7 +15,9 @@
 #include <GPU/GL/GLPlatform.h>
 #include <GPU/Enums.h>
 #include <Windows.h>
+#ifdef WITH_IMGUI
 #include <imgui.h>
+#endif
 
 namespace GL
 {
@@ -62,13 +64,14 @@ namespace GL
 			return std::make_shared<Context>(window);
 		}
 
+#ifdef WITH_IMGUI
 		static bool createDeviceWGL(HWND hWnd, WGLWindowData* data);
 		static void cleanupDeviceWGL(HWND hWnd, WGLWindowData* data);
 		static void createWindow(ImGuiViewport* viewport);
 		static void destroyWindow(ImGuiViewport* viewport);
 		static void platformWindow(ImGuiViewport* viewport, void*);
 		static void swapBuffers(ImGuiViewport* viewport, void*);
-
+#endif
 	private:
 		HWND hwnd;
 		HDC deviceContext;

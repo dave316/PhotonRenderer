@@ -16,7 +16,9 @@
 #include <GPU/Enums.h>
 
 #include <Windows.h>
+#ifdef WITH_IMGUI
 #include <imgui.h>
+#endif
 
 namespace DX11
 {
@@ -52,6 +54,7 @@ namespace DX11
 			return std::make_shared<Context>();
 		}
 
+#ifdef WITH_IMGUI
 		//static bool createDeviceWGL(HWND hWnd, WGLWindowData* data);
 		//static void cleanupDeviceWGL(HWND hWnd, WGLWindowData* data);
 		static void createWindow(ImGuiViewport* viewport);
@@ -59,6 +62,7 @@ namespace DX11
 		static void setWindowSize(ImGuiViewport* viewport, ImVec2 size);
 		static void platformRenderWindow(ImGuiViewport* viewport, void*);
 		static void swapBuffers(ImGuiViewport* viewport, void*);
+#endif
 
 	private:
 		std::vector<DX11::Buffer::Ptr> buffers;

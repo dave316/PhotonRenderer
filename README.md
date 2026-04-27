@@ -2,12 +2,23 @@
 This is a real-time rendering engine for coherent mixed reality. It works on Windows, Linux and Android based platforms with rendering backends for OpenGL, OpenGL ES, Direct3D 11 and Vulkan.
 
 ## Dependencies
-- ASSIMP
-- GLEW
-- GLFW3
-- GLM
-- IMGUI
-- STB
+
+### Required
+- glm: vector and matrix math
+- stb-image: image file import (png, jpg, hdr)
+- OpenGL: GL registry for loading GL functions
+- rapidjson: JSON support for importing glTF files
+
+### Optional
+- assimp: import over 40 3D file formats
+- imgui: UI support with rendering backends
+- imguizmo: 3D Gizmos
+- ktx: import KTX Texture files
+- libwebp: import WebP image files
+- ryml: YAML support for importing Unity scenes
+- tiff: import TIFF image files
+- tinyexr: import EXR image files
+- vulkan: support for vulkan backend
 
 ## Installation
 Installation was tested on Win10 x64 with Visual Studio 2017 and 2019. It's recommended to use VCPKG for installation.
@@ -21,8 +32,14 @@ Requirenments:
 Download and install [VCPKG](https://github.com/microsoft/vcpkg). Set environment variable VCPKG_DEFAULT_TRIPLET=x64-windows.
 
 Install dependencies:
+Minimal install
 ```
-./vcpkg.exe install assimp glew glfw3 glm stb imgui[glfw-binding,opengl3-binding] imguizmo
+./vcpkg.exe install glm stb opengl rapidjson
+```
+
+Full install
+```
+./vcpkg install assimp glm imgui[win32-binding,docking-experimental] imguizmo ktx libwebp ryml stb tiff tinyexr vulkan
 ```
 
 ### Building
