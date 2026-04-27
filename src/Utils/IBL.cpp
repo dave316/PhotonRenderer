@@ -173,9 +173,9 @@ namespace IBL
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLIntegrateBRDF.vert.spv"), GPU::ShaderStage::Vertex);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLIntegrateBRDF.frag.spv"), GPU::ShaderStage::Fragment);
+				std::string shaderPath = "../../../../cache/shaders/spv";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLIntegrateBRDF.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLIntegrateBRDF.frag.spv"), GPU::ShaderStage::Fragment);
 				break;
 			}
 		}
@@ -293,10 +293,10 @@ namespace IBL
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/PanoToCubeMap.vert.spv"), GPU::ShaderStage::Vertex);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/PanoToCubeMap.geom.spv"), GPU::ShaderStage::Geometry);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/PanoToCubeMap.frag.spv"), GPU::ShaderStage::Fragment);
+				std::string shaderPath = "../../../../cache/shaders/spv";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/PanoToCubeMap.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/PanoToCubeMap.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/PanoToCubeMap.frag.spv"), GPU::ShaderStage::Fragment);
 				break;
 			}
 		}
@@ -420,10 +420,10 @@ namespace IBL
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
+				std::string shaderPath = "../../../../cache/shaders/spv";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
 				break;
 			}
 		}
@@ -557,10 +557,10 @@ namespace IBL
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
+				std::string shaderPath = "../../../../cache/shaders/spv";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
 				break;
 			}
 		}
@@ -715,10 +715,10 @@ namespace IBL
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
+				std::string shaderPath = "../../../../cache/shaders/spv";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
 				break;
 			}
 		}
@@ -869,10 +869,10 @@ namespace IBL
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
-				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBL/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
+				std::string shaderPath = "../../../../cache/shaders/spv";
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.vert.spv"), GPU::ShaderStage::Vertex);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.geom.spv"), GPU::ShaderStage::Geometry);
+				pipeline->addShaderStage(loadTxtFile(shaderPath + "/IBLFilter.frag.spv"), GPU::ShaderStage::Fragment);
 				break;
 			}
 		}

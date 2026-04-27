@@ -145,12 +145,14 @@ namespace pr
 
 		if (genMipmaps)
 		{
+#ifdef GPU_BACKEND_DX11
 			if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
 			{
 				auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
 				dxImageView->generateMipmaps();
 			}
 			else
+#endif
 			{
 				auto& ctx = GraphicsContext::getInstance();
 				auto cmdBuf = ctx.allocateCommandBuffer();
@@ -475,12 +477,14 @@ namespace pr
 
 	void TextureCubeMap::generateMipmaps()
 	{
+#ifdef GPU_BACKEND_DX11
 		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
 		{
 			auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
 			dxImageView->generateMipmaps();
 		}
 		else
+#endif
 		{
 			auto& ctx = GraphicsContext::getInstance();
 			auto cmdBuf = ctx.allocateCommandBuffer();

@@ -4,7 +4,7 @@ project(PhotonRenderer)
 
 # required dependencies
 find_package(OpenGL REQUIRED)
-find_package(Vulkan REQUIRED)
+
 find_package(glm REQUIRED)
 find_package(Stb REQUIRED)
 #find_package(assimp REQUIRED)
@@ -19,6 +19,10 @@ find_package(rapidjson REQUIRED)
 #find_package(WebP REQUIRED)
 
 # optional dependencies
+if (BACKEND_VULKAN)
+	find_package(Vulkan REQUIRED)
+endif()
+
 # if (WITH_ASSIMP_IMPORTER)
 	# find_package(assimp REQUIRED)
 # endif()
@@ -49,7 +53,32 @@ set(SRC_3RDPARTY_DIR "3rdParty")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${SRC_3RDPARTY_DIR})
 
-file(GLOB_RECURSE SRC_LIST LIST_DIRECTORIES false "${SRC_ROOT_DIR}/*.c" "${SRC_ROOT_DIR}/*.cpp" "${SRC_ROOT_DIR}/*.h")
+file(GLOB_RECURSE SRC_LIST LIST_DIRECTORIES false 
+	"${SRC_ROOT_DIR}/*.c" 
+	"${SRC_ROOT_DIR}/*.cpp" 
+	"${SRC_ROOT_DIR}/*.h" 
+	"${SRC_ROOT_DIR}/*.hpp"
+)
+
+if (NOT BACKEND_VULKAN) # remove Vulkan source if backend is off
+	set(EXCLUDE_DIR "/GPU/VK/")
+	foreach(TMP_PATH ${SRC_LIST})
+		string(FIND ${TMP_PATH} ${EXCLUDE_DIR} EXCLUDE_DIR_FOUND)
+		if (NOT ${EXCLUDE_DIR_FOUND} EQUAL -1)
+			list(REMOVE_ITEM SRC_LIST ${TMP_PATH})
+		endif()
+	endforeach(TMP_PATH)
+endif()
+if (NOT BACKEND_DX11) # remove DirectX 11 source if backend is off
+	set(EXCLUDE_DIR "/GPU/DX11/")
+	foreach(TMP_PATH ${SRC_LIST})
+		string(FIND ${TMP_PATH} ${EXCLUDE_DIR} EXCLUDE_DIR_FOUND)
+		if (NOT ${EXCLUDE_DIR_FOUND} EQUAL -1)
+			list(REMOVE_ITEM SRC_LIST ${TMP_PATH})
+		endif()
+	endforeach(TMP_PATH)
+endif()
+
 file(GLOB_RECURSE HLSL_LIST LIST_DIRECTORIES false "${SRC_ROOT_DIR}/Shaders/*.hlsl")
 file(GLOB_RECURSE SHADER_LIST LIST_DIRECTORIES false
 	"${SRC_ROOT_DIR}/Shaders/*.glsl" 
@@ -57,7 +86,7 @@ file(GLOB_RECURSE SHADER_LIST LIST_DIRECTORIES false
 	"${SRC_ROOT_DIR}/Shaders/*.frag" 
 	"${SRC_ROOT_DIR}/Shaders/*.geom"
 	"${SRC_ROOT_DIR}/Shaders/*.comp"
-	)
+)
 	
 foreach(SRC IN ITEMS ${SRC_LIST})
 	get_filename_component(SRC_PATH "${SRC}" PATH)
@@ -94,15 +123,31 @@ foreach(SRC IN ITEMS ${HLSL_LIST})
 endforeach()
 
 add_library(libphoton STATIC ${SRC_LIST} ${SHADER_LIST} ${HLSL_LIST}) # TODO: better handling of 3rdParty libs
+target_compile_definitions(libphoton PUBLIC NOMINMAX)
 target_compile_definitions(libphoton PUBLIC GLM_ENABLE_EXPERIMENTAL)
 target_compile_definitions(libphoton PUBLIC IMGUI_DEFINE_MATH_OPERATORS)
 if (WIN32)
     set_target_properties(libphoton PROPERTIES OUTPUT_NAME "libphoton")
 endif()
-target_include_directories(libphoton PUBLIC ${Vulkan_INCLUDE_DIR})
-target_compile_definitions(libphoton PUBLIC NOMINMAX)
+
+if (BACKEND_VULKAN)
+	
+endif()
+
 #target_link_libraries(libphoton PUBLIC assimp::assimp draco::draco KTX::ktx glm::glm ryml::ryml TIFF::TIFF unofficial::tinyexr::tinyexr imgui::imgui imguizmo::imguizmo WebP::webp WebP::webpdecoder WebP::webpdemux d3d11 dxgi  ${OPENGL_gl_LIBRARY} ${Vulkan_LIBRARY})
-target_link_libraries(libphoton PUBLIC glm::glm d3d11 dxgi ${OPENGL_gl_LIBRARY} ${Vulkan_LIBRARY})
+target_link_libraries(libphoton PUBLIC glm::glm ${OPENGL_gl_LIBRARY})
+
+if (BACKEND_DX11)
+	target_link_libraries(libphoton PUBLIC d3d11 dxgi)
+	target_compile_definitions(libphoton PUBLIC GPU_BACKEND_DX11)
+endif()
+
+if (BACKEND_VULKAN)
+	target_include_directories(libphoton PUBLIC ${Vulkan_INCLUDE_DIR})
+	target_link_libraries(libphoton PUBLIC ${Vulkan_LIBRARY})
+	target_compile_definitions(libphoton PUBLIC GPU_BACKEND_VULKAN)
+endif()
+
 
 # if (WITH_ASSIMP_IMPORTER)
 	# target_link_libraries(libphoton PRIVATE assimp::assimp)

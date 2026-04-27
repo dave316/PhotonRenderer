@@ -79,7 +79,7 @@ void Application::initScene()
 	////scene->update(0.0f);
 
 	std::string assetPath = "../../../../assets";
-	std::string modelName = "EmissiveStrengthTest";
+	std::string modelName = "DamagedHelmet";
 	IO::glTF::Importer importer;
 	std::vector<pr::Scene::Ptr> scenes;
 	importer.importModel(assetPath + "/glTF-Sample-Assets/Models/" + modelName + "/glTF/" + modelName + ".gltf", scenes);

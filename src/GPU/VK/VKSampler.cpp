@@ -4,7 +4,7 @@ namespace VK
 {
 	vk::SamplerAddressMode getAddressMode(GPU::AddressMode addressMode)
 	{
-		vk::SamplerAddressMode samplerAddressMode;
+		vk::SamplerAddressMode samplerAddressMode = vk::SamplerAddressMode::eRepeat;
 		switch (addressMode)
 		{
 			case GPU::AddressMode::Repeat:			samplerAddressMode = vk::SamplerAddressMode::eRepeat; break;

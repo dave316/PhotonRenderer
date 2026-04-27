@@ -187,8 +187,8 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
-					materialPipeline->addShaderStage(loadTxtFile(shaderPath + "/Volume/VolumeMaterial.comp.spv"), GPU::ShaderStage::Compute);
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					materialPipeline->addShaderStage(loadTxtFile(shaderPath + "/VolumeMaterial.comp.spv"), GPU::ShaderStage::Compute);
 					break;
 				}
 			}
@@ -221,8 +221,8 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
-					scatterPipeline->addShaderStage(loadTxtFile(shaderPath + "/Volume/VolumeScatter.comp.spv"), GPU::ShaderStage::Compute);
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					scatterPipeline->addShaderStage(loadTxtFile(shaderPath + "/VolumeScatter.comp.spv"), GPU::ShaderStage::Compute);
 					break;
 				}
 			}
@@ -256,8 +256,8 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
-					accumPipeline->addShaderStage(loadTxtFile(shaderPath + "/Volume/VolumeAccum.comp.spv"), GPU::ShaderStage::Compute);
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					accumPipeline->addShaderStage(loadTxtFile(shaderPath + "/VolumeAccum.comp.spv"), GPU::ShaderStage::Compute);
 					break;
 				}
 			}

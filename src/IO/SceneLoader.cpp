@@ -4,7 +4,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/prettywriter.h>
-
+#include <sstream>
 #include <fstream>
 
 namespace json = rapidjson;

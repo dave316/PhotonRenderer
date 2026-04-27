@@ -104,10 +104,10 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
-					shadowCSMPipeline->addShaderStage(loadTxtFile(shaderPath + "/Shadows/DepthCSM.vert.spv"), GPU::ShaderStage::Vertex);
-					shadowCSMPipeline->addShaderStage(loadTxtFile(shaderPath + "/Shadows/DepthCSM.geom.spv"), GPU::ShaderStage::Geometry);
-					shadowCSMPipeline->addShaderStage(loadTxtFile(shaderPath + "/Shadows/DepthCSM.frag.spv"), GPU::ShaderStage::Fragment);
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					shadowCSMPipeline->addShaderStage(loadTxtFile(shaderPath + "/DepthCSM.vert.spv"), GPU::ShaderStage::Vertex);
+					shadowCSMPipeline->addShaderStage(loadTxtFile(shaderPath + "/DepthCSM.geom.spv"), GPU::ShaderStage::Geometry);
+					shadowCSMPipeline->addShaderStage(loadTxtFile(shaderPath + "/DepthCSM.frag.spv"), GPU::ShaderStage::Fragment);
 					break;
 				}
 			}
@@ -166,10 +166,10 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
-					shadowOMNIPipeline->addShaderStage(loadTxtFile(shaderPath + "/Shadows/DepthCubemap.vert.spv"), GPU::ShaderStage::Vertex);
-					shadowOMNIPipeline->addShaderStage(loadTxtFile(shaderPath + "/Shadows/DepthCubemap.geom.spv"), GPU::ShaderStage::Geometry);
-					shadowOMNIPipeline->addShaderStage(loadTxtFile(shaderPath + "/Shadows/DepthCubemap.frag.spv"), GPU::ShaderStage::Fragment);
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					shadowOMNIPipeline->addShaderStage(loadTxtFile(shaderPath + "/DepthCubemap.vert.spv"), GPU::ShaderStage::Vertex);
+					shadowOMNIPipeline->addShaderStage(loadTxtFile(shaderPath + "/DepthCubemap.geom.spv"), GPU::ShaderStage::Geometry);
+					shadowOMNIPipeline->addShaderStage(loadTxtFile(shaderPath + "/DepthCubemap.frag.spv"), GPU::ShaderStage::Fragment);
 					break;
 				}
 			}

@@ -2,6 +2,8 @@
 
 #define METAL_ROUGH_MATERIAL
 
+#extension GL_EXT_nonuniform_qualifier : enable
+
 layout(location = 0) in vec2 fTexCoord0;
 layout(location = 1) in vec2 fTexCoord1;
 

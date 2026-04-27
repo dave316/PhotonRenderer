@@ -3,7 +3,7 @@
 #include <IO/ImageLoader.h>
 #include <Utils/IBL.h>
 #include <filesystem>
-
+#include <sstream>
 namespace fs = std::filesystem;
 
 namespace pr
@@ -336,15 +336,27 @@ namespace pr
 
 		std::string shaderPath = "";
 		std::vector<std::string> filenames;
-		if (ctx.getCurrentAPI() == GraphicsAPI::Direct3D11)
+		switch (ctx.getCurrentAPI())
 		{
-			shaderPath = "../../../../cache/shaders/cso";
-			filenames = getAllFileNames(shaderPath, ".cso");
-		}
-		else
-		{
-			shaderPath = "../../../../src/Shaders/GLSL/Generated";
-			filenames = getAllFileNames(shaderPath, ".vert");
+			case GraphicsAPI::Direct3D11:
+			{
+				shaderPath = "../../../../cache/shaders/cso";
+				filenames = getAllFileNames(shaderPath, ".cso");
+				break;
+			}
+			case GraphicsAPI::OpenGL:
+			{
+				shaderPath = "../../../../src/Shaders/GLSL/Generated";
+				filenames = getAllFileNames(shaderPath, ".vert");
+				break;
+			}
+			case GraphicsAPI::Vulkan:
+			{
+				shaderPath = "../../../../src/Shaders/GLSL/Generated";
+				filenames = getAllFileNames(shaderPath, ".vert");
+				shaderPath = "../../../../cache/shaders/spv";
+				break;
+			}
 		}
 
 		for (auto fn : filenames)
@@ -604,7 +616,7 @@ namespace pr
 				}
 				case GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
+					std::string shaderPath = "../../../../cache/shaders/spv";
 					skyboxPipeline->addShaderStage(loadTxtFile(shaderPath + "/Skybox.vert.spv"), GPU::ShaderStage::Vertex);
 					skyboxPipeline->addShaderStage(loadTxtFile(shaderPath + "/Skybox.frag.spv"), GPU::ShaderStage::Fragment);
 					break;

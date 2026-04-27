@@ -162,20 +162,20 @@ namespace VK
 		std::vector<const char*> requiredValidationLayers = { "VK_LAYER_KHRONOS_validation" };
 
 		// TODO: check if extensions&layers are available
-		//std::cout << "--- Instance Extensions ---" << std::endl;
-		//auto instanceExtensions = vk::enumerateInstanceExtensionProperties();
-		//for (auto instanceExt : instanceExtensions)
-		//	std::cout << instanceExt.extensionName << std::endl;
-		//std::cout << "--- Validation Layers ---" << std::endl;
-		//auto supportedValidationLayers = vk::enumerateInstanceLayerProperties();
-		//for (auto instanceExt : supportedValidationLayers)
-		//	std::cout << instanceExt.layerName << std::endl;
+		std::cout << "--- Instance Extensions ---" << std::endl;
+		auto instanceExtensions = vk::enumerateInstanceExtensionProperties();
+		for (auto instanceExt : instanceExtensions)
+			std::cout << instanceExt.extensionName << std::endl;
+		std::cout << "--- Validation Layers ---" << std::endl;
+		auto supportedValidationLayers = vk::enumerateInstanceLayerProperties();
+		for (auto instanceExt : supportedValidationLayers)
+			std::cout << instanceExt.layerName << std::endl;
 
 		std::vector<const char*> activeInstanceExtensions(requiredInstanceExtensions);
 		activeInstanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 		activeInstanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
-		std::vector<const char*> requestedValidationLayers(requiredValidationLayers);
+		std::vector<const char*> requestedValidationLayers;
 
 		vk::ApplicationInfo app;
 		app.pApplicationName = "SimpleViewer";

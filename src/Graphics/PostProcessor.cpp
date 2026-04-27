@@ -186,9 +186,9 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
-					postProcessPipeline->addShaderStage(loadTxtFile(shaderPath + "/PostProcessing/PostProcess.vert.spv"), GPU::ShaderStage::Vertex);
-					postProcessPipeline->addShaderStage(loadTxtFile(shaderPath + "/PostProcessing/PostProcess.frag.spv"), GPU::ShaderStage::Fragment);
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					postProcessPipeline->addShaderStage(loadTxtFile(shaderPath + "/PostProcess.vert.spv"), GPU::ShaderStage::Vertex);
+					postProcessPipeline->addShaderStage(loadTxtFile(shaderPath + "/PostProcess.frag.spv"), GPU::ShaderStage::Fragment);
 					break;
 				}
 			}
@@ -250,9 +250,9 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
-					upSamplePipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/UpSample.vert.spv"), GPU::ShaderStage::Vertex);
-					upSamplePipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/UpSample.frag.spv"), GPU::ShaderStage::Fragment);
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					upSamplePipeline->addShaderStage(loadTxtFile(shaderPath + "/UpSample.vert.spv"), GPU::ShaderStage::Vertex);
+					upSamplePipeline->addShaderStage(loadTxtFile(shaderPath + "/UpSample.frag.spv"), GPU::ShaderStage::Fragment);
 					break;
 				}
 			}
@@ -313,9 +313,9 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					std::string shaderPath = "../../../../src/Shaders/GLSL";
-					downSamplePipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/DownSample.vert.spv"), GPU::ShaderStage::Vertex);
-					downSamplePipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/DownSample.frag.spv"), GPU::ShaderStage::Fragment);
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					downSamplePipeline->addShaderStage(loadTxtFile(shaderPath + "/DownSample.vert.spv"), GPU::ShaderStage::Vertex);
+					downSamplePipeline->addShaderStage(loadTxtFile(shaderPath + "/DownSample.frag.spv"), GPU::ShaderStage::Fragment);
 					break;
 				}
 			}

@@ -3,13 +3,14 @@ cmake_minimum_required(VERSION 3.10)
 project(PhotonRenderer)
 
 # sample applications
-option(BUILD_SIMPLEVIEWER "Simple Renderer with FPS controls" ON)
-option(BUILD_GLTFVIEWER "GLTF Model viewer" OFF)
-option(BUILD_EDITOR "Simple Scene Editor" OFF)
+option(APPS_SIMPLEVIEWER "Simple Renderer with FPS controls" ON)
+option(APPS_GLTFVIEWER "GLTF Model viewer" OFF)
+option(APPS_EDITOR "Simple Scene Editor" OFF)
 
 # graphic APIs
-option(BUILD_BACKEND_VULKAN "Build Vulkan backend" OFF)
-option(BUILD_BACKEND_D3D11 "Build Direct3D 11 backend" OFF)
+option(BACKEND_OPENGL "Build OpenGL backend" ON)
+option(BACKEND_VULKAN "Build Vulkan backend" OFF)
+option(BACKEND_DX11 "Build DirectX 11 backend" OFF)
 
 # optional libraries
 option(WITH_ASSIMP_IMPORTER "Support assimp imported models" OFF)
@@ -22,15 +23,15 @@ option(WITH_UNITY_SUPPORT "Support for importing Unity scenes" OFF)
 add_subdirectory("src")
 #add_subdirectory("libuimp")
 
-if (BUILD_SIMPLEVIEWER)
+if (APPS_SIMPLEVIEWER)
 	add_subdirectory("apps/SimpleViewer")
 endif()
 
-if (BUILD_GLTFVIEWER)
+if (APPS_GLTFVIEWER)
 	add_subdirectory("apps/GLTFViewer")
 endif()
 
-if (BUILD_EDITOR)
+if (APPS_EDITOR)
 	add_subdirectory("apps/Editor")
 endif()
 

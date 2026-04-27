@@ -112,7 +112,7 @@ namespace pr
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string shaderPath = "../../../../cache/shaders/spv";
 				unlitPipeline->addShaderStage(loadTxtFile(shaderPath + "/Unlit.vert.spv"), GPU::ShaderStage::Vertex);
 				unlitPipeline->addShaderStage(loadTxtFile(shaderPath + "/Unlit.frag.spv"), GPU::ShaderStage::Fragment);
 				break;
@@ -173,7 +173,7 @@ namespace pr
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string shaderPath = "../../../../cache/shaders/spv";
 				unlitPipelineStencil->addShaderStage(loadTxtFile(shaderPath + "/Unlit.vert.spv"), GPU::ShaderStage::Vertex);
 				unlitPipelineStencil->addShaderStage(loadTxtFile(shaderPath + "/Unlit.frag.spv"), GPU::ShaderStage::Fragment);
 				break;
@@ -233,7 +233,7 @@ namespace pr
 			}
 			case pr::GraphicsAPI::Vulkan:
 			{
-				std::string shaderPath = "../../../../src/Shaders/GLSL";
+				std::string shaderPath = "../../../../cache/shaders/spv";
 				outlinePipeline->addShaderStage(loadTxtFile(shaderPath + "/Outline.vert.spv"), GPU::ShaderStage::Vertex);
 				outlinePipeline->addShaderStage(loadTxtFile(shaderPath + "/Outline.frag.spv"), GPU::ShaderStage::Fragment);
 				break;

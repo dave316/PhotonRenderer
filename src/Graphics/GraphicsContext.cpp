@@ -8,9 +8,13 @@ namespace pr
 		this->api = api;
 		switch (api)
 		{
+#ifdef GPU_BACKEND_DX11
 			case GraphicsAPI::Direct3D11 : context = DX11::Context::create(); break;
+#endif
 			case GraphicsAPI::OpenGL: context = GL::Context::create(window); break;
+#ifdef GPU_BACKEND_VULKAN
 			case GraphicsAPI::Vulkan: context = VK::Context::create(); break;
+#endif
 		}
 	}
 

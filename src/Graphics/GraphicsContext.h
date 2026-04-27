@@ -6,9 +6,13 @@
 #include <Platform/Types.h>
 #include <Platform/Window.h>
 
-#include <GPU/DX11/DX11Context.h>
 #include <GPU/GL/GLContext.h>
+#ifdef GPU_BACKEND_DX11
+#include <GPU/DX11/DX11Context.h>
+#endif
+#ifdef GPU_BACKEND_VULKAN
 #include <GPU/VK/VKContext.h>
+#endif
 
 namespace pr
 {

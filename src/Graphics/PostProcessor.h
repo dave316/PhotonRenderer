@@ -16,9 +16,9 @@ namespace pr
 {
 	struct Post
 	{
-		int toneMappingMode = 7;
+		int toneMappingMode = 0;
 		float manualExposure = 0.0f;
-		int applyBloom = 1;
+		int applyBloom = 0;
 		float bloomIntensity = 1.0f;
 		glm::vec3 bloomTint = glm::vec3(1);
 		float padding;

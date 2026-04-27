@@ -182,7 +182,7 @@ namespace pr
 		}
 		case GraphicsAPI::Vulkan:
 		{
-			std::string shaderPath = "../../../../src/Shaders/GLSL";
+			std::string shaderPath = "../../../../cache/shaders/spv";
 			std::cout << "compiling shader " << shaderName << std::endl;
 			scatterPipeline->addShaderStage(loadTxtFile(shaderPath + "/" + shaderName + ".vert.spv"), GPU::ShaderStage::Vertex);
 			scatterPipeline->addShaderStage(loadTxtFile(shaderPath + "/" + shaderName + ".frag.spv"), GPU::ShaderStage::Fragment);
