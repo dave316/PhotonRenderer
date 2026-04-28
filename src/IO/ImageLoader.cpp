@@ -3,14 +3,22 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-//#include <tinyexr.h>
-//#include <tiffio.h>
-//#include <ktx.h>
-
 #include <filesystem>
 #include <iostream>
 #include <fstream>
-//#include <webp/decode.h>
+
+#ifdef IMAGE_TIFF
+#include <tiffio.h>
+#endif
+#ifdef IMAGE_EXR
+#include <tinyexr.h>
+#endif
+#ifdef IMAGE_KTX
+#include <ktx.h>
+#endif
+#ifdef IMAGE_WEBP
+#include <webp/decode.h>
+#endif
 
 namespace fs = std::filesystem;
 
@@ -73,128 +81,133 @@ namespace IO
 			return img;
 		}
 
-		//Image::Ptr loadEXRFromFile(const std::string& filename)
-		//{
-		//	int width = 0;
-		//	int height = 0;
-		//	int channels = 4;
-		//	float* rgba;
-		//	const char* err;
+#ifdef IMAGE_EXR
+		Image::Ptr loadEXRFromFile(const std::string& filename)
+		{
+			int width = 0;
+			int height = 0;
+			int channels = 4;
+			float* rgba;
+			const char* err;
 
-		//	int ret = LoadEXR(&rgba, &width, &height, filename.c_str(), &err);
-		//	if (ret != 0)
-		//		std::cout << err << std::endl;
+			int ret = LoadEXR(&rgba, &width, &height, filename.c_str(), &err);
+			if (ret != 0)
+				std::cout << err << std::endl;
 
-		//	//std::cout << "loaded exr image: " << width << "x" << height << std::endl;
+			//std::cout << "loaded exr image: " << width << "x" << height << std::endl;
 
-		//	auto img = ImageType<float>::create(width, height, 4);
-		//	img->setFromMemory(rgba, width * height * 4 * sizeof(float));
+			auto img = ImageType<float>::create(width, height, 4);
+			img->setFromMemory(rgba, width * height * 4 * sizeof(float));
 
-		//	delete[] rgba;
+			delete[] rgba;
 
-		//	return img;
-		//}
+			return img;
+		}
+#endif
 
-		//Image::Ptr loadTIFFFromFile(const std::string& filename)
-		//{
-		//	TIFFRGBAImage tiffRGBA;
-		//	uint32* raster;
+#ifdef IMAGE_TIFF
+		Image::Ptr loadTIFFFromFile(const std::string& filename)
+		{
+			TIFFRGBAImage tiffRGBA;
+			uint32* raster;
 
-		//	size_t npixels;
-		//	int imgwidth, imgheight;
+			size_t npixels;
+			int imgwidth, imgheight;
 
-		//	int hasABGR = 0;
-		//	char* imgfilename = NULL;
+			int hasABGR = 0;
+			char* imgfilename = NULL;
 
-		//	TIFF* tif;
-		//	char emsg[1024];
+			TIFF* tif;
+			char emsg[1024];
 
-		//	tif = TIFFOpen(filename.c_str(), "r");
-		//	if (tif == NULL) {
-		//		fprintf(stderr, "tif == NULL\n");
-		//		exit(1);
-		//	}
-		//	if (TIFFRGBAImageBegin(&tiffRGBA, tif, 0, emsg)) {
-		//		npixels = tiffRGBA.width * tiffRGBA.height;
-		//		raster = (uint32*)_TIFFmalloc(npixels * sizeof(uint32));
-		//		if (raster != NULL) {
-		//			if (TIFFRGBAImageGet(&tiffRGBA, raster, tiffRGBA.width, tiffRGBA.height) == 0) {
-		//				TIFFError(filename.c_str(), emsg);
-		//				exit(1);
-		//			}
-		//		}
-		//		TIFFRGBAImageEnd(&tiffRGBA);
-		//		//fprintf(stderr, "Read image %s (%d x %d)\n", filename.c_str(), tiffRGBA.width, tiffRGBA.height);
-		//	}
-		//	else {
-		//		TIFFError(filename.c_str(), emsg);
-		//		exit(1);
-		//	}
-		//	imgwidth = tiffRGBA.width;
-		//	imgheight = tiffRGBA.height;
-		//	uint32 imgSize = imgwidth * imgheight * 4;
+			tif = TIFFOpen(filename.c_str(), "r");
+			if (tif == NULL) {
+				fprintf(stderr, "tif == NULL\n");
+				exit(1);
+			}
+			if (TIFFRGBAImageBegin(&tiffRGBA, tif, 0, emsg)) {
+				npixels = tiffRGBA.width * tiffRGBA.height;
+				raster = (uint32*)_TIFFmalloc(npixels * sizeof(uint32));
+				if (raster != NULL) {
+					if (TIFFRGBAImageGet(&tiffRGBA, raster, tiffRGBA.width, tiffRGBA.height) == 0) {
+						TIFFError(filename.c_str(), emsg);
+						exit(1);
+					}
+				}
+				TIFFRGBAImageEnd(&tiffRGBA);
+				//fprintf(stderr, "Read image %s (%d x %d)\n", filename.c_str(), tiffRGBA.width, tiffRGBA.height);
+			}
+			else {
+				TIFFError(filename.c_str(), emsg);
+				exit(1);
+			}
+			imgwidth = tiffRGBA.width;
+			imgheight = tiffRGBA.height;
+			uint32 imgSize = imgwidth * imgheight * 4;
 
-		//	uint8_t* buffer = new uint8_t[imgSize];
-		//	for (int row = 0; row < imgheight; row++)
-		//	{
-		//		int r = imgheight - row - 1;
-		//		for (int col = 0; col < imgwidth; col++)
-		//		{
-		//			for (int c = 0; c < 4; c++)
-		//				buffer[row * imgwidth * 4 + col * 4 + c] = ((uint8*)raster)[r * imgwidth * 4 + col * 4 + c];
-		//		}
-		//	}
+			uint8_t* buffer = new uint8_t[imgSize];
+			for (int row = 0; row < imgheight; row++)
+			{
+				int r = imgheight - row - 1;
+				for (int col = 0; col < imgwidth; col++)
+				{
+					for (int c = 0; c < 4; c++)
+						buffer[row * imgwidth * 4 + col * 4 + c] = ((uint8*)raster)[r * imgwidth * 4 + col * 4 + c];
+				}
+			}
 
-		//	auto img = ImageType<uint8>::create(imgwidth, imgheight, 4);
-		//	img->setFromMemory(buffer, imgwidth * imgheight * 4);
-		//	delete[] buffer;
+			auto img = ImageType<uint8>::create(imgwidth, imgheight, 4);
+			img->setFromMemory(buffer, imgwidth * imgheight * 4);
+			delete[] buffer;
 
-		//	_TIFFfree(raster);
-		//	TIFFClose(tif);
+			_TIFFfree(raster);
+			TIFFClose(tif);
 
-		//	return img;
-		//}
+			return img;
+		}
+#endif
 
-		//Image::Ptr loadWebPFromFile(const std::string& filename)
-		//{
-		//	std::ifstream file(filename, std::ios::binary | std::ios::ate);
-		//	if (!file.is_open())
-		//	{
-		//		std::cout << "error opening file " << filename << std::endl;
-		//		return nullptr;
-		//	}
+#ifdef IMAGE_WEBP
+		Image::Ptr loadWebPFromFile(const std::string& filename)
+		{
+			std::ifstream file(filename, std::ios::binary | std::ios::ate);
+			if (!file.is_open())
+			{
+				std::cout << "error opening file " << filename << std::endl;
+				return nullptr;
+			}
 
-		//	auto size = file.tellg();
-		//	file.seekg(0, std::ios::beg);
-		//	std::vector<uint8> buffer(size);
-		//	file.read((char*)buffer.data(), buffer.size());
-		//	file.close();
+			auto size = file.tellg();
+			file.seekg(0, std::ios::beg);
+			std::vector<uint8> buffer(size);
+			file.read((char*)buffer.data(), buffer.size());
+			file.close();
 
-		//	int w, h;
-		//	if (!WebPGetInfo(buffer.data(), buffer.size(), &w, &h))
-		//	{
-		//		std::cout << "error getting WebP info!" << std::endl;
-		//		return nullptr;
-		//	}
+			int w, h;
+			if (!WebPGetInfo(buffer.data(), buffer.size(), &w, &h))
+			{
+				std::cout << "error getting WebP info!" << std::endl;
+				return nullptr;
+			}
 
-		//	//std::cout << "loaded WebP info, image size: " << w << "x" << h << std::endl;
+			//std::cout << "loaded WebP info, image size: " << w << "x" << h << std::endl;
 
-		//	int width;
-		//	int height;
-		//	uint8* data = WebPDecodeRGBA(buffer.data(), buffer.size(), &width, &height);
-		//	if (data == nullptr)
-		//	{
-		//		std::cout << "error decoding WebP image!" << std::endl;
-		//		return nullptr;
-		//	}
+			int width;
+			int height;
+			uint8* data = WebPDecodeRGBA(buffer.data(), buffer.size(), &width, &height);
+			if (data == nullptr)
+			{
+				std::cout << "error decoding WebP image!" << std::endl;
+				return nullptr;
+			}
 
-		//	auto img = ImageType<uint8>::create(width, height, 4);
-		//	img->setFromMemory(data, width * height * 4);
-		//	WebPFree(data);
+			auto img = ImageType<uint8>::create(width, height, 4);
+			img->setFromMemory(data, width * height * 4);
+			WebPFree(data);
 
-		//	return img;
-		//}
-
+			return img;
+		}
+#endif
 		//pr::Texture2D::Ptr loadKTXFromFile(const std::string& filename)
 		//{
 		//	ktxTexture2* pKtxTexture;
@@ -258,12 +271,18 @@ namespace IO
 				return loadJPGFromFile(filename);
 			else if (extension.compare(".hdr") == 0)
 				return loadHDRFromFile(filename);
-			//else if (extension.compare(".exr") == 0)
-			//	return loadEXRFromFile(filename);
-			//else if (extension.compare(".tif") == 0)
-			//	return loadTIFFFromFile(filename);
-			//else if (extension.compare(".webp") == 0)
-			//	return loadWebPFromFile(filename);
+#ifdef IMAGE_EXR
+			else if (extension.compare(".exr") == 0)
+				return loadEXRFromFile(filename);
+#endif
+#ifdef IMAGE_TIFF
+			else if (extension.compare(".tif") == 0)
+				return loadTIFFFromFile(filename);
+#endif
+#ifdef IMAGE_WEBP
+			else if (extension.compare(".webp") == 0)
+				return loadWebPFromFile(filename);
+#endif
 			else
 				std::cout << "extension " << extension << " not supported!" << std::endl;
 
@@ -307,34 +326,34 @@ namespace IO
 
 			return img;
 		}
+#ifdef IMAGE_WEBP
+		Image::Ptr decodeWebPFromMemory(uint8* data, uint32 size)
+		{
+			int w, h;
+			if (!WebPGetInfo(data, size, &w, &h))
+			{
+				std::cout << "error getting WebP info!" << std::endl;
+				return nullptr;
+			}
 
-		//Image::Ptr decodeWebPFromMemory(uint8* data, uint32 size)
-		//{
-		//	int w, h;
-		//	if (!WebPGetInfo(data, size, &w, &h))
-		//	{
-		//		std::cout << "error getting WebP info!" << std::endl;
-		//		return nullptr;
-		//	}
+			std::cout << "loaded WebP info, image size: " << w << "x" << h << std::endl;
 
-		//	std::cout << "loaded WebP info, image size: " << w << "x" << h << std::endl;
+			int width;
+			int height;
+			uint8* rawData = WebPDecodeRGBA(data, size, &width, &height);
+			if (rawData == nullptr)
+			{
+				std::cout << "error decoding WebP image!" << std::endl;
+				return nullptr;
+			}
 
-		//	int width;
-		//	int height;
-		//	uint8* rawData = WebPDecodeRGBA(data, size, &width, &height);
-		//	if (rawData == nullptr)
-		//	{
-		//		std::cout << "error decoding WebP image!" << std::endl;
-		//		return nullptr;
-		//	}
+			auto img = ImageType<uint8>::create(width, height, 4);
+			img->setFromMemory(rawData, width * height * 4);
+			WebPFree(rawData);
 
-		//	auto img = ImageType<uint8>::create(width, height, 4);
-		//	img->setFromMemory(rawData, width * height * 4);
-		//	WebPFree(rawData);
-
-		//	return img;
-		//}
-
+			return img;
+		}
+#endif
 		//pr::Texture2D::Ptr decodeKTXFromMemory(uint8* data, uint32 size)
 		//{
 		//	ktxTexture2* pKtxTexture;

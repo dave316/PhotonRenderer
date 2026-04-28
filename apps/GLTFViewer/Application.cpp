@@ -279,6 +279,14 @@ bool Application::loadGLTFModel(const std::string& name, const std::string& full
 						tex->createData();
 						tex->uploadData();
 					}
+					for (auto mat : sm.variants)
+					{
+						for (auto tex : mat->getTextures())
+						{
+							tex->createData();
+							tex->uploadData();
+						}
+					}
 				}
 			}
 		}

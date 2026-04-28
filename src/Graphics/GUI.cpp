@@ -141,6 +141,7 @@ namespace pr
 				platformIO.Platform_SwapBuffers = GL::Context::swapBuffers;
 				platformIO.Platform_RenderWindow = GL::Context::platformWindow;
 			}
+#ifdef GPU_BACKEND_DX11
 			else if (ctx.getCurrentAPI() == GraphicsAPI::Direct3D11)
 			{
 				ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
@@ -151,6 +152,7 @@ namespace pr
 				platformIO.Platform_SwapBuffers = DX11::Context::swapBuffers;
 				platformIO.Platform_RenderWindow = DX11::Context::platformRenderWindow;
 			}
+#endif
 		}
 
 		backendData.context = ctx.getContext();

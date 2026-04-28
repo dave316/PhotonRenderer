@@ -584,7 +584,7 @@ namespace IO
 			uint32 bufferViewIndex = draco.bufferView;
 
 			std::vector<unsigned char> compressedBuffer;
-			BufferView& bv = gltf.bufferViews[bufferViewIndex]; // TODO: get bufferview from extension
+			BufferView& bv = gltf.bufferViews[bufferViewIndex]; // TODO: get bufferview from $
 
 			int offset = bv.byteOffset;
 			compressedBuffer.resize(bv.byteLength);
@@ -1041,17 +1041,22 @@ namespace IO
 					img = IO::ImageLoader::decodeJPGFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
 				else if (gltfImage.mimeType.compare("image/png") == 0)
 					img = IO::ImageLoader::decodePNGFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
-				else
-					std::cout << "error: not supported mime type: " << gltfImage.mimeType << std::endl;
-/*				else if (gltfImage.mimeType.compare("image/webp") == 0)
+#ifdef IMAGE_WEBP
+				else if (gltfImage.mimeType.compare("image/webp") == 0)
 					img = IO::ImageLoader::decodeWebPFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
+#endif
+#ifdef IMAGE_KTX
 				else if (gltfImage.mimeType.compare("image/ktx2") == 0)
 				{
 					textures[index] = IO::ImageLoader::decodeKTXFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
 					textures[index]->setAddressMode(GPU::AddressMode::Repeat);
 					textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
 					return;
-				}*/					
+				}
+#endif
+				else
+					std::cout << "error: not supported mime type: " << gltfImage.mimeType << std::endl;
+
 			}
 			else
 			{
@@ -1078,15 +1083,19 @@ namespace IO
 						img = IO::ImageLoader::decodeJPGFromMemory((uint8*)dataBinary.data(), dataBinary.size());
 					else if (mimeType.compare("image/png") == 0)
 						img = IO::ImageLoader::decodePNGFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-					//else if (mimeType.compare("image/webp") == 0)
-					//	img = IO::ImageLoader::decodeWebPFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-					//else if (mimeType.compare("image/ktx2") == 0)
-					//{
-					//	textures[index] = IO::ImageLoader::decodeKTXFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-					//	textures[index]->setAddressMode(GPU::AddressMode::Repeat);
-					//	textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-					//	return;
-					//}
+#ifdef IMAGE_WEBP
+					else if (mimeType.compare("image/webp") == 0)
+						img = IO::ImageLoader::decodeWebPFromMemory((uint8*)dataBinary.data(), dataBinary.size());
+#endif
+#ifdef IMAGE_KTX
+					else if (mimeType.compare("image/ktx2") == 0)
+					{
+						textures[index] = IO::ImageLoader::decodeKTXFromMemory((uint8*)dataBinary.data(), dataBinary.size());
+						textures[index]->setAddressMode(GPU::AddressMode::Repeat);
+						textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+						return;
+					}
+#endif
 					else
 						std::cout << "error: not supported mime type: " << gltfImage.mimeType << std::endl;
 
@@ -1100,14 +1109,16 @@ namespace IO
 
 					//std::cout << "loading texture " << fn << std::endl;
 
-					//if (extension.compare(".ktx2") == 0)
-					//{
-					//	textures[index] = IO::ImageLoader::loadKTXFromFile(fn);
-					//	textures[index]->setAddressMode(GPU::AddressMode::Repeat);
-					//	textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-					//	return;
-					//}
-					//else
+#ifdef IMAGE_KTX
+					if (extension.compare(".ktx2") == 0)
+					{
+						textures[index] = IO::ImageLoader::loadKTXFromFile(fn);
+						textures[index]->setAddressMode(GPU::AddressMode::Repeat);
+						textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+						return;
+					}
+					else
+#endif
 					{
 						img = IO::ImageLoader::loadFromFile(fn);
 					}				
