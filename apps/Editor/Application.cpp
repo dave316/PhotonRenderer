@@ -8,7 +8,6 @@
 #include <chrono>
 
 #include <Utils/IBL.h>
-#include <ktx.h>
 #include <imgui_stdlib.h>
 #include <algorithm>
 #include <tchar.h>

@@ -8,7 +8,7 @@
 #include <chrono>
 #include <IO/ImageLoader.h>
 #include <Utils/IBL.h>
-#include <ktx.h>
+#include <sstream>
 
 using namespace std::chrono;
 using namespace std::placeholders;
@@ -421,7 +421,7 @@ void Application::updateGUI()
 
 		//flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize;
 		ImGuiChildFlags childFlags = 0;
-		if (ImGui::BeginChild("GLTF Samples", ImVec2(400,0), childFlags))
+		if (ImGui::BeginChild("GLTF Samples", ImVec2(300,0), childFlags))
 		{
 			if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen))
 			{
