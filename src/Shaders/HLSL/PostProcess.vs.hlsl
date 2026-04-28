@@ -18,6 +18,6 @@ VSOutput main(VSInput input)
     VSOutput output;
     output.texCoord0 = input.vTexCoord0;
     output.position = float4(input.vPosition, 1.0);
-    output.position.y = -output.position.y;
+    //output.position.y = -output.position.y;
     return output;
 }

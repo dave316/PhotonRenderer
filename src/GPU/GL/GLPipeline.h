@@ -53,7 +53,7 @@ namespace GL
 		GPU::CompareOp stencilCompOp = GPU::CompareOp::Always;
 		bool colorMask[4] = { true, true, true, true };
 		bool scissorTestEnabled = false;
-		bool blendingEnabled = false;
+		bool blendingEnabled = true;
 		int cullMode = 0;
 
 		GraphicsPipeline(const GraphicsPipeline&) = delete;

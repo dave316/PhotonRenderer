@@ -124,9 +124,9 @@ namespace pr
 
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 		io.FontGlobalScale = scale;
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-		io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
+		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		//io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
 
 		auto& ctx = GraphicsContext::getInstance();
 		
@@ -141,16 +141,16 @@ namespace pr
 				platformIO.Platform_SwapBuffers = GL::Context::swapBuffers;
 				platformIO.Platform_RenderWindow = GL::Context::platformWindow;
 			}
-			//else if (ctx.getCurrentAPI() == GraphicsAPI::Direct3D11)
-			//{
-			//	ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
-			//	platformIO.Renderer_CreateWindow = DX11::Context::createWindow;
-			//	platformIO.Renderer_DestroyWindow = DX11::Context::destroyWindow;
-			//	platformIO.Renderer_SetWindowSize = DX11::Context::setWindowSize;
-			//	platformIO.Renderer_RenderWindow = renderWindow;
-			//	platformIO.Platform_SwapBuffers = DX11::Context::swapBuffers;
-			//	platformIO.Platform_RenderWindow = DX11::Context::platformRenderWindow;
-			//}
+			else if (ctx.getCurrentAPI() == GraphicsAPI::Direct3D11)
+			{
+				ImGuiPlatformIO& platformIO = ImGui::GetPlatformIO();
+				platformIO.Renderer_CreateWindow = DX11::Context::createWindow;
+				platformIO.Renderer_DestroyWindow = DX11::Context::destroyWindow;
+				platformIO.Renderer_SetWindowSize = DX11::Context::setWindowSize;
+				platformIO.Renderer_RenderWindow = renderWindow;
+				platformIO.Platform_SwapBuffers = DX11::Context::swapBuffers;
+				platformIO.Platform_RenderWindow = DX11::Context::platformRenderWindow;
+			}
 		}
 
 		backendData.context = ctx.getContext();
@@ -261,7 +261,8 @@ namespace pr
 				case pr::GraphicsAPI::Vulkan:
 				{
 					guiPipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/gui.vert.spv"), GPU::ShaderStage::Vertex);
-					guiPipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/gui.frag.spv"), GPU::ShaderStage::Fragment);					break;
+					guiPipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/gui.frag.spv"), GPU::ShaderStage::Fragment);					
+					break;
 				}
 			}
 
