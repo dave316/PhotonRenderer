@@ -1,5 +1,6 @@
 #include "Application.h"
 
+#include <IO/FileIO.h>
 #include <IO/GLTFImporter.h>
 #include <Core/FogVolume.h>
 
@@ -227,7 +228,7 @@ void Application::loadGLTFSamplesInfo(const std::string& samplePath)
 
 void Application::loadGLTFSampleEnvironments(const std::string& samplePath)
 {
-	auto hdrFiles = pr::getAllFileNames(samplePath, ".hdr");
+	auto hdrFiles = IO::getAllFileNames(samplePath, ".hdr");
 	for (auto hdrFile : hdrFiles)
 	{
 		std::cout << "loading env " << hdrFile << std::endl;

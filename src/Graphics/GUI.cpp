@@ -124,9 +124,9 @@ namespace pr
 
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 		io.FontGlobalScale = scale;
-		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-		//io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
 
 		auto& ctx = GraphicsContext::getInstance();
 		
