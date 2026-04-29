@@ -329,6 +329,7 @@ namespace IO
 
 			return img;
 		}
+
 #ifdef IMAGE_WEBP
 		Image::Ptr decodeWebPFromMemory(uint8* data, uint32 size)
 		{
@@ -413,5 +414,20 @@ namespace IO
 			return texture;
 		}
 #endif
+
+		pr::Texture2D::Ptr loadTextureFromFile(const std::string& filename, bool useSRGB)
+		{
+			auto img = IO::ImageLoader::loadFromFile(filename);
+
+			uint32 width = img->getWidth();
+			uint32 height = img->getHeight();
+			uint32 channels = img->getChannels();
+			uint32 elemSize = img->getElementSize();
+			uint8* data = img->getRawPtr();
+			uint32 dataSize = width * height * channels * elemSize;
+
+			GPU::Format format = useSRGB ? GPU::Format::SRGBA8 : GPU::Format::RGBA8;
+			return pr::Texture2D::create(width, height, format);
+		}
 	}
 }

@@ -6,6 +6,57 @@
 #include <Platform/Types.h>
 
 #include <memory>
+#include <vector>
+//template<typename DataType>
+//class ImageData
+//{
+//public:
+//private:
+//	std::vector<ImageArray<DataType>> mips;
+//};
+
+template<typename DataType>
+class ImageArray
+{
+public:
+	ImageArray(uint32 width, uint32 height, uint32 channels, uint32 layers)
+	{
+		data.resize(layers);
+		size = width * height * channels * sizeof(DataType);
+	}
+	uint32 getWidth()
+	{
+		return width;
+	}
+
+	uint32 getHeight()
+	{
+		return height;
+	}
+
+	uint32 getChannels()
+	{
+		return channels;
+	}
+
+	void copyData(DataType* src, uint32 size, uint32 layer)
+	{
+		if (layer >= layers)
+			std::cout << "error: layer " << layer << " is out of bounds for this image (layers: " << layers << ")" << std::endl;
+		if (size != this->size)
+			std::cout << "error: size of image source does not match target image!" << std::endl;
+
+		data[layer] = std::unique_ptr<DataType>(new DataType[size]);
+		std::memcpy(data[layer].get(), src, size)
+	}
+private:
+	uint32 width;
+	uint32 height;
+	uint32 channels;
+	uint32 layers;
+	uint32 size; // TODO: this should be same for all layers! But what about compressed formats?
+	std::vector<std::unique_ptr<DataType>> data;
+};
 
 class Image
 {
@@ -32,6 +83,11 @@ public:
 	uint32 getChannels()
 	{
 		return channels;
+	}
+
+	uint32 getElementSize()
+	{
+		return elementSize;
 	}
 
 	uint8* getRawPtr()

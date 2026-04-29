@@ -34,6 +34,7 @@ namespace IO
 #ifdef IMAGE_KTX
 		pr::Texture2D::Ptr loadKTXFromFile(const std::string& filename);
 #endif
+		pr::Texture2D::Ptr loadTextureFromFile(const std::string& filename, bool useSRGB);
 	}
 }
 
