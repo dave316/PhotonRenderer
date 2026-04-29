@@ -37,7 +37,9 @@ namespace GL
 	}
 
 	Image::~Image()
-	{}
+	{
+		glDeleteTextures(1, &texture);
+	}
 
 	void Image::uploadData(GPU::CommandBuffer::Ptr cmdBuf, uint8* data, uint32 dataSize, uint32 layer, uint32 level)
 	{

@@ -12,11 +12,13 @@ namespace pr
 	Scene::Scene(const std::string& name) :
 		name(name)
 	{
-
+		std::cout << "created scene " << name << std::endl;
 	}
 
 	Scene::~Scene()
 	{
+		std::cout << "destroyed scene " << name << std::endl;
+
 		for (auto root : rootNodes)
 			root->clearParent();
 		rootNodes.clear();
