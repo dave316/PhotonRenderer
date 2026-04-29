@@ -3,7 +3,7 @@
 
 #pragma once
 
-#ifdef WITH_IMGUI
+#ifdef LIBS_IMGUI
 
 #include <Graphics/Mesh.h>
 #include <imgui_impl_win32.h>

@@ -1,4 +1,4 @@
-#ifdef WITH_IMGUI
+#ifdef LIBS_IMGUI
 #include "GUI.h"
 #include <Utils/IBL.h>
 #include <Platform/Win32/Win32Window.h>

@@ -8,7 +8,7 @@
 #include <sstream>
 #include <filesystem>
 
-#ifdef WITH_DRACO
+#ifdef LIBS_DRACO
 #include <draco/mesh/mesh.h>
 #include <draco/compression/decode.h>
 #endif
@@ -134,7 +134,9 @@ namespace IO
 		Importer::Importer()
 		{
 			supportedExtensions.insert("KHR_animation_pointer");
+#ifdef LIBS_DRACO
 			supportedExtensions.insert("KHR_draco_mesh_compression");
+#endif
 			supportedExtensions.insert("KHR_lights_punctual");
 			supportedExtensions.insert("KHR_materials_anisotropy");
 			supportedExtensions.insert("KHR_materials_clearcoat");
@@ -150,10 +152,13 @@ namespace IO
 			supportedExtensions.insert("KHR_materials_variants");
 			supportedExtensions.insert("KHR_materials_volume");
 			supportedExtensions.insert("KHR_mesh_quantization");
+#ifdef IMAGE_KTX
 			supportedExtensions.insert("KHR_texture_basisu");
+#endif
 			supportedExtensions.insert("KHR_texture_transform");
-			
+#ifdef IMAGE_WEBP			
 			supportedExtensions.insert("EXT_texture_webp");
+#endif
 		}
 
 		bool Importer::checkExtensions(const json::Document& doc)
@@ -576,7 +581,7 @@ namespace IO
 					surface.indices.push_back(i);
 		}
 
-#ifdef WITH_DRACO
+#ifdef LIBS_DRACO
 
 		void Importer::loadCompressedSurface(TriangleSurface& surface, Primitive& primitive)
 		{
@@ -923,9 +928,11 @@ namespace IO
 					auto& gltfPrimitve = gltfMesh.primitives[primIdx];
 
 					TriangleSurface surface;
-					//if (gltfPrimitve.draco.has_value())
-					//	loadCompressedSurface(surface, gltfPrimitve);
-					//else
+#ifdef LIBS_DRACO
+					if (gltfPrimitve.draco.has_value())
+						loadCompressedSurface(surface, gltfPrimitve);
+					else
+#endif
 						loadSurface(surface, gltfPrimitve);
 
 					std::vector<MorphTarget> morphTargets;

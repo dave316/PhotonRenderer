@@ -208,57 +208,60 @@ namespace IO
 			return img;
 		}
 #endif
-		//pr::Texture2D::Ptr loadKTXFromFile(const std::string& filename)
-		//{
-		//	ktxTexture2* pKtxTexture;
-		//	KTX_error_code result;
 
-		//	result = ktxTexture2_CreateFromNamedFile(filename.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &pKtxTexture);
-		//	if (pKtxTexture->isCompressed)
-		//		result = ktxTexture2_TranscodeBasis(pKtxTexture, KTX_TTF_BC7_RGBA, 0);
+#ifdef IMAGE_KTX
+		pr::Texture2D::Ptr loadKTXFromFile(const std::string& filename)
+		{
+			ktxTexture2* pKtxTexture;
+			KTX_error_code result;
 
-		//	//std::cout << "vk format: " << pKtxTexture->vkFormat << std::endl;
-		//	//std::cout << "width: " << pKtxTexture->baseWidth << std::endl;
-		//	//std::cout << "height: " << pKtxTexture->baseHeight << std::endl;
-		//	//std::cout << "depth: " << pKtxTexture->baseDepth << std::endl;
-		//	//std::cout << "dims: " << pKtxTexture->numDimensions << std::endl;
-		//	//std::cout << "faces: " << pKtxTexture->numFaces << std::endl;
-		//	//std::cout << "layers: " << pKtxTexture->numLayers << std::endl;
-		//	//std::cout << "levels: " << pKtxTexture->numLevels << std::endl;
-		//	//std::cout << "data: " << pKtxTexture->dataSize << std::endl;
+			result = ktxTexture2_CreateFromNamedFile(filename.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &pKtxTexture);
+			if (pKtxTexture->isCompressed)
+				result = ktxTexture2_TranscodeBasis(pKtxTexture, KTX_TTF_BC7_RGBA, 0);
 
-		//	pr::Texture2D::Ptr texture = nullptr;
-		//	if (result == KTX_SUCCESS)
-		//	{
-		//		GLint internalFormat = 0;
-		//		GPU::Format format = GPU::Format::RGBA8;
-		//		if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_UNORM_BLOCK)
-		//			std::cout << "tex format RGB_S3TC_DXT1" << std::endl;
-		//		else if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
-		//			std::cout << "tex format SRGB_S3TC_DXT1" << std::endl;
-		//		else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_UNORM_BLOCK)
-		//			format = GPU::Format::BC7_RGBA;
-		//		else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_SRGB_BLOCK)
-		//			format = GPU::Format::BC7_SRGB;
+			//std::cout << "vk format: " << pKtxTexture->vkFormat << std::endl;
+			//std::cout << "width: " << pKtxTexture->baseWidth << std::endl;
+			//std::cout << "height: " << pKtxTexture->baseHeight << std::endl;
+			//std::cout << "depth: " << pKtxTexture->baseDepth << std::endl;
+			//std::cout << "dims: " << pKtxTexture->numDimensions << std::endl;
+			//std::cout << "faces: " << pKtxTexture->numFaces << std::endl;
+			//std::cout << "layers: " << pKtxTexture->numLayers << std::endl;
+			//std::cout << "levels: " << pKtxTexture->numLevels << std::endl;
+			//std::cout << "data: " << pKtxTexture->dataSize << std::endl;
 
-		//		texture = pr::Texture2D::create(pKtxTexture->baseWidth, pKtxTexture->baseHeight, format, pKtxTexture->numLevels, GPU::ImageUsage::Sampled);
+			pr::Texture2D::Ptr texture = nullptr;
+			if (result == KTX_SUCCESS)
+			{
+				GLint internalFormat = 0;
+				GPU::Format format = GPU::Format::RGBA8;
+				if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_UNORM_BLOCK)
+					std::cout << "tex format RGB_S3TC_DXT1" << std::endl;
+				else if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
+					std::cout << "tex format SRGB_S3TC_DXT1" << std::endl;
+				else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_UNORM_BLOCK)
+					format = GPU::Format::BC7_RGBA;
+				else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_SRGB_BLOCK)
+					format = GPU::Format::BC7_SRGB;
 
-		//		for (uint32 level = 0; level < pKtxTexture->numLevels; level++)
-		//		{
-		//			int w = std::max(pKtxTexture->baseWidth >> level, 1U);
-		//			int h = std::max(pKtxTexture->baseHeight >> level, 1U);
-		//			uint32 imgSize = (uint32)ktxTexture_GetImageSize(ktxTexture(pKtxTexture), level);
-		//			ktx_size_t offset = 0;
-		//			ktxTexture_GetImageOffset(ktxTexture(pKtxTexture), level, 0, 0, &offset);
-		//			ktx_uint8_t* pData = pKtxTexture->pData + offset;
-		//			texture->upload(pData, imgSize, level);
-		//		}
-		//	}
+				texture = pr::Texture2D::create(pKtxTexture->baseWidth, pKtxTexture->baseHeight, format, pKtxTexture->numLevels, GPU::ImageUsage::Sampled);
 
-		//	ktxTexture_Destroy(ktxTexture(pKtxTexture));
+				for (uint32 level = 0; level < pKtxTexture->numLevels; level++)
+				{
+					int w = std::max(pKtxTexture->baseWidth >> level, 1U);
+					int h = std::max(pKtxTexture->baseHeight >> level, 1U);
+					uint32 imgSize = (uint32)ktxTexture_GetImageSize(ktxTexture(pKtxTexture), level);
+					ktx_size_t offset = 0;
+					ktxTexture_GetImageOffset(ktxTexture(pKtxTexture), level, 0, 0, &offset);
+					ktx_uint8_t* pData = pKtxTexture->pData + offset;
+					texture->upload(pData, imgSize, level);
+				}
+			}
 
-		//	return texture;
-		//}
+			ktxTexture_Destroy(ktxTexture(pKtxTexture));
+
+			return texture;
+		}
+#endif
 
 		Image::Ptr loadFromFile(const std::string& filename)
 		{
@@ -354,58 +357,61 @@ namespace IO
 			return img;
 		}
 #endif
-		//pr::Texture2D::Ptr decodeKTXFromMemory(uint8* data, uint32 size)
-		//{
-		//	ktxTexture2* pKtxTexture;
-		//	KTX_error_code result;
-		//	result = ktxTexture2_CreateFromMemory(data, size, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &pKtxTexture);
-		//	if (pKtxTexture->isCompressed)
-		//		result = ktxTexture2_TranscodeBasis(pKtxTexture, KTX_TTF_BC7_RGBA, 0);
 
-		//	//std::cout << "vk format: " << pKtxTexture->vkFormat << std::endl;
-		//	//std::cout << "width: " << pKtxTexture->baseWidth << std::endl;
-		//	//std::cout << "height: " << pKtxTexture->baseHeight << std::endl;
-		//	//std::cout << "depth: " << pKtxTexture->baseDepth << std::endl;
-		//	//std::cout << "dims: " << pKtxTexture->numDimensions << std::endl;
-		//	//std::cout << "faces: " << pKtxTexture->numFaces << std::endl;
-		//	//std::cout << "layers: " << pKtxTexture->numLayers << std::endl;
-		//	//std::cout << "levels: " << pKtxTexture->numLevels << std::endl;
-		//	//std::cout << "data: " << pKtxTexture->dataSize << std::endl;
-		//	//std::cout << "compressed: " << (pKtxTexture->isCompressed ? "true" : "false") << std::endl;
-		//	//std::cout << "array: " << (pKtxTexture->isArray ? "true" : "false") << std::endl;
-		//	//std::cout << "cubemap: " << (pKtxTexture->isCubemap ? "true" : "false") << std::endl;
-		//	//std::cout << "video: " << (pKtxTexture->isVideo ? "true" : "false") << std::endl;
+#ifdef IMAGE_KTX
+		pr::Texture2D::Ptr decodeKTXFromMemory(uint8* data, uint32 size)
+		{
+			ktxTexture2* pKtxTexture;
+			KTX_error_code result;
+			result = ktxTexture2_CreateFromMemory(data, size, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &pKtxTexture);
+			if (pKtxTexture->isCompressed)
+				result = ktxTexture2_TranscodeBasis(pKtxTexture, KTX_TTF_BC7_RGBA, 0);
 
-		//	pr::Texture2D::Ptr texture = nullptr;
-		//	if (result == KTX_SUCCESS)
-		//	{
-		//		GLint internalFormat = 0;
-		//		GPU::Format format = GPU::Format::RGBA8;
-		//		if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_UNORM_BLOCK)
-		//			std::cout << "tex format RGB_S3TC_DXT1" << std::endl;
-		//		else if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
-		//			std::cout << "tex format SRGB_S3TC_DXT1" << std::endl;
-		//		else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_UNORM_BLOCK)
-		//			format = GPU::Format::BC7_RGBA;
-		//		else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_SRGB_BLOCK)
-		//			format = GPU::Format::BC7_SRGB;
+			std::cout << "vk format: " << pKtxTexture->vkFormat << std::endl;
+			std::cout << "width: " << pKtxTexture->baseWidth << std::endl;
+			std::cout << "height: " << pKtxTexture->baseHeight << std::endl;
+			std::cout << "depth: " << pKtxTexture->baseDepth << std::endl;
+			std::cout << "dims: " << pKtxTexture->numDimensions << std::endl;
+			std::cout << "faces: " << pKtxTexture->numFaces << std::endl;
+			std::cout << "layers: " << pKtxTexture->numLayers << std::endl;
+			std::cout << "levels: " << pKtxTexture->numLevels << std::endl;
+			std::cout << "data: " << pKtxTexture->dataSize << std::endl;
+			std::cout << "compressed: " << (pKtxTexture->isCompressed ? "true" : "false") << std::endl;
+			std::cout << "array: " << (pKtxTexture->isArray ? "true" : "false") << std::endl;
+			std::cout << "cubemap: " << (pKtxTexture->isCubemap ? "true" : "false") << std::endl;
+			std::cout << "video: " << (pKtxTexture->isVideo ? "true" : "false") << std::endl;
 
-		//		texture = pr::Texture2D::create(pKtxTexture->baseWidth, pKtxTexture->baseHeight, format, pKtxTexture->numLevels, GPU::ImageUsage::Sampled);
-		//		for (uint32 level = 0; level < pKtxTexture->numLevels; level++)
-		//		{
-		//			int w = std::max(pKtxTexture->baseWidth >> level, 1U);
-		//			int h = std::max(pKtxTexture->baseHeight >> level, 1U);
-		//			uint32 imgSize = (uint32)ktxTexture_GetImageSize(ktxTexture(pKtxTexture), level);
-		//			ktx_size_t offset = 0;
-		//			ktxTexture_GetImageOffset(ktxTexture(pKtxTexture), level, 0, 0, &offset);
-		//			ktx_uint8_t* pData = pKtxTexture->pData + offset;
-		//			texture->upload(pData, imgSize, level);
-		//		}
-		//	}
+			pr::Texture2D::Ptr texture = nullptr;
+			if (result == KTX_SUCCESS)
+			{
+				GLint internalFormat = 0;
+				GPU::Format format = GPU::Format::RGBA8;
+				if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_UNORM_BLOCK)
+					std::cout << "tex format RGB_S3TC_DXT1" << std::endl;
+				else if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
+					std::cout << "tex format SRGB_S3TC_DXT1" << std::endl;
+				else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_UNORM_BLOCK)
+					format = GPU::Format::BC7_RGBA;
+				else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_SRGB_BLOCK)
+					format = GPU::Format::BC7_SRGB;
 
-		//	ktxTexture_Destroy(ktxTexture(pKtxTexture));
+				texture = pr::Texture2D::create(pKtxTexture->baseWidth, pKtxTexture->baseHeight, format, pKtxTexture->numLevels, GPU::ImageUsage::Sampled);
+				for (uint32 level = 0; level < pKtxTexture->numLevels; level++)
+				{
+					int w = std::max(pKtxTexture->baseWidth >> level, 1U);
+					int h = std::max(pKtxTexture->baseHeight >> level, 1U);
+					uint32 imgSize = (uint32)ktxTexture_GetImageSize(ktxTexture(pKtxTexture), level);
+					ktx_size_t offset = 0;
+					ktxTexture_GetImageOffset(ktxTexture(pKtxTexture), level, 0, 0, &offset);
+					ktx_uint8_t* pData = pKtxTexture->pData + offset;
+					texture->upload(pData, imgSize, level);
+				}
+			}
 
-		//	return texture;
-		//}
+			ktxTexture_Destroy(ktxTexture(pKtxTexture));
+
+			return texture;
+		}
+#endif
 	}
 }

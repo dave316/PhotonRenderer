@@ -13,6 +13,9 @@ namespace pr
 		params.levels = levels;
 		params.usage = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
 
+		data.resize(levels);
+		size.resize(levels);
+
 		//image = ctx.createImage(params);
 		//view = image->createImageView();
 		//sampler = ctx.createSampler(levels);
@@ -29,6 +32,9 @@ namespace pr
 		params.levels = levels;
 		params.usage = usage;
 
+		data.resize(levels);
+		size.resize(levels);
+
 		//image = ctx.createImage(params);
 		//view = image->createImageView();
 		//sampler = ctx.createSampler(levels);
@@ -38,9 +44,14 @@ namespace pr
 
 	void Texture2D::upload(uint8* data, uint32 size, uint32 level)
 	{
-		this->data = new uint8[size];
-		this->size = size;
-		std::memcpy(this->data, data, size);
+		//this->data = new uint8[size];
+		//this->size = size;
+		//std::memcpy(this->data, data, size);
+		
+		this->data[level] = std::unique_ptr<uint8>(new uint8[size]);
+		this->size[level] = size;
+		std::memcpy(this->data[level].get(), data, size);
+
 		//auto& ctx = GraphicsContext::getInstance();
 		//auto cmdBuf = ctx.allocateCommandBuffer();
 		//image->uploadData(cmdBuf, data, size, 0, level);
@@ -137,11 +148,20 @@ namespace pr
 	{
 		auto& ctx = GraphicsContext::getInstance();
 
-		if (data != nullptr)
+		//if (data != nullptr)
+		//{
+		//	auto cmdBuf = ctx.allocateCommandBuffer();
+		//	image->uploadData(cmdBuf, data, size, 0, 0);
+		//}
+
+		for (int i = 0; i < data.size(); i++)
 		{
-			auto cmdBuf = ctx.allocateCommandBuffer();
-			image->uploadData(cmdBuf, data, size, 0, 0);
-		}
+			if (data[i] != nullptr)
+			{
+				auto cmdBuf = ctx.allocateCommandBuffer();
+				image->uploadData(cmdBuf, data[i].get(), size[i], 0, i);
+			}
+		}			
 
 		if (genMipmaps)
 		{

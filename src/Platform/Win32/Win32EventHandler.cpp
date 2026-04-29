@@ -2,14 +2,14 @@
 #include "windowsx.h"
 #include <iostream>
 
-#ifdef WITH_IMGUI
+#ifdef LIBS_IMGUI
 #include <imgui_impl_win32.h>
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 #endif
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-#ifdef WITH_IMGUI
+#ifdef LIBS_IMGUI
 	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
 		return true;
 #endif

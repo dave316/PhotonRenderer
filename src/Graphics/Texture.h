@@ -25,8 +25,9 @@ namespace pr
 		GPU::AddressMode modeW;
 		bool loadedOnGPU = false;
 		bool genMipmaps = false;
-		uint8* data = nullptr;
-		uint32 size;
+		//uint8* data = nullptr;
+		std::vector<std::unique_ptr<uint8>> data;
+		std::vector<uint32> size;
 	private:
 		Texture(const Texture&) = delete;
 		Texture& operator=(const Texture&) = delete;

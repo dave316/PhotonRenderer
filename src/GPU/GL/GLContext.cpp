@@ -1,9 +1,7 @@
 #include "GLContext.h"
 #include <Platform/Win32/Win32Window.h>
 #include <iostream>
-#ifdef WITH_IMGUI
-#include <imgui.h>
-#endif
+
 namespace GL
 {
 	Context::Context(Window::Ptr window) :
@@ -148,7 +146,7 @@ namespace GL
 	{
 		nextCmdBuf->flush();
 	}
-#ifdef WITH_IMGUI
+#ifdef LIBS_IMGUI
 	bool Context::createDeviceWGL(HWND hWnd, WGLWindowData* data)
 	{
 		data->hdc = ::GetDC(hWnd);
