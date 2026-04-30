@@ -7,67 +7,18 @@
 
 #include <memory>
 #include <vector>
-//template<typename DataType>
-//class ImageData
-//{
-//public:
-//private:
-//	std::vector<ImageArray<DataType>> mips;
-//};
-
-template<typename DataType>
-class ImageArray
-{
-public:
-	ImageArray(uint32 width, uint32 height, uint32 channels, uint32 layers)
-	{
-		data.resize(layers);
-		size = width * height * channels * sizeof(DataType);
-	}
-	uint32 getWidth()
-	{
-		return width;
-	}
-
-	uint32 getHeight()
-	{
-		return height;
-	}
-
-	uint32 getChannels()
-	{
-		return channels;
-	}
-
-	void copyData(DataType* src, uint32 size, uint32 layer)
-	{
-		if (layer >= layers)
-			std::cout << "error: layer " << layer << " is out of bounds for this image (layers: " << layers << ")" << std::endl;
-		if (size != this->size)
-			std::cout << "error: size of image source does not match target image!" << std::endl;
-
-		data[layer] = std::unique_ptr<DataType>(new DataType[size]);
-		std::memcpy(data[layer].get(), src, size)
-	}
-private:
-	uint32 width;
-	uint32 height;
-	uint32 channels;
-	uint32 layers;
-	uint32 size; // TODO: this should be same for all layers! But what about compressed formats?
-	std::vector<std::unique_ptr<DataType>> data;
-};
+#include <iostream>
 
 class Image
 {
 public:
-	Image(uint32 width, uint32 height, uint32 channels, uint32 elementSize) :
+	Image(uint32 width, uint32 height, uint32 channels, uint32 elemSize, bool isCompressed) :
 		width(width),
 		height(height),
 		channels(channels),
-		elementSize(elementSize)
+		elemSize(elemSize)
 	{
-		dataSizeInBytes = width * height * channels * elementSize;
+		rawSize = width * height * channels * elemSize;
 	}
 
 	uint32 getWidth()
@@ -85,47 +36,186 @@ public:
 		return channels;
 	}
 
-	uint32 getElementSize()
-	{
-		return elementSize;
-	}
-
 	uint8* getRawPtr()
 	{
-		return data.get();
+		return imageData.get();
+	}
+
+	bool setData(uint8* dataPtr, uint32 dataSize)
+	{
+		if (!isCompressed && rawSize != dataSize)
+		{
+			std::cout << "error: data for image does not match image size! ("
+				<< rawSize << " != " << dataSize << ")" << std::endl;
+			return false;
+		}
+		imageData = std::unique_ptr<uint8>(new uint8[dataSize]);
+		std::memcpy(imageData.get(), dataPtr, dataSize);
 	}
 
 	typedef std::shared_ptr<Image> Ptr;
+	static Ptr create(uint32 width, uint32 height, uint32 channels = 4, uint32 elementSize = 1, bool isCompressed = false)
+	{
+		return std::make_shared<Image>(width, height, channels, elementSize, isCompressed);
+	}
 
-protected:
+private:
+	uint32 width = 0;
+	uint32 height = 0;
+	uint32 channels = 0;
+	uint32 elemSize = 0;
+	uint32 rawSize = 0;
+	bool isCompressed = false;
+	std::unique_ptr<uint8> imageData;
+};
+
+class ImageArray
+{
+public:
+	ImageArray(uint32 width, uint32 height, uint32 channels, uint32 elemSize, uint32 layers, bool isCompressed) :
+		width(width),
+		height(height),
+		channels(channels),
+		elemSize(elemSize),
+		layers(layers),
+		isCompressed(isCompressed)
+	{
+		imageArray.resize(layers);
+		for (uint32 l = 0; l < layers; l++)
+			imageArray[l] = Image::create(width, height, channels, elemSize, isCompressed);
+	}
+
+	uint32 getWidth()
+	{
+		return width;
+	}
+
+	uint32 getHeight()
+	{
+		return height;
+	}
+
+	uint32 getChannels()
+	{
+		return channels;
+	}
+
+	uint32 getLayers()
+	{
+		return layers;
+	}
+
+	void setData(uint8* dataPtr, uint32 dataSize, uint32 layer)
+	{
+		imageArray[layer]->setData(dataPtr, dataSize);
+	}
+
+	typedef std::shared_ptr<ImageArray> Ptr;
+	static Ptr create(uint32 width, uint32 height, uint32 channels = 4, uint32 elemSize = 1, uint32 layers = 1, bool isCompressed = false)
+	{
+		return std::make_shared<ImageArray>(width, height, channels, elemSize, layers, isCompressed);
+	}
+
+private:
 	uint32 width;
 	uint32 height;
 	uint32 channels;
-	uint32 elementSize;
-	uint32 dataSizeInBytes;
-	std::unique_ptr<uint8> data;
+	uint32 elemSize;
+	uint32 layers;
+	bool isCompressed;
+	std::vector<Image::Ptr> imageArray;
 };
+//
+//template<typename DataType>
+//class ImageData
+//{
+//public:
+//	ImageData(uint32 width, uint32 height, uint32 channels, uint32 levels, uint32 layers, bool isCompressed) :
+//		width(width),
+//		height(height),
+//		channels(channels),
+//		layers(layers),
+//		isCompressed(isCompressed)
+//	{
+//		imageMips.resize(levels);
+//		for (uint32 l = 0; l < levels; l++)
+//		{
+//			int w = std::max(width >> level, 1U);
+//			int h = std::max(height >> level, 1U);
+//			imageMips[l] = ImageArray<DataType>::create(w, h, channels, layers, isCompressed);
+//		}
+//	}
+//
+//	uint32 getWidth()
+//	{
+//		return width;
+//	}
+//
+//	uint32 getHeight()
+//	{
+//		return height;
+//	}
+//
+//	uint32 getChannels()
+//	{
+//		return channels;
+//	}
+//
+//	uint32 getLevels()
+//	{
+//		return levels;
+//	}
+//
+//	uint32 getLayers()
+//	{
+//		return layers;
+//	}
+//
+//	void setData(DataType* dataPtr, uint32 dataSize, uint32 level, uint32 layer)
+//	{
+//		imageMips[level]->setData(dataPtr, dataSize, layer);
+//	}
+//
+//	typedef std::shared_ptr<ImageArray<DataType>> Ptr;
+//	static Ptr create(uint32 width, uint32 height, uint32 channels, uint32 layers, bool isCompressed)
+//	{
+//		return std::make_shared<ImageArray<DataType>>(width, height, channels, layers, isCompressed);
+//	}
+//
+//private:
+//	uint32 width;
+//	uint32 height;
+//	uint32 channels;
+//	uint32 levels;
+//	uint32 layers;
+//	uint32 rawSize;
+//	bool isCompressed;
+//	std::vector<ImageArray<DataType>::Ptr> imageMips;
+//};
 
-template<typename DataType>
-class ImageType : public Image
-{
-public:
-	ImageType(uint32 width, uint32 height, uint32 channels) :
-		Image(width, height, channels, sizeof(DataType))
-	{
-		data = std::unique_ptr<uint8>(new uint8[dataSizeInBytes]);
-	}
 
-	void setFromMemory(DataType* src, uint32 srcSizeInBytes)
-	{
-		std::memcpy(data.get(), src, srcSizeInBytes);
-	}
 
-	typedef std::shared_ptr<ImageType> Ptr;
-	static Ptr create(uint32 width, uint32 height, uint32 channels)
-	{
-		return std::make_shared<ImageType>(width, height, channels);
-	}
-};
+
+//template<typename DataType>
+//class ImageType : public Image
+//{
+//public:
+//	ImageType(uint32 width, uint32 height, uint32 channels) :
+//		Image(width, height, channels, sizeof(DataType))
+//	{
+//		data = std::unique_ptr<uint8>(new uint8[dataSizeInBytes]);
+//	}
+//
+//	void setFromMemory(DataType* src, uint32 srcSizeInBytes)
+//	{
+//		std::memcpy(data.get(), src, srcSizeInBytes);
+//	}
+//
+//	typedef std::shared_ptr<ImageType> Ptr;
+//	static Ptr create(uint32 width, uint32 height, uint32 channels)
+//	{
+//		return std::make_shared<ImageType>(width, height, channels);
+//	}
+//};
 
 #endif // INCLUDED_IOIMAGE

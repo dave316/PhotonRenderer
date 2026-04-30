@@ -37,8 +37,8 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			auto img = ImageType<uint8>::create(width, height, 4);
-			img->setFromMemory(rawData, width * height * 4);
+			auto img = Image::create(width, height);
+			img->setData(rawData, width * height * 4);
 
 			delete[] rawData;
 
@@ -56,8 +56,8 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			auto img = ImageType<uint8>::create(width, height, 4);
-			img->setFromMemory(rawData, width * height * 4);
+			auto img = Image::create(width, height);
+			img->setData(rawData, width * height * 4);
 
 			delete[] rawData;
 
@@ -73,8 +73,8 @@ namespace IO
 			int channels = 0;
 			float* rawData = stbi_loadf(filename.c_str(), &width, &height, &channels, 4);
 
-			auto img = ImageType<float>::create(width, height, 4);
-			img->setFromMemory(rawData, width * height * 4 * sizeof(float));
+			auto img = Image::create(width, height, 4, sizeof(float));
+			img->setData((uint8*)rawData, width * height * 4 * sizeof(float));
 
 			delete[] rawData;
 
@@ -201,8 +201,8 @@ namespace IO
 				return nullptr;
 			}
 
-			auto img = ImageType<uint8>::create(width, height, 4);
-			img->setFromMemory(data, width * height * 4);
+			auto img = Image::create(width, height);
+			img->setData(data, width * height * 4);
 			WebPFree(data);
 
 			return img;
@@ -303,8 +303,8 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			auto img = ImageType<uint8>::create(width, height, 4);
-			img->setFromMemory(rawData, width * height * 4);
+			auto img = Image::create(width, height);
+			img->setData(rawData, width * height * 4);
 
 			delete[] rawData;
 
@@ -322,8 +322,8 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			auto img = ImageType<uint8>::create(width, height, 4);
-			img->setFromMemory(rawData, width * height * 4);
+			auto img = Image::create(width, height);
+			img->setData(rawData, width * height * 4);
 
 			delete[] rawData;
 
@@ -351,8 +351,8 @@ namespace IO
 				return nullptr;
 			}
 
-			auto img = ImageType<uint8>::create(width, height, 4);
-			img->setFromMemory(rawData, width * height * 4);
+			auto img = Image::create(width, height);
+			img->setData(rawData, width * height * 4);
 			WebPFree(rawData);
 
 			return img;
@@ -415,19 +415,19 @@ namespace IO
 		}
 #endif
 
-		pr::Texture2D::Ptr loadTextureFromFile(const std::string& filename, bool useSRGB)
-		{
-			auto img = IO::ImageLoader::loadFromFile(filename);
+		//pr::Texture2D::Ptr loadTextureFromFile(const std::string& filename, bool useSRGB)
+		//{
+		//	auto img = IO::ImageLoader::loadFromFile(filename);
 
-			uint32 width = img->getWidth();
-			uint32 height = img->getHeight();
-			uint32 channels = img->getChannels();
-			uint32 elemSize = img->getElementSize();
-			uint8* data = img->getRawPtr();
-			uint32 dataSize = width * height * channels * elemSize;
+		//	uint32 width = img->getWidth();
+		//	uint32 height = img->getHeight();
+		//	uint32 channels = img->getChannels();
+		//	uint32 elemSize = img->getElementSize();
+		//	uint8* data = img->getRawPtr();
+		//	uint32 dataSize = width * height * channels * elemSize;
 
-			GPU::Format format = useSRGB ? GPU::Format::SRGBA8 : GPU::Format::RGBA8;
-			return pr::Texture2D::create(width, height, format);
-		}
+		//	GPU::Format format = useSRGB ? GPU::Format::SRGBA8 : GPU::Format::RGBA8;
+		//	return pr::Texture2D::create(width, height, format);
+		//}
 	}
 }
