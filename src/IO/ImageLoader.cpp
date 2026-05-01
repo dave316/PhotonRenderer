@@ -26,7 +26,7 @@ namespace IO
 {
 	namespace ImageLoader
 	{
-		Image::Ptr loadPNGFromFile(const std::string& filename)
+		ImageData::Ptr loadPNGFromFile(const std::string& filename)
 		{
 			stbi_set_flip_vertically_on_load(false);
 
@@ -37,15 +37,18 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			auto img = Image::create(width, height);
-			img->setData(rawData, width * height * 4);
+			//auto img = Image::create(width, height);
+			//img->setData(rawData, width * height * 4);
+
+			auto imgData = ImageData::create(width, height);
+			imgData->setData(rawData, width * height * 4);
 
 			delete[] rawData;
 
-			return img;
+			return imgData;
 		}
 
-		Image::Ptr loadJPGFromFile(const std::string& filename)
+		ImageData::Ptr loadJPGFromFile(const std::string& filename)
 		{
 			stbi_set_flip_vertically_on_load(false);
 
@@ -56,15 +59,18 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			auto img = Image::create(width, height);
-			img->setData(rawData, width * height * 4);
+			//auto img = Image::create(width, height);
+			//img->setData(rawData, width * height * 4);
+
+			auto imgData = ImageData::create(width, height);
+			imgData->setData(rawData, width * height * 4);
 
 			delete[] rawData;
 
-			return img;
+			return imgData;
 		}
 
-		Image::Ptr loadHDRFromFile(const std::string& filename)
+		ImageData::Ptr loadHDRFromFile(const std::string& filename)
 		{
 			stbi_set_flip_vertically_on_load(false);
 
@@ -73,16 +79,19 @@ namespace IO
 			int channels = 0;
 			float* rawData = stbi_loadf(filename.c_str(), &width, &height, &channels, 4);
 
-			auto img = Image::create(width, height, 4, sizeof(float));
-			img->setData((uint8*)rawData, width * height * 4 * sizeof(float));
+			//auto img = Image::create(width, height, 4, sizeof(float));
+			//img->setData((uint8*)rawData, width * height * 4 * sizeof(float));
+
+			auto imgData = ImageData::create(width, height, 4, sizeof(float));
+			imgData->setData((uint8*)rawData, width * height * 4 * sizeof(float));
 
 			delete[] rawData;
 
-			return img;
+			return imgData;
 		}
 
 #ifdef IMAGE_EXR
-		Image::Ptr loadEXRFromFile(const std::string& filename)
+		ImageData::Ptr loadEXRFromFile(const std::string& filename)
 		{
 			int width = 0;
 			int height = 0;
@@ -106,7 +115,7 @@ namespace IO
 #endif
 
 #ifdef IMAGE_TIFF
-		Image::Ptr loadTIFFFromFile(const std::string& filename)
+		ImageData::Ptr loadTIFFFromFile(const std::string& filename)
 		{
 			TIFFRGBAImage tiffRGBA;
 			uint32* raster;
@@ -168,7 +177,7 @@ namespace IO
 #endif
 
 #ifdef IMAGE_WEBP
-		Image::Ptr loadWebPFromFile(const std::string& filename)
+		ImageData::Ptr loadWebPFromFile(const std::string& filename)
 		{
 			std::ifstream file(filename, std::ios::binary | std::ios::ate);
 			if (!file.is_open())
@@ -201,11 +210,15 @@ namespace IO
 				return nullptr;
 			}
 
-			auto img = Image::create(width, height);
-			img->setData(data, width * height * 4);
+			//auto img = Image::create(width, height);
+			//img->setData(data, width * height * 4);
+
+			auto imgData = ImageData::create(width, height);
+			imgData->setData(data, width * height * 4);
+
 			WebPFree(data);
 
-			return img;
+			return imgData;
 		}
 #endif
 
@@ -263,7 +276,7 @@ namespace IO
 		}
 #endif
 
-		Image::Ptr loadFromFile(const std::string& filename)
+		ImageData::Ptr loadFromFile(const std::string& filename)
 		{
 			auto p = fs::path(filename);
 			auto extension = p.extension().string();
@@ -292,7 +305,7 @@ namespace IO
 			return nullptr;
 		}
 
-		Image::Ptr decodePNGFromMemory(uint8* data, uint32 size)
+		ImageData::Ptr decodePNGFromMemory(uint8* data, uint32 size)
 		{
 			stbi_set_flip_vertically_on_load(false);
 
@@ -303,15 +316,18 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			auto img = Image::create(width, height);
-			img->setData(rawData, width * height * 4);
+			//auto img = Image::create(width, height);
+			//img->setData(rawData, width * height * 4);
+
+			auto imgData = ImageData::create(width, height);
+			imgData->setData(rawData, width * height * 4);
 
 			delete[] rawData;
 
-			return img;
+			return imgData;
 		}
 
-		Image::Ptr decodeJPGFromMemory(uint8* data, uint32 size)
+		ImageData::Ptr decodeJPGFromMemory(uint8* data, uint32 size)
 		{
 			stbi_set_flip_vertically_on_load(false);
 
@@ -322,16 +338,19 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			auto img = Image::create(width, height);
-			img->setData(rawData, width * height * 4);
+			//auto img = Image::create(width, height);
+			//img->setData(rawData, width * height * 4);
+
+			auto imgData = ImageData::create(width, height);
+			imgData->setData(rawData, width * height * 4);
 
 			delete[] rawData;
 
-			return img;
+			return imgData;
 		}
 
 #ifdef IMAGE_WEBP
-		Image::Ptr decodeWebPFromMemory(uint8* data, uint32 size)
+		ImageData::Ptr decodeWebPFromMemory(uint8* data, uint32 size)
 		{
 			int w, h;
 			if (!WebPGetInfo(data, size, &w, &h))
@@ -351,11 +370,15 @@ namespace IO
 				return nullptr;
 			}
 
-			auto img = Image::create(width, height);
-			img->setData(rawData, width * height * 4);
+			//auto img = Image::create(width, height);
+			//img->setData(rawData, width * height * 4);
+
+			auto imgData = ImageData::create(width, height);
+			imgData->setData(rawData, width * height * 4);
+
 			WebPFree(rawData);
 
-			return img;
+			return imgData;
 		}
 #endif
 

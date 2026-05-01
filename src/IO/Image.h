@@ -105,9 +105,14 @@ public:
 		return layers;
 	}
 
-	void setData(uint8* dataPtr, uint32 dataSize, uint32 layer)
+	void setData(uint8* dataPtr, uint32 dataSize, uint32 layer = 0)
 	{
 		imageArray[layer]->setData(dataPtr, dataSize);
+	}
+
+	uint8* getData(uint32 layer = 0)
+	{
+		return imageArray[layer]->getRawPtr();
 	}
 
 	typedef std::shared_ptr<ImageArray> Ptr;
@@ -143,7 +148,7 @@ public:
 		{
 			int w = std::max(width >> l, 1U);
 			int h = std::max(height >> l, 1U);
-			imageMips[l] = ImageArray::create(w, h, channels, layers, isCompressed);
+			imageMips[l] = ImageArray::create(w, h, channels, elemSize, layers, isCompressed);
 		}
 	}
 
@@ -172,9 +177,14 @@ public:
 		return layers;
 	}
 
-	void setData(uint8* dataPtr, uint32 dataSize, uint32 level, uint32 layer)
+	void setData(uint8* dataPtr, uint32 dataSize, uint32 level = 0, uint32 layer = 0)
 	{
 		imageMips[level]->setData(dataPtr, dataSize, layer);
+	}
+
+	uint8* getData(uint32 level = 0, uint32 layer = 0)
+	{
+		return imageMips[level]->getData(layer);
 	}
 
 	typedef std::shared_ptr<ImageData> Ptr;

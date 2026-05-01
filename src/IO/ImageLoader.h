@@ -14,21 +14,21 @@ namespace IO
 {
 	namespace ImageLoader
 	{
-		Image::Ptr loadPNGFromFile(const std::string& filename);
-		Image::Ptr loadJPGFromFile(const std::string& filename);
-		Image::Ptr loadHDRFromFile(const std::string& filename);
-		Image::Ptr loadFromFile(const std::string& filename);
-		Image::Ptr decodePNGFromMemory(uint8* data, uint32 size);
-		Image::Ptr decodeJPGFromMemory(uint8* data, uint32 size);
+		ImageData::Ptr loadPNGFromFile(const std::string& filename);
+		ImageData::Ptr loadJPGFromFile(const std::string& filename);
+		ImageData::Ptr loadHDRFromFile(const std::string& filename);
+		ImageData::Ptr loadFromFile(const std::string& filename);
+		ImageData::Ptr decodePNGFromMemory(uint8* data, uint32 size);
+		ImageData::Ptr decodeJPGFromMemory(uint8* data, uint32 size);
 #ifdef IMAGE_TIFF
-		Image::Ptr loadTIFFFromFile(const std::string& filename);
+		ImageData::Ptr loadTIFFFromFile(const std::string& filename);
 #endif
 #ifdef IMAGE_EXR
-		Image::Ptr loadEXRFromFile(const std::string& filename);
+		ImageData::Ptr loadEXRFromFile(const std::string& filename);
 #endif
 #ifdef IMAGE_WEBP
-		Image::Ptr loadWebPFromFile(const std::string& filename);
-		Image::Ptr decodeWebPFromMemory(uint8* data, uint32 size);
+		ImageData::Ptr loadWebPFromFile(const std::string& filename);
+		ImageData::Ptr decodeWebPFromMemory(uint8* data, uint32 size);
 		pr::Texture2D::Ptr decodeKTXFromMemory(uint8* data, uint32 size);
 #endif
 #ifdef IMAGE_KTX

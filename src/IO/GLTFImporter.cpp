@@ -1033,7 +1033,7 @@ namespace IO
 			auto gltfTexture = gltf.textures[index];
 			auto gltfImage = gltf.images[gltfTexture.source.value()];
 
-			::Image::Ptr img; // TODO: better namespace handling...
+			::ImageData::Ptr img; // TODO: better namespace handling...
 			if (gltfImage.bufferView.has_value())
 			{
 				// TODO: load image from embedded binary
@@ -1134,7 +1134,7 @@ namespace IO
 
 			uint32 width = img->getWidth();
 			uint32 height = img->getHeight();
-			uint8* data = img->getRawPtr();
+			uint8* data = img->getData();
 			uint32 dataSize = width * height * 4;
 
 			GPU::ImageUsage flags = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;

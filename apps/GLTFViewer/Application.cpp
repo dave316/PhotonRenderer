@@ -239,7 +239,7 @@ void Application::loadGLTFSampleEnvironments(const std::string& samplePath)
 		auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
 		uint32 width = panoImg->getWidth();
 		uint32 height = panoImg->getHeight();
-		uint8* data = panoImg->getRawPtr();
+		uint8* data = panoImg->getData();
 		uint32 dataSize = width * height * sizeof(float) * 4;
 		auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
 		panoTex->upload(data, dataSize);
