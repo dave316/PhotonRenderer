@@ -37,9 +37,6 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			//auto img = Image::create(width, height);
-			//img->setData(rawData, width * height * 4);
-
 			auto imgData = ImageData::create(width, height);
 			imgData->setData(rawData, width * height * 4);
 
@@ -59,9 +56,6 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			//auto img = Image::create(width, height);
-			//img->setData(rawData, width * height * 4);
-
 			auto imgData = ImageData::create(width, height);
 			imgData->setData(rawData, width * height * 4);
 
@@ -78,9 +72,6 @@ namespace IO
 			int height = 0;
 			int channels = 0;
 			float* rawData = stbi_loadf(filename.c_str(), &width, &height, &channels, 4);
-
-			//auto img = Image::create(width, height, 4, sizeof(float));
-			//img->setData((uint8*)rawData, width * height * 4 * sizeof(float));
 
 			auto imgData = ImageData::create(width, height, 4, sizeof(float));
 			imgData->setData((uint8*)rawData, width * height * 4 * sizeof(float));
@@ -105,12 +96,12 @@ namespace IO
 
 			//std::cout << "loaded exr image: " << width << "x" << height << std::endl;
 
-			auto img = ImageType<float>::create(width, height, 4);
-			img->setFromMemory(rgba, width * height * 4 * sizeof(float));
+			auto imgData = ImageData::create(width, height, 4, sizeof(float));
+			imgData->setData((uint8*)rgba, width * height * 4 * sizeof(float));
 
 			delete[] rgba;
 
-			return img;
+			return imgData;
 		}
 #endif
 
@@ -165,14 +156,15 @@ namespace IO
 				}
 			}
 
-			auto img = ImageType<uint8>::create(imgwidth, imgheight, 4);
-			img->setFromMemory(buffer, imgwidth * imgheight * 4);
+			auto imgData = ImageData::create(imgwidth, imgheight);
+			imgData->setData(buffer, imgwidth * imgheight * 4);
+
 			delete[] buffer;
 
 			_TIFFfree(raster);
 			TIFFClose(tif);
 
-			return img;
+			return imgData;
 		}
 #endif
 
