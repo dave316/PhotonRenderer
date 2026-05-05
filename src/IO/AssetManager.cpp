@@ -235,31 +235,31 @@ namespace IO
 
 			entities.push_back(root);
 		}
-		//else if (ext.compare(".png") == 0 || ext.compare(".jpg") == 0)
-		//{
-		//	auto img = IO::ImageLoader::loadFromFile(node->fullpath);
+		else if (ext.compare(".png") == 0 || ext.compare(".jpg") == 0)
+		{
+			auto img = IO::ImageLoader::loadFromFile(node->fullpath);
 
-		//	uint32 width = img->getWidth();
-		//	uint32 height = img->getHeight();
-		//	uint8* data = img->getRawPtr();
-		//	uint32 dataSize = width * height * 4;
+			uint32 width = img->getWidth();
+			uint32 height = img->getHeight();
+			uint8* data = img->getData();
+			uint32 dataSize = width * height * 4;
 
-		//	GPU::ImageUsage flags = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
-		//	GPU::Format format = GPU::Format::RGBA8;
-		//	//if (name.compare("baseColorTex") == 0 ||
-		//	//	name.compare("emissiveTex") == 0)
-		//	//	format = GPU::Format::SRGB8;
+			GPU::ImageUsage flags = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
+			GPU::Format format = GPU::Format::RGBA8;
+			//if (name.compare("baseColorTex") == 0 ||
+			//	name.compare("emissiveTex") == 0)
+			//	format = GPU::Format::SRGB8;
 
-		//	auto texture = pr::Texture2D::create(width, height, format);
-		//	texture->createData();
-		//	texture->upload(data, dataSize);
-		//	texture->uploadData();
-		//	//texture->setFilter(GPU::Filter::Linear, GPU::Filter::Linear);
-		//	//texture->setAddressMode(GPU::AddressMode::Repeat);
+			auto texture = pr::Texture2D::create(width, height, format);
+			//texture->createData();
+			texture->upload(data, dataSize);
+			//texture->uploadData();
+			//texture->setFilter(GPU::Filter::Linear, GPU::Filter::Linear);
+			//texture->setAddressMode(GPU::AddressMode::Repeat);
 
-		//	node->texIndex = static_cast<int>(textures.size());
-		//	textures.push_back(texture);
-		//}
+			node->texIndex = static_cast<int>(textures.size());
+			textures.push_back(texture);
+		}
 
 		for (auto childIdx : node->children)
 			loadAssetsRecursive(childIdx);

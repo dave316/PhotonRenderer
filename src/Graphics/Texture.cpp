@@ -13,8 +13,8 @@ namespace pr
 		params.levels = levels;
 		params.usage = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
 
-		data.resize(levels);
-		size.resize(levels);
+		//data.resize(levels);
+		//size.resize(levels);
 
 		image = ctx.createImage(params);
 		view = image->createImageView();
@@ -32,8 +32,8 @@ namespace pr
 		params.levels = levels;
 		params.usage = usage;
 
-		data.resize(levels);
-		size.resize(levels);
+		//data.resize(levels);
+		//size.resize(levels);
 
 		image = ctx.createImage(params);
 		view = image->createImageView();
