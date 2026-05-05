@@ -22,11 +22,11 @@ namespace pr
 	{
 		maskTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
 		maskTex->setAddressMode(GPU::AddressMode::ClampToEdge);
-		maskTex->createData();
-		maskTex->uploadData();
+		//maskTex->createData();
+		//maskTex->uploadData();
 
 		maskDepthTex = pr::Texture2D::create(width, height, GPU::Format::D24_S8, 1, GPU::ImageUsage::DepthStencilAttachment);
-		maskDepthTex->createData();
+		//maskDepthTex->createData();
 
 		auto& ctx = GraphicsContext::getInstance();
 		auto cmdBuf = ctx.allocateCommandBuffer();

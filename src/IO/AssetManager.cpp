@@ -106,11 +106,11 @@ namespace IO
 
 	void AssetManager::copyAssetsToGPU()
 	{
-		for (auto [_, prim] : primitives)
-		{
-			prim->createData();
-			prim->uploadData();
-		}
+		//for (auto [_, prim] : primitives)
+		//{
+		//	prim->createData();
+		//	prim->uploadData();
+		//}
 
 		// TODO: texture can be referenced by multiple materials...
 		// ... so they should be only initialized once otherwise their reference becomes invalid!
@@ -118,18 +118,18 @@ namespace IO
 		{
 			for (auto tex : mat->getTextures())
 			{
-				if (!tex->isLoadedOnGPU())
+				//if (!tex->isLoadedOnGPU())
 				{
-					tex->createData();
-					tex->uploadData();
+					//tex->createData();
+					//tex->uploadData();
 					tex->generateMipmaps();
 					tex->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
 					tex->setAddressMode(GPU::AddressMode::Repeat);
 				}
-				else
-				{
-					std::cout << "texture already loaded on GPU!" << std::endl;
-				}
+				//else
+				//{
+				//	std::cout << "texture already loaded on GPU!" << std::endl;
+				//}
 			}
 		}
 	}

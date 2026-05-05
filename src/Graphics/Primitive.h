@@ -199,7 +199,7 @@ struct TriangleSurface
 
 namespace pr
 {
-	class Primitive : public GraphicsRessource
+	class Primitive// : public GraphicsRessource
 	{
 	public:
 		Primitive(std::string name, TriangleSurface& surface, GPU::Topology topology);

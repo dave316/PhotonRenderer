@@ -39,8 +39,8 @@ namespace pr
 		bloomBlurTex = pr::Texture2D::create(width / 2, height / 2, GPU::Format::RGBA16F, maxMipLevel, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
 		bloomBlurTex->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
 		bloomBlurTex->setAddressMode(GPU::AddressMode::ClampToEdge);
-		bloomBlurTex->createData();
-		bloomBlurTex->uploadData();
+	/*	bloomBlurTex->createData();
+		bloomBlurTex->uploadData();*/
 
 		auto& ctx = GraphicsContext::getInstance();
 		auto cmdBuf = ctx.allocateCommandBuffer();

@@ -86,23 +86,23 @@ void Application::initScene()
 	//scene->addRoot(root);
 	scene = scenes[0];
 
-	for (auto root : scene->getRootNodes())
-	{
-		for (auto r : root->getComponentsInChildren<pr::Renderable>())
-		{
-			auto mesh = r->getMesh();
-			for (auto& sm : mesh->getSubMeshes())
-			{
-				sm.primitive->createData();
-				sm.primitive->uploadData();
-				for (auto tex : sm.material->getTextures())
-				{
-					tex->createData();
-					tex->uploadData();
-				}
-			}
-		}
-	}
+	//for (auto root : scene->getRootNodes())
+	//{
+	//	for (auto r : root->getComponentsInChildren<pr::Renderable>())
+	//	{
+	//		auto mesh = r->getMesh();
+	//		for (auto& sm : mesh->getSubMeshes())
+	//		{
+	//			sm.primitive->createData();
+	//			sm.primitive->uploadData();
+	//			for (auto tex : sm.material->getTextures())
+	//			{
+	//				tex->createData();
+	//				tex->uploadData();
+	//			}
+	//		}
+	//	}
+	//}
 
 	//auto light = pr::Light::create(pr::LightType::POINT, glm::vec3(1), 200.0f, 100.0f);
 	//light->setColorTemp(10000);
@@ -198,8 +198,8 @@ void Application::initScene()
 	uint32 dataSize = width * height * sizeof(float) * 4;
 	auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
 	panoTex->upload(data, dataSize);
-	panoTex->createData();
-	panoTex->uploadData();
+	//panoTex->createData();
+	//panoTex->uploadData();
 	auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
 	scene->setSkybox(skybox);
 }

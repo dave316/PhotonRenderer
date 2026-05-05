@@ -16,9 +16,9 @@ namespace pr
 		data.resize(levels);
 		size.resize(levels);
 
-		//image = ctx.createImage(params);
-		//view = image->createImageView();
-		//sampler = ctx.createSampler(levels);
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
 	}
 
 	Texture2D::Texture2D(uint32 width, uint32 height, GPU::Format format, uint32 levels, GPU::ImageUsage usage)
@@ -35,9 +35,9 @@ namespace pr
 		data.resize(levels);
 		size.resize(levels);
 
-		//image = ctx.createImage(params);
-		//view = image->createImageView();
-		//sampler = ctx.createSampler(levels);
+		image = ctx.createImage(params);
+		view = image->createImageView();
+		sampler = ctx.createSampler(levels);
 	}
 
 	Texture2D::~Texture2D() {}
@@ -48,53 +48,56 @@ namespace pr
 		//this->size = size;
 		//std::memcpy(this->data, data, size);
 		
-		this->data[level] = std::unique_ptr<uint8>(new uint8[size]);
-		this->size[level] = size;
-		std::memcpy(this->data[level].get(), data, size);
+		//this->data[level] = std::unique_ptr<uint8>(new uint8[size]);
+		//this->size[level] = size;
+		//std::memcpy(this->data[level].get(), data, size);
 
-		//auto& ctx = GraphicsContext::getInstance();
-		//auto cmdBuf = ctx.allocateCommandBuffer();
-		//image->uploadData(cmdBuf, data, size, 0, level);
+		auto& ctx = GraphicsContext::getInstance();
+		auto cmdBuf = ctx.allocateCommandBuffer();
+		image->uploadData(cmdBuf, data, size, 0, level);
 	}
 
 	void Texture2D::setAddressMode(GPU::AddressMode modeU, GPU::AddressMode modeV, GPU::AddressMode modeW)
 	{
-		//sampler->setAddressMode(modeU, modeV, modeW);
 		this->modeU = modeU;
 		this->modeV = modeV;
 		this->modeW = modeW;
+
+		sampler->setAddressMode(modeU, modeV, modeW);
 	}
 
 	void Texture2D::setAddressMode(GPU::AddressMode mode)
 	{
-		//sampler->setAddressMode(mode);
 		setAddressMode(mode, mode, mode);
+
+		sampler->setAddressMode(mode);
 	}
 
 	void Texture2D::setFilter(GPU::Filter minFilter, GPU::Filter magFilter)
 	{
-		//sampler->setFilter(minFilter, magFilter);
 		this->minFilter = minFilter;
 		this->magFilter = magFilter;
+
+		sampler->setFilter(minFilter, magFilter);
 	}
 
 	void Texture2D::generateMipmaps()
 	{
-		genMipmaps = true;
+		//genMipmaps = true;
 		//if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
 		//{
 		//	auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
 		//	dxImageView->generateMipmaps();
 		//}
 		//else
-		//{
-		//	auto& ctx = GraphicsContext::getInstance();
-		//	auto cmdBuf = ctx.allocateCommandBuffer();
-		//	cmdBuf->begin();
-		//	image->generateMipmaps(cmdBuf);
-		//	cmdBuf->end();
-		//	cmdBuf->flush();
-		//}
+		{
+			auto& ctx = GraphicsContext::getInstance();
+			auto cmdBuf = ctx.allocateCommandBuffer();
+			cmdBuf->begin();
+			image->generateMipmaps(cmdBuf);
+			cmdBuf->end();
+			cmdBuf->flush();
+		}
 	}
 
 	void Texture2D::setLayout()
@@ -134,63 +137,66 @@ namespace pr
 		return ctx.createImageDescriptor(image, view, sampler);
 	}
 
-	void Texture2D::createData()
-	{
-		auto& ctx = GraphicsContext::getInstance();
-		image = ctx.createImage(params);
-		view = image->createImageView();
-		sampler = ctx.createSampler(params.levels);
-
-		loadedOnGPU = true;
-	}
-
-	void Texture2D::uploadData()
-	{
-		auto& ctx = GraphicsContext::getInstance();
-
-		//if (data != nullptr)
-		//{
-		//	auto cmdBuf = ctx.allocateCommandBuffer();
-		//	image->uploadData(cmdBuf, data, size, 0, 0);
-		//}
-
-		for (int i = 0; i < data.size(); i++)
-		{
-			if (data[i] != nullptr)
-			{
-				auto cmdBuf = ctx.allocateCommandBuffer();
-				image->uploadData(cmdBuf, data[i].get(), size[i], 0, i);
-			}
-		}			
-
-		if (genMipmaps)
-		{
-#ifdef GPU_BACKEND_DX11
-			if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
-			{
-				auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
-				dxImageView->generateMipmaps();
-			}
-			else
-#endif
-			{
-				auto& ctx = GraphicsContext::getInstance();
-				auto cmdBuf = ctx.allocateCommandBuffer();
-				cmdBuf->begin();
-				image->generateMipmaps(cmdBuf);
-				cmdBuf->end();
-				cmdBuf->flush();
-			}
-		}
-
-		sampler->setFilter(minFilter, magFilter);
-		sampler->setAddressMode(modeU, modeV, modeW);
-	}
-
-	void Texture2D::destroyData()
-	{
-		loadedOnGPU = false;
-	}
+//	void Texture2D::createData()
+//	{
+//		auto& ctx = GraphicsContext::getInstance();
+//		image = ctx.createImage(params);
+//		view = image->createImageView();
+//		sampler = ctx.createSampler(params.levels);
+//
+//		sampler->setFilter(minFilter, magFilter);
+//		sampler->setAddressMode(modeU, modeV, modeW);
+//	}
+//
+//	void Texture2D::uploadData()
+//	{
+//		auto& ctx = GraphicsContext::getInstance();
+//
+//		//if (data != nullptr)
+//		//{
+//		//	auto cmdBuf = ctx.allocateCommandBuffer();
+//		//	image->uploadData(cmdBuf, data, size, 0, 0);
+//		//}
+//
+//		for (int i = 0; i < data.size(); i++)
+//		{
+//			if (data[i] != nullptr)
+//			{
+//				auto cmdBuf = ctx.allocateCommandBuffer();
+//				image->uploadData(cmdBuf, data[i].get(), size[i], 0, i);
+//			}
+//		}			
+//
+//		if (genMipmaps)
+//		{
+//#ifdef GPU_BACKEND_DX11
+//			if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+//			{
+//				auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
+//				dxImageView->generateMipmaps();
+//			}
+//			else
+//#endif
+//			{
+//				auto& ctx = GraphicsContext::getInstance();
+//				auto cmdBuf = ctx.allocateCommandBuffer();
+//				cmdBuf->begin();
+//				image->generateMipmaps(cmdBuf);
+//				cmdBuf->end();
+//				cmdBuf->flush();
+//			}
+//		}
+//
+//		sampler->setFilter(minFilter, magFilter);
+//		sampler->setAddressMode(modeU, modeV, modeW);
+//	}
+//
+//	void Texture2D::destroyData()
+//	{
+//		image.reset();
+//		view.reset();
+//		sampler.reset();
+//	}
 
 	Texture3D::Texture3D(uint32 width, uint32 height, uint32 depth, GPU::Format format, uint32 levels)
 	{

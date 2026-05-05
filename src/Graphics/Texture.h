@@ -7,7 +7,7 @@
 
 namespace pr
 {
-	class Texture : public GraphicsRessource
+	class Texture// : public GraphicsRessource
 	{
 	public:
 		Texture() {}
@@ -23,7 +23,6 @@ namespace pr
 		GPU::AddressMode modeU;
 		GPU::AddressMode modeV;
 		GPU::AddressMode modeW;
-		bool loadedOnGPU = false;
 		bool genMipmaps = false;
 		//uint8* data = nullptr;
 		std::vector<std::unique_ptr<uint8>> data;
@@ -53,10 +52,10 @@ namespace pr
 		GPU::ImageDescriptor::Ptr getDescriptor();
 		GPU::ImageDescriptor::Ptr getDescriptor(GPU::ImageView::Ptr view);
 
-		void createData();
-		void uploadData();
-		void destroyData();
-		bool isLoadedOnGPU() { return loadedOnGPU; }
+		//void createData();
+		//void uploadData();
+		//void destroyData();
+		//bool isLoadedOnGPU() { return loadedOnGPU; }
 
 		typedef std::shared_ptr<Texture2D> Ptr;
 		static Ptr create(uint32 width, uint32 height, GPU::Format format, uint32 levels = 1)

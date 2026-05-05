@@ -122,9 +122,9 @@ namespace pr
 
 		ImGuiIO& io = ImGui::GetIO(); (void)io;
 		io.FontGlobalScale = scale;
-		//io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		//io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-		//io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;
 
 		auto& ctx = GraphicsContext::getInstance();
 		
@@ -183,9 +183,9 @@ namespace pr
 		io.Fonts->GetTexDataAsRGBA32(&fontData, &texWidth, &texHeight);
 		uint32 uploadSize = texWidth * texHeight * 4 * sizeof(uint8);
 		fontTexture = pr::Texture2D::create(texWidth, texHeight, GPU::Format::RGBA8);
-		fontTexture->createData();
+		//fontTexture->createData();
 		fontTexture->upload(fontData, uploadSize);
-		fontTexture->uploadData();
+		//fontTexture->uploadData();
 
 		std::vector<GPU::DescriptorSetLayoutBinding> bindings = {
 			{ 0, GPU::DescriptorType::CombinedImageSampler, 1, GPU::ShaderStage::Fragment }

@@ -95,12 +95,12 @@ namespace pr
 	{
 		auto& ctx = GraphicsContext::getInstance();
 		scatterFrontTexture = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
-		scatterFrontTexture->createData();
+		//scatterFrontTexture->createData();
 		scatterFrontTexture->setFilter(GPU::Filter::Nearest, GPU::Filter::Nearest);
 		scatterFrontTexture->setAddressMode(GPU::AddressMode::ClampToEdge);
 
 		scatterDepthTexture = pr::Texture2D::create(width, height, GPU::Format::DEPTH32, 1, GPU::ImageUsage::DepthStencilAttachment | GPU::ImageUsage::Sampled);
-		scatterDepthTexture->createData();
+		//scatterDepthTexture->createData();
 		scatterDepthTexture->setFilter(GPU::Filter::Nearest, GPU::Filter::Nearest);
 		scatterDepthTexture->setAddressMode(GPU::AddressMode::ClampToEdge);
 

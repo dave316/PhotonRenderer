@@ -286,8 +286,8 @@ namespace pr
 
 	void Primitive::updateGeometry(TriangleSurface& surface)
 	{
-		//createData();
-		//uploadData();
+		createData();
+		uploadData();
 				
 		vertexCount = static_cast<uint32>(surface.vertices.size());
 		indexCount = static_cast<uint32>(surface.indices.size());

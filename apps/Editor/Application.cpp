@@ -110,9 +110,9 @@ bool Application::init()
 	uint8* data = panoImg->getData();
 	uint32 dataSize = width * height * sizeof(float) * 4;
 	auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
-	panoTex->createData();
+	//panoTex->createData();
 	panoTex->upload(data, dataSize);
-	panoTex->uploadData();
+	//panoTex->uploadData();
 	auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
 
 	scenes[0]->setSkybox(skybox);

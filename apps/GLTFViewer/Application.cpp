@@ -243,8 +243,8 @@ void Application::loadGLTFSampleEnvironments(const std::string& samplePath)
 		uint32 dataSize = width * height * sizeof(float) * 4;
 		auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
 		panoTex->upload(data, dataSize);
-		panoTex->createData();
-		panoTex->uploadData();
+		//panoTex->createData();
+		//panoTex->uploadData();
 		GLTFEnvironment env;
 		env.name = name;
 		env.envMap = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
@@ -266,31 +266,31 @@ bool Application::loadGLTFModel(const std::string& name, const std::string& full
 
 		scenes = importedScenes;
 		sceneIndex = defaultScene;
-		for (auto root : scenes[sceneIndex]->getRootNodes())
-		{
-			for (auto r : root->getComponentsInChildren<pr::Renderable>())
-			{
-				auto mesh = r->getMesh();
-				for (auto& sm : mesh->getSubMeshes())
-				{
-					sm.primitive->createData();
-					sm.primitive->uploadData();
-					for (auto tex : sm.material->getTextures())
-					{
-						tex->createData();
-						tex->uploadData();
-					}
-					for (auto mat : sm.variants)
-					{
-						for (auto tex : mat->getTextures())
-						{
-							tex->createData();
-							tex->uploadData();
-						}
-					}
-				}
-			}
-		}
+		//for (auto root : scenes[sceneIndex]->getRootNodes())
+		//{
+		//	for (auto r : root->getComponentsInChildren<pr::Renderable>())
+		//	{
+		//		auto mesh = r->getMesh();
+		//		for (auto& sm : mesh->getSubMeshes())
+		//		{
+		//			sm.primitive->createData();
+		//			sm.primitive->uploadData();
+		//			for (auto tex : sm.material->getTextures())
+		//			{
+		//				tex->createData();
+		//				tex->uploadData();
+		//			}
+		//			for (auto mat : sm.variants)
+		//			{
+		//				for (auto tex : mat->getTextures())
+		//				{
+		//					tex->createData();
+		//					tex->uploadData();
+		//				}
+		//			}
+		//		}
+		//	}
+		//}
 
 		renderer->initScene(userCamera, scenes[sceneIndex]);
 		for (auto scene : scenes)

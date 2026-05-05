@@ -116,8 +116,8 @@ namespace IBL
 		auto unitQuad = createScreenQuad();
 		auto brdfLUT = pr::Texture2D::create(dim, dim, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
 		brdfLUT->setAddressMode(GPU::AddressMode::ClampToEdge);
-		brdfLUT->createData();
-		brdfLUT->uploadData();
+		//brdfLUT->createData();
+		//brdfLUT->uploadData();
 		brdfLUT->setLayout();
 
 		auto& ctx = pr::GraphicsContext::getInstance();

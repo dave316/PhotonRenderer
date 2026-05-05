@@ -35,26 +35,26 @@ namespace pr
 		{
 			screenTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
 			screenTex->setAddressMode(GPU::AddressMode::ClampToEdge);
-			screenTex->createData();
-			screenTex->uploadData();
+			//screenTex->createData();
+			//screenTex->uploadData();
 
 			uint32 levels = static_cast<uint32>(std::floor(std::log2(std::max(width, height)))) + 1;
 			grabTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, levels, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled | GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst);
 			grabTex->setAddressMode(GPU::AddressMode::ClampToEdge);
 			grabTex->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-			grabTex->createData();
-			grabTex->uploadData();
+			//grabTex->createData();
+			//grabTex->uploadData();
 
 			brightTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
 			brightTex->setAddressMode(GPU::AddressMode::ClampToEdge);
-			brightTex->createData();
-			brightTex->uploadData();
+			//brightTex->createData();
+			//brightTex->uploadData();
 
 			depthTex = pr::Texture2D::create(width, height, GPU::Format::D24_S8, 1, GPU::ImageUsage::DepthStencilAttachment);
-			depthTex->createData();
+			//depthTex->createData();
 
 			finalTex = pr::Texture2D::create(width, height, GPU::Format::RGBA16F, 1, GPU::ImageUsage::ColorAttachment | GPU::ImageUsage::Sampled);
-			finalTex->createData();
+			//finalTex->createData();
 
 			auto cmdBuf = ctx.allocateCommandBuffer();
 			cmdBuf->begin();

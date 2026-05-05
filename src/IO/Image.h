@@ -122,16 +122,21 @@ public:
 	}
 
 private:
-	uint32 width;
-	uint32 height;
-	uint32 channels;
-	uint32 elemSize;
-	uint32 layers;
-	bool isCompressed;
+	uint32 width = 0;
+	uint32 height = 0;
+	uint32 channels = 0;
+	uint32 elemSize = 0;
+	uint32 layers = 0;
+	bool isCompressed = false;
 	std::vector<Image::Ptr> imageArray;
 };
 
-class ImageData
+class Asset
+{
+
+};
+
+class ImageData : public Asset
 {
 public:
 	ImageData(uint32 width, uint32 height, uint32 channels, uint32 elemSize, uint32 levels, uint32 layers, bool isCompressed) :
@@ -194,14 +199,14 @@ public:
 	}
 
 private:
-	uint32 width;
-	uint32 height;
-	uint32 channels;
-	uint32 elemSize;
-	uint32 levels;
-	uint32 layers;
-	uint32 rawSize;
-	bool isCompressed;
+	uint32 width = 0;
+	uint32 height = 0;
+	uint32 channels = 0;
+	uint32 elemSize = 0;
+	uint32 levels = 0;
+	uint32 layers = 0;
+	uint32 rawSize = 0;
+	bool isCompressed = false;
 	std::vector<ImageArray::Ptr> imageMips;
 };
 
