@@ -79,14 +79,12 @@ void Application::initScene()
 	////scene->update(0.0f);
 
 	std::string assetPath = "../../../../assets";
-	std::string modelName = "Sponza";
+	std::string modelName = "DamagedHelmet";
 	IO::glTF::Importer importer;
-	//std::vector<pr::Scene::Ptr> scenes;
-	auto root = importer.importModel(assetPath + "/glTF-Sample-Assets/Models/" + modelName + "/glTF/" + modelName + ".gltf", 0);
-
-
+	std::vector<pr::Scene::Ptr> scenes;
+	importer.importModel(assetPath + "/glTF-Sample-Assets/Models/" + modelName + "/glTF/" + modelName + ".gltf", scenes);
 	//scene->addRoot(root);
-	//scene = scenes[0];
+	scene = scenes[0];
 
 	//for (auto root : scene->getRootNodes())
 	//{

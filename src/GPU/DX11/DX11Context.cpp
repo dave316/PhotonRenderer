@@ -105,7 +105,7 @@ namespace DX11
 		nextCmdBuf->flush();
 	}
 
-#ifdef WITH_IMGUI
+#ifdef LIBS_IMGUI
 	void Context::createWindow(ImGuiViewport* viewport)
 	{
 		ViewportData* vd = new ViewportData;

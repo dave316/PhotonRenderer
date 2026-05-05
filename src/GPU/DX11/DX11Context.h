@@ -16,7 +16,7 @@
 #include <GPU/Enums.h>
 
 #include <Windows.h>
-#ifdef WITH_IMGUI
+#ifdef LIBS_IMGUI
 #include <imgui.h>
 #endif
 
@@ -54,7 +54,7 @@ namespace DX11
 			return std::make_shared<Context>();
 		}
 
-#ifdef WITH_IMGUI
+#ifdef LIBS_IMGUI
 		//static bool createDeviceWGL(HWND hWnd, WGLWindowData* data);
 		//static void cleanupDeviceWGL(HWND hWnd, WGLWindowData* data);
 		static void createWindow(ImGuiViewport* viewport);

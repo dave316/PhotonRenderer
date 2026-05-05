@@ -84,12 +84,12 @@ namespace pr
 	void Texture2D::generateMipmaps()
 	{
 		//genMipmaps = true;
-		//if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
-		//{
-		//	auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
-		//	dxImageView->generateMipmaps();
-		//}
-		//else
+		if (pr::GraphicsContext::getInstance().getCurrentAPI() == pr::GraphicsAPI::Direct3D11)
+		{
+			auto dxImageView = std::dynamic_pointer_cast<DX11::ImageView>(view);
+			dxImageView->generateMipmaps();
+		}
+		else
 		{
 			auto& ctx = GraphicsContext::getInstance();
 			auto cmdBuf = ctx.allocateCommandBuffer();
