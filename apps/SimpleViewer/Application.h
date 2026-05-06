@@ -44,7 +44,7 @@ public:
 	bool init();
 	void initScene();
 	//void initUnitySceneOLD();
-	//void initUnitySceneNEW();
+	void initUnitySceneNEW();
 	void setupInput();
 	//void updateGUI();
 	void loop();
