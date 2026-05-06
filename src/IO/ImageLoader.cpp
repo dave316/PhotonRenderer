@@ -202,9 +202,6 @@ namespace IO
 				return nullptr;
 			}
 
-			//auto img = Image::create(width, height);
-			//img->setData(data, width * height * 4);
-
 			auto imgData = ImageData::create(width, height);
 			imgData->setData(data, width * height * 4);
 
@@ -215,56 +212,65 @@ namespace IO
 #endif
 
 #ifdef IMAGE_KTX
-		pr::Texture2D::Ptr loadKTXFromFile(const std::string& filename)
+		ImageData::Ptr loadKTXFromFile(const std::string& filename)
 		{
 			ktxTexture2* pKtxTexture;
 			KTX_error_code result;
 
 			result = ktxTexture2_CreateFromNamedFile(filename.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &pKtxTexture);
+			if (result != KTX_SUCCESS)
+			{
+				std::cout << "error: could not open file " << filename << std::endl;
+				return nullptr;
+			}
+
 			if (pKtxTexture->isCompressed)
 				result = ktxTexture2_TranscodeBasis(pKtxTexture, KTX_TTF_BC7_RGBA, 0);
 
-			//std::cout << "vk format: " << pKtxTexture->vkFormat << std::endl;
-			//std::cout << "width: " << pKtxTexture->baseWidth << std::endl;
-			//std::cout << "height: " << pKtxTexture->baseHeight << std::endl;
-			//std::cout << "depth: " << pKtxTexture->baseDepth << std::endl;
-			//std::cout << "dims: " << pKtxTexture->numDimensions << std::endl;
-			//std::cout << "faces: " << pKtxTexture->numFaces << std::endl;
-			//std::cout << "layers: " << pKtxTexture->numLayers << std::endl;
-			//std::cout << "levels: " << pKtxTexture->numLevels << std::endl;
-			//std::cout << "data: " << pKtxTexture->dataSize << std::endl;
+			std::cout << "vk format: " << pKtxTexture->vkFormat << std::endl;
+			std::cout << "width: " << pKtxTexture->baseWidth << std::endl;
+			std::cout << "height: " << pKtxTexture->baseHeight << std::endl;
+			std::cout << "depth: " << pKtxTexture->baseDepth << std::endl;
+			std::cout << "dims: " << pKtxTexture->numDimensions << std::endl;
+			std::cout << "faces: " << pKtxTexture->numFaces << std::endl;
+			std::cout << "layers: " << pKtxTexture->numLayers << std::endl;
+			std::cout << "levels: " << pKtxTexture->numLevels << std::endl;
+			std::cout << "data: " << pKtxTexture->dataSize << std::endl;
+			std::cout << "compressed: " << (pKtxTexture->isCompressed ? "true" : "false") << std::endl;
+			std::cout << "array: " << (pKtxTexture->isArray ? "true" : "false") << std::endl;
+			std::cout << "cubemap: " << (pKtxTexture->isCubemap ? "true" : "false") << std::endl;
+			std::cout << "video: " << (pKtxTexture->isVideo ? "true" : "false") << std::endl;
 
-			pr::Texture2D::Ptr texture = nullptr;
-			if (result == KTX_SUCCESS)
+			auto imgData = ImageData::create(
+				pKtxTexture->baseWidth,
+				pKtxTexture->baseHeight,
+				4, // TODO: get from format
+				1, // TODO: get from format
+				pKtxTexture->numLevels,
+				pKtxTexture->numLayers,
+				pKtxTexture->isCompressed
+			);
+
+			// TODO: add cube map faces
+			for (uint32 level = 0; level < pKtxTexture->numLevels; level++)
 			{
-				GLint internalFormat = 0;
-				GPU::Format format = GPU::Format::RGBA8;
-				if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_UNORM_BLOCK)
-					std::cout << "tex format RGB_S3TC_DXT1" << std::endl;
-				else if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
-					std::cout << "tex format SRGB_S3TC_DXT1" << std::endl;
-				else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_UNORM_BLOCK)
-					format = GPU::Format::BC7_RGBA;
-				else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_SRGB_BLOCK)
-					format = GPU::Format::BC7_SRGB;
+				int w = std::max(pKtxTexture->baseWidth >> level, 1U);
+				int h = std::max(pKtxTexture->baseHeight >> level, 1U);
 
-				texture = pr::Texture2D::create(pKtxTexture->baseWidth, pKtxTexture->baseHeight, format, pKtxTexture->numLevels, GPU::ImageUsage::Sampled);
-
-				for (uint32 level = 0; level < pKtxTexture->numLevels; level++)
+				for (uint32 layer = 0; layer < pKtxTexture->numLayers; layer++)
 				{
-					int w = std::max(pKtxTexture->baseWidth >> level, 1U);
-					int h = std::max(pKtxTexture->baseHeight >> level, 1U);
-					uint32 imgSize = (uint32)ktxTexture_GetImageSize(ktxTexture(pKtxTexture), level);
 					ktx_size_t offset = 0;
-					ktxTexture_GetImageOffset(ktxTexture(pKtxTexture), level, 0, 0, &offset);
-					ktx_uint8_t* pData = pKtxTexture->pData + offset;
-					texture->upload(pData, imgSize, level);
+					ktxTexture_GetImageOffset(ktxTexture(pKtxTexture), level, layer, 0, &offset);
+					ktx_uint8_t* data = pKtxTexture->pData + offset;
+					uint32 size = (uint32)ktxTexture_GetImageSize(ktxTexture(pKtxTexture), level);
+
+					imgData->setData(data, size, level, layer);					
 				}
 			}
-
+		
 			ktxTexture_Destroy(ktxTexture(pKtxTexture));
 
-			return texture;
+			return imgData;
 		}
 #endif
 
@@ -282,6 +288,10 @@ namespace IO
 #ifdef IMAGE_EXR
 			else if (extension.compare(".exr") == 0)
 				return loadEXRFromFile(filename);
+#endif
+#ifdef IMAGE_KTX
+			else if (extension.compare(".ktx") == 0 || extension.compare(".ktx2") == 0)
+				return loadKTXFromFile(filename);
 #endif
 #ifdef IMAGE_TIFF
 			else if (extension.compare(".tif") == 0)
@@ -308,9 +318,6 @@ namespace IO
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
 
-			//auto img = Image::create(width, height);
-			//img->setData(rawData, width * height * 4);
-
 			auto imgData = ImageData::create(width, height);
 			imgData->setData(rawData, width * height * 4);
 
@@ -329,9 +336,6 @@ namespace IO
 			uint8* rawData = stbi_load_from_memory(data, size, &width, &height, &channels, 4);
 
 			//std::cout << "tex size: " << width << "x" << height << "x" << channels << std::endl;
-
-			//auto img = Image::create(width, height);
-			//img->setData(rawData, width * height * 4);
 
 			auto imgData = ImageData::create(width, height);
 			imgData->setData(rawData, width * height * 4);
@@ -362,9 +366,6 @@ namespace IO
 				return nullptr;
 			}
 
-			//auto img = Image::create(width, height);
-			//img->setData(rawData, width * height * 4);
-
 			auto imgData = ImageData::create(width, height);
 			imgData->setData(rawData, width * height * 4);
 
@@ -375,74 +376,87 @@ namespace IO
 #endif
 
 #ifdef IMAGE_KTX
-		pr::Texture2D::Ptr decodeKTXFromMemory(uint8* data, uint32 size)
+		ImageData::Ptr decodeKTXFromMemory(uint8* data, uint32 size)
 		{
+			std::cout << "decode KTX from memory" << std::endl;
+
 			ktxTexture2* pKtxTexture;
 			KTX_error_code result;
 			result = ktxTexture2_CreateFromMemory(data, size, KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &pKtxTexture);
+			if (result != KTX_SUCCESS)
+			{
+				std::cout << "error: create KTX texture from memory!" << std::endl;
+				return nullptr;
+			}
+
 			if (pKtxTexture->isCompressed)
 				result = ktxTexture2_TranscodeBasis(pKtxTexture, KTX_TTF_BC7_RGBA, 0);
 
-			std::cout << "vk format: " << pKtxTexture->vkFormat << std::endl;
-			std::cout << "width: " << pKtxTexture->baseWidth << std::endl;
-			std::cout << "height: " << pKtxTexture->baseHeight << std::endl;
-			std::cout << "depth: " << pKtxTexture->baseDepth << std::endl;
-			std::cout << "dims: " << pKtxTexture->numDimensions << std::endl;
-			std::cout << "faces: " << pKtxTexture->numFaces << std::endl;
-			std::cout << "layers: " << pKtxTexture->numLayers << std::endl;
-			std::cout << "levels: " << pKtxTexture->numLevels << std::endl;
-			std::cout << "data: " << pKtxTexture->dataSize << std::endl;
-			std::cout << "compressed: " << (pKtxTexture->isCompressed ? "true" : "false") << std::endl;
-			std::cout << "array: " << (pKtxTexture->isArray ? "true" : "false") << std::endl;
-			std::cout << "cubemap: " << (pKtxTexture->isCubemap ? "true" : "false") << std::endl;
-			std::cout << "video: " << (pKtxTexture->isVideo ? "true" : "false") << std::endl;
+			//std::cout << "vk format: " << pKtxTexture->vkFormat << std::endl;
+			//std::cout << "width: " << pKtxTexture->baseWidth << std::endl;
+			//std::cout << "height: " << pKtxTexture->baseHeight << std::endl;
+			//std::cout << "depth: " << pKtxTexture->baseDepth << std::endl;
+			//std::cout << "dims: " << pKtxTexture->numDimensions << std::endl;
+			//std::cout << "faces: " << pKtxTexture->numFaces << std::endl;
+			//std::cout << "layers: " << pKtxTexture->numLayers << std::endl;
+			//std::cout << "levels: " << pKtxTexture->numLevels << std::endl;
+			//std::cout << "data: " << pKtxTexture->dataSize << std::endl;
+			//std::cout << "compressed: " << (pKtxTexture->isCompressed ? "true" : "false") << std::endl;
+			//std::cout << "array: " << (pKtxTexture->isArray ? "true" : "false") << std::endl;
+			//std::cout << "cubemap: " << (pKtxTexture->isCubemap ? "true" : "false") << std::endl;
+			//std::cout << "video: " << (pKtxTexture->isVideo ? "true" : "false") << std::endl;
 
-			pr::Texture2D::Ptr texture = nullptr;
-			if (result == KTX_SUCCESS)
+			auto imgData = ImageData::create(
+				pKtxTexture->baseWidth,
+				pKtxTexture->baseHeight,
+				4, // TODO: get from format
+				1, // TODO: get from format
+				pKtxTexture->numLevels,
+				pKtxTexture->numLayers,
+				pKtxTexture->isCompressed
+			);
+
+			// TODO: add cube map faces
+			for (uint32 level = 0; level < pKtxTexture->numLevels; level++)
 			{
-				GLint internalFormat = 0;
-				GPU::Format format = GPU::Format::RGBA8;
-				if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_UNORM_BLOCK)
-					std::cout << "tex format RGB_S3TC_DXT1" << std::endl;
-				else if (pKtxTexture->vkFormat == VK_FORMAT_BC1_RGB_SRGB_BLOCK)
-					std::cout << "tex format SRGB_S3TC_DXT1" << std::endl;
-				else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_UNORM_BLOCK)
-					format = GPU::Format::BC7_RGBA;
-				else if (pKtxTexture->vkFormat == VK_FORMAT_BC7_SRGB_BLOCK)
-					format = GPU::Format::BC7_SRGB;
+				int w = std::max(pKtxTexture->baseWidth >> level, 1U);
+				int h = std::max(pKtxTexture->baseHeight >> level, 1U);
 
-				texture = pr::Texture2D::create(pKtxTexture->baseWidth, pKtxTexture->baseHeight, format, pKtxTexture->numLevels, GPU::ImageUsage::Sampled);
-				for (uint32 level = 0; level < pKtxTexture->numLevels; level++)
+				for (uint32 layer = 0; layer < pKtxTexture->numLayers; layer++)
 				{
-					int w = std::max(pKtxTexture->baseWidth >> level, 1U);
-					int h = std::max(pKtxTexture->baseHeight >> level, 1U);
-					uint32 imgSize = (uint32)ktxTexture_GetImageSize(ktxTexture(pKtxTexture), level);
 					ktx_size_t offset = 0;
-					ktxTexture_GetImageOffset(ktxTexture(pKtxTexture), level, 0, 0, &offset);
-					ktx_uint8_t* pData = pKtxTexture->pData + offset;
-					texture->upload(pData, imgSize, level);
+					ktxTexture_GetImageOffset(ktxTexture(pKtxTexture), level, layer, 0, &offset);
+					ktx_uint8_t* data = pKtxTexture->pData + offset;
+					uint32 size = (uint32)ktxTexture_GetImageSize(ktxTexture(pKtxTexture), level);
+
+					imgData->setData(data, size, level, layer);
 				}
 			}
 
 			ktxTexture_Destroy(ktxTexture(pKtxTexture));
 
-			return texture;
+			return imgData;
 		}
 #endif
 
-		//pr::Texture2D::Ptr loadTextureFromFile(const std::string& filename, bool useSRGB)
-		//{
-		//	auto img = IO::ImageLoader::loadFromFile(filename);
+		ImageData::Ptr decodeFromMemory(uint8* data, uint32 size, std::string mimeType)
+		{
+			if (mimeType.compare("image/jpeg") == 0)
+				return IO::ImageLoader::decodeJPGFromMemory(data, size);
+			else if (mimeType.compare("image/png") == 0)
+				return IO::ImageLoader::decodePNGFromMemory(data, size);
+#ifdef IMAGE_WEBP
+			else if (mimeType.compare("image/webp") == 0)
+				return IO::ImageLoader::decodeWebPFromMemory(data, size);
+#endif
+#ifdef IMAGE_KTX
+			else if (mimeType.compare("image/ktx2") == 0)
+				return IO::ImageLoader::decodeKTXFromMemory(data, size);
+#endif
+			else
+				std::cout << "error: not supported mime type: " << mimeType << std::endl;
 
-		//	uint32 width = img->getWidth();
-		//	uint32 height = img->getHeight();
-		//	uint32 channels = img->getChannels();
-		//	uint32 elemSize = img->getElementSize();
-		//	uint8* data = img->getRawPtr();
-		//	uint32 dataSize = width * height * channels * elemSize;
-
-		//	GPU::Format format = useSRGB ? GPU::Format::SRGBA8 : GPU::Format::RGBA8;
-		//	return pr::Texture2D::create(width, height, format);
-		//}
+			return nullptr;
+		}
 	}
 }

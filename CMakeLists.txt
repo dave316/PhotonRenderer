@@ -20,10 +20,10 @@ option(LIBS_DRACO_COMPRESSION "Support for draco compressed GLTF meshes" OFF)
 option(LIBS_IMGUI_SUPPORT "Support for imgui" OFF)
 
 # optional image formats
-option(IMAGE_TIFF "Support for TIFF file format" OFF)
 option(IMAGE_EXR "Support for EXR file format" OFF)
-option(IMAGE_WEBP "Support for WebP file format" OFF)
 option(IMAGE_KTX "Support for KTX file format" OFF)
+option(IMAGE_TIFF "Support for TIFF file format" OFF)
+option(IMAGE_WEBP "Support for WebP file format" OFF)
 
 add_subdirectory("src")
 #add_subdirectory("libuimp")

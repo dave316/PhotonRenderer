@@ -1033,42 +1033,20 @@ namespace IO
 			auto gltfTexture = gltf.textures[index];
 			auto gltfImage = gltf.images[gltfTexture.source.value()];
 
-			::ImageData::Ptr img; // TODO: better namespace handling...
-			if (gltfImage.bufferView.has_value())
+			ImageData::Ptr img;
+			if (gltfImage.bufferView.has_value()) // binary data
 			{
-				// TODO: load image from embedded binary
 				uint32 bufferViewIdx = gltfImage.bufferView.value();
 				BufferView& bv = gltf.bufferViews[bufferViewIdx];
 				Buffer& buffer = gltf.buffers[bv.buffer];
+				uint8* dataPtr = (uint8*)&buffers[bv.buffer][bv.byteOffset];
 
-				//std::cout << gltfImage.mimeType << std::endl;
-
-				//std::cout << "loading embedded texture " << gltfImage.name << std::endl;
-				if (gltfImage.mimeType.compare("image/jpeg") == 0)
-					img = IO::ImageLoader::decodeJPGFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
-				else if (gltfImage.mimeType.compare("image/png") == 0)
-					img = IO::ImageLoader::decodePNGFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
-#ifdef IMAGE_WEBP
-				else if (gltfImage.mimeType.compare("image/webp") == 0)
-					img = IO::ImageLoader::decodeWebPFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
-#endif
-#ifdef IMAGE_KTX
-				else if (gltfImage.mimeType.compare("image/ktx2") == 0)
-				{
-					textures[index] = IO::ImageLoader::decodeKTXFromMemory(&buffers[bv.buffer][bv.byteOffset], bv.byteLength);
-					textures[index]->setAddressMode(GPU::AddressMode::Repeat);
-					textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-					return;
-				}
-#endif
-				else
-					std::cout << "error: not supported mime type: " << gltfImage.mimeType << std::endl;
-
+				img = IO::ImageLoader::decodeFromMemory(dataPtr, bv.byteLength, gltfImage.mimeType);
 			}
 			else
 			{
 				std::string uri = gltfImage.uri;
-				if (uri.find(':') != std::string::npos)
+				if (uri.find(':') != std::string::npos) // data uri
 				{
 					int mimeStart = gltfImage.uri.find_last_of(':') + 1;
 					int mimeEnd = gltfImage.uri.find_last_of(';');
@@ -1081,54 +1059,12 @@ namespace IO
 					std::string dataURI = uri.substr(0, sepIndex); // TODO: check if media type is correct etc...
 					std::string dataBase64 = uri.substr(dataStart, dataLen);
 					std::string dataBinary = base64_decode(dataBase64);
-					//std::vector<unsigned char> data;
-					//data.insert(data.end(), dataBinary.begin(), dataBinary.end());
-					//std::cout << "loading embedded texture " << gltfImage.name << std::endl;
-
-					// TODO: other mime types
-					if (mimeType.compare("image/jpeg") == 0)
-						img = IO::ImageLoader::decodeJPGFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-					else if (mimeType.compare("image/png") == 0)
-						img = IO::ImageLoader::decodePNGFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-#ifdef IMAGE_WEBP
-					else if (mimeType.compare("image/webp") == 0)
-						img = IO::ImageLoader::decodeWebPFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-#endif
-#ifdef IMAGE_KTX
-					else if (mimeType.compare("image/ktx2") == 0)
-					{
-						textures[index] = IO::ImageLoader::decodeKTXFromMemory((uint8*)dataBinary.data(), dataBinary.size());
-						textures[index]->setAddressMode(GPU::AddressMode::Repeat);
-						textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-						return;
-					}
-#endif
-					else
-						std::cout << "error: not supported mime type: " << gltfImage.mimeType << std::endl;
-
+					img = IO::ImageLoader::decodeFromMemory((uint8*)dataBinary.data(), dataBinary.size(), mimeType);
 				}
-				else
+				else // file uri
 				{
 					std::string fn = path + "/" + gltfImage.uri;
-
-					auto p = fs::path(fn);
-					auto extension = p.extension().string();
-
-					//std::cout << "loading texture " << fn << std::endl;
-
-#ifdef IMAGE_KTX
-					if (extension.compare(".ktx2") == 0)
-					{
-						textures[index] = IO::ImageLoader::loadKTXFromFile(fn);
-						textures[index]->setAddressMode(GPU::AddressMode::Repeat);
-						textures[index]->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-						return;
-					}
-					else
-#endif
-					{
-						img = IO::ImageLoader::loadFromFile(fn);
-					}				
+					img = IO::ImageLoader::loadFromFile(fn);
 				}
 			}
 
@@ -1138,7 +1074,21 @@ namespace IO
 			uint32 dataSize = width * height * 4;
 
 			GPU::ImageUsage flags = GPU::ImageUsage::TransferSrc | GPU::ImageUsage::TransferDst | GPU::ImageUsage::Sampled;
-			GPU::Format format = useSRGB ? GPU::Format::SRGBA8 : GPU::Format::RGBA8;
+			GPU::Format format = GPU::Format::RGBA8;
+			if (useSRGB)
+			{
+				if (img->isCompressed())
+					format = GPU::Format::BC7_SRGB;
+				else
+					format = GPU::Format::SRGB8;
+			}
+			else
+			{
+				if (img->isCompressed())
+					format = GPU::Format::BC7_RGBA;
+				else
+					format = GPU::Format::RGBA8;
+			}
 			uint32 levels = static_cast<uint32>(std::floor(std::log2(std::max(width, height)))) + 1;
 
 			if (gltfTexture.sampler.has_value())
@@ -1147,12 +1097,26 @@ namespace IO
 				if (sampler.minFilter >= GL_NEAREST_MIPMAP_NEAREST &&
 					sampler.minFilter <= GL_LINEAR_MIPMAP_LINEAR)
 				{
-					// generate mipmaps
 					uint32 levels = static_cast<uint32>(std::floor(std::log2(std::max(width, height)))) + 1;
 					auto texture = pr::Texture2D::create(width, height, format, levels);
-					texture->upload(data, dataSize);
-					texture->generateMipmaps();
 					textures[index] = texture;
+
+					if (img->getLevels() > 1)
+					{
+						// use existing mips
+						for (uint32 l = 0; l < img->getLevels(); l++)
+						{
+							auto mipData = img->getData(l);
+							auto mipSize = img->getSize(l);
+							texture->upload(mipData, mipSize, l);
+						}
+					}
+					else
+					{
+						// generate mipmaps
+						texture->upload(data, dataSize);
+						texture->generateMipmaps();
+					}
 				}
 				else
 				{

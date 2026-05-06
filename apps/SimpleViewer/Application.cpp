@@ -79,10 +79,18 @@ void Application::initScene()
 	////scene->update(0.0f);
 
 	std::string assetPath = "../../../../assets";
-	std::string modelName = "DamagedHelmet";
+	std::string modelName = "AnisotropyBarnLamp";
+	std::string modelVariant = "glTF-KTX-BasisU";
+	bool binary = false;
 	IO::glTF::Importer importer;
 	std::vector<pr::Scene::Ptr> scenes;
-	importer.importModel(assetPath + "/glTF-Sample-Assets/Models/" + modelName + "/glTF/" + modelName + ".gltf", scenes);
+
+	std::string fullpath = assetPath + "/glTF-Sample-Assets/Models/"
+		+ modelName + "/"
+		+ modelVariant + "/"
+		+ modelName + (binary ? ".glb" : ".gltf");
+
+	importer.importModel(fullpath, scenes);
 	//scene->addRoot(root);
 	scene = scenes[0];
 

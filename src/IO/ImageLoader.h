@@ -14,12 +14,10 @@ namespace IO
 {
 	namespace ImageLoader
 	{
+		// functions for loading images from file
 		ImageData::Ptr loadPNGFromFile(const std::string& filename);
 		ImageData::Ptr loadJPGFromFile(const std::string& filename);
 		ImageData::Ptr loadHDRFromFile(const std::string& filename);
-		ImageData::Ptr loadFromFile(const std::string& filename);
-		ImageData::Ptr decodePNGFromMemory(uint8* data, uint32 size);
-		ImageData::Ptr decodeJPGFromMemory(uint8* data, uint32 size);
 #ifdef IMAGE_TIFF
 		ImageData::Ptr loadTIFFFromFile(const std::string& filename);
 #endif
@@ -28,13 +26,19 @@ namespace IO
 #endif
 #ifdef IMAGE_WEBP
 		ImageData::Ptr loadWebPFromFile(const std::string& filename);
+#endif
+		ImageData::Ptr loadFromFile(const std::string& filename);
+
+		// functions for loading images from memory
+		ImageData::Ptr decodePNGFromMemory(uint8* data, uint32 size);
+		ImageData::Ptr decodeJPGFromMemory(uint8* data, uint32 size);
+#ifdef IMAGE_WEBP
 		ImageData::Ptr decodeWebPFromMemory(uint8* data, uint32 size);
-		pr::Texture2D::Ptr decodeKTXFromMemory(uint8* data, uint32 size);
 #endif
 #ifdef IMAGE_KTX
-		pr::Texture2D::Ptr loadKTXFromFile(const std::string& filename);
+		ImageData::Ptr decodeKTXFromMemory(uint8* data, uint32 size);
 #endif
-		//pr::Texture2D::Ptr loadTextureFromFile(const std::string& filename, bool useSRGB);
+		ImageData::Ptr decodeFromMemory(uint8* data, uint32 size, std::string mimeType);
 	}
 }
 
