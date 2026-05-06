@@ -17,7 +17,7 @@ endforeach()
 
 include_directories("../../src")
 include_directories("../../src/3rdParty")
-#include_directories("../../libuimp")
+include_directories("../../libuimp")
 
 add_executable(SimpleViewer ${SRC_LIST})
 target_link_libraries(SimpleViewer PRIVATE libphoton)

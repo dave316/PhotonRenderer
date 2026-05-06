@@ -1080,7 +1080,7 @@ namespace IO
 				if (img->isCompressed())
 					format = GPU::Format::BC7_SRGB;
 				else
-					format = GPU::Format::SRGB8;
+					format = GPU::Format::SRGBA8;
 			}
 			else
 			{

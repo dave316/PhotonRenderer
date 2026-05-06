@@ -79,8 +79,8 @@ void Application::initScene()
 	////scene->update(0.0f);
 
 	std::string assetPath = "../../../../assets";
-	std::string modelName = "AnisotropyBarnLamp";
-	std::string modelVariant = "glTF-KTX-BasisU";
+	std::string modelName = "AlphaBlendModeTest";
+	std::string modelVariant = "glTF";
 	bool binary = false;
 	IO::glTF::Importer importer;
 	std::vector<pr::Scene::Ptr> scenes;
