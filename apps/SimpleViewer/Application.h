@@ -43,10 +43,8 @@ public:
 	~Application();
 	bool init();
 	void initScene();
-	//void initUnitySceneOLD();
 	void initUnitySceneNEW();
 	void setupInput();
-	//void updateGUI();
 	void loop();
 	void shutdown();
 };
