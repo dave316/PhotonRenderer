@@ -26,7 +26,7 @@ option(IMAGE_TIFF "Support for TIFF file format" OFF)
 option(IMAGE_WEBP "Support for WebP file format" OFF)
 
 if (LIBS_UNITY_IMPORTER)
-	add_subdirectory("libuimp")
+	add_subdirectory("libs/libuimp")
 endif()
 add_subdirectory("src")
 

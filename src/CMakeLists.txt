@@ -51,7 +51,7 @@ set(SRC_3RDPARTY_DIR "3rdParty")
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR} ${SRC_3RDPARTY_DIR})
 if (LIBS_UNITY_IMPORTER)
-	include_directories("../libuimp")
+	include_directories("../libs/libuimp")
 endif()
 
 file(GLOB_RECURSE SRC_LIST LIST_DIRECTORIES false 
