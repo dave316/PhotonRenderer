@@ -1,0 +1,3 @@
+[submodule "libs/libuimp"]
+	path = libs/libuimp
+	url = https://github.com/dave316/libuimp.git
