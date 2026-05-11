@@ -17,6 +17,7 @@ endforeach()
 
 include_directories("../../src")
 include_directories("../../src/3rdParty")
+include_directories("../../libs/libuimp")
 
 add_executable(Editor ${SRC_LIST})
 target_link_libraries(Editor PRIVATE libphoton)

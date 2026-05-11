@@ -34,8 +34,8 @@ bool Application::init()
 	renderer = pr::Renderer::create();
 	renderer->init(window, swapchain);
 
-	//initScene();
-	initUnitySceneNEW();
+	initScene();
+	//initUnitySceneNEW();
 
 	renderer->prepare(camera, scene);
 	renderer->buildCmdBuffer(scene, swapchain);
