@@ -1052,7 +1052,7 @@ namespace IO
 					int mimeEnd = gltfImage.uri.find_last_of(';');
 					int mimeLen = mimeEnd - mimeStart;
 					std::string mimeType = gltfImage.uri.substr(mimeStart, mimeLen);
-					//std::cout << "mimeType: " << mimeType << std::endl;
+					
 					int sepIndex = gltfImage.uri.find_last_of(',');
 					int dataStart = sepIndex + 1;
 					int dataLen = gltfImage.uri.length() - dataStart;
