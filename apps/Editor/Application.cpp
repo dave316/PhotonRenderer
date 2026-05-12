@@ -616,7 +616,8 @@ void Application::updateGUI()
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 	ImGui::DockSpaceOverViewport();
-
+	ImGuizmo::BeginFrame();
+	
 	ImVec2 menuBarSize;
 	ImGuiIO& io = ImGui::GetIO();
 
@@ -842,13 +843,13 @@ void Application::updateGUI()
 	ImGui::End();
 
 	static ImGuiWindowFlags gizmoWindowFlags = 0;
-	if (ImGui::Begin("3D View"))
+	if (ImGui::Begin("3D View", 0, gizmoWindowFlags))
 	{
-		// Remove focus from any widget if mouse is over 3D view
-		if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))
-		{
-			ImGui::SetWindowFocus(NULL);
-		}		
+		//// Remove focus from any widget if mouse is over 3D view
+		//if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows))
+		//{
+		//	ImGui::SetWindowFocus(NULL);
+		//}		
 
 		//if (ImGui::IsWindowHovered())
 		//	std::cout << "3D view!" << std::endl;

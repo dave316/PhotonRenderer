@@ -1165,6 +1165,11 @@ pr::Entity::Ptr UnityTestImporter::traverse(Unity::GameObject::Ptr gameObject, p
 			{
 				if (m < unityMesh->subMeshes.size())
 				{
+					constexpr float maxVal = std::numeric_limits<float>::max();
+					constexpr float minVal = -maxVal;
+					auto minPoint = glm::vec3(maxVal);
+					auto maxPoint = glm::vec3(minVal);
+
 					Unity::SubMeshInfo& smInfo = unityMesh->subMeshes[m];
 					TriangleSurface surface;
 					for (int i = 0; i < smInfo.vertexCount; i++)
@@ -1183,12 +1188,18 @@ pr::Entity::Ptr UnityTestImporter::traverse(Unity::GameObject::Ptr gameObject, p
 						if (i < unityMesh->tangents.size())
 							v.tangent = unityMesh->tangents[idx];
 						surface.vertices.push_back(v);
+
+						maxPoint = glm::max(maxPoint, v.position);
+						minPoint = glm::min(minPoint, v.position);
 					}
 					for (int i = 0; i < smInfo.indexCount; i++)
 					{
 						uint32 idx = smInfo.indexStart + i;
 						surface.indices.push_back(unityMesh->triangles[idx] - smInfo.firstVertex);
 					}
+
+					surface.maxPoint = maxPoint;
+					surface.minPoint = minPoint;
 
 					pr::SubMesh s;
 					s.primitive = pr::Primitive::create(name, surface, GPU::Topology::Triangles);
