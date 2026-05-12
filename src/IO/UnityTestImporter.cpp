@@ -1124,6 +1124,7 @@ pr::Entity::Ptr UnityTestImporter::traverse(Unity::GameObject::Ptr gameObject, p
 {
 	auto entity = pr::Entity::create(gameObject->getName(), parent);
 	entity->setActive(gameObject->isActive());
+	entity->setPrefab(gameObject->isPrefab());
 
 	if (gameObject->getComponent<Unity::Transform>())
 	{

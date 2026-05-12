@@ -23,7 +23,7 @@ namespace pr
 		std::vector<std::shared_ptr<Entity>> children;
 		std::map<std::type_index, Component::Ptr> components;
 
-		bool isPrefab = false;
+		bool prefab = false;
 		bool active = true;
 		unsigned int id;
 
@@ -204,6 +204,16 @@ namespace pr
 		bool isActive()
 		{
 			return active;
+		}
+
+		void setPrefab(bool prefab)
+		{
+			this->prefab = prefab;
+		}
+
+		bool isPrefab()
+		{
+			return prefab;
 		}
 
 		typedef std::shared_ptr<Entity> Ptr;

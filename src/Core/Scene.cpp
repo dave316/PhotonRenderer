@@ -494,20 +494,50 @@ namespace pr
 	std::vector<Entity::Ptr> Scene::selectModelsRaycast(glm::vec3 start, glm::vec3 end)
 	{
 		std::map<float, Entity::Ptr> hitEntities;
-		for (auto entity : rootNodes)
+		for (auto root : rootNodes)
 		{
-			if (!entity->isActive())
+			if (!root->isActive())
 				continue;
 
-			for (auto e : entity->getChildrenWithComponent<Renderable>())
+			std::map<int, pr::Entity::Ptr> nodes;
+			root->getAllNodes(nodes);
+
+			for (auto [_, node] : nodes)
 			{
-				if (!e->isActive())
+				if (!node->isActive())
 					continue;
 
-				auto t = e->getComponent<Transform>();
-				auto r = e->getComponent<Renderable>();
+				Box boundingBox;
+				if (node->isPrefab())
+				{
+					auto mainTransform = node->getComponent<pr::Transform>();
+					auto modelMatrix = mainTransform->getTransform();
+					auto renderEntities = node->getChildrenWithComponent<pr::Renderable>();
+					for (auto e : renderEntities)
+					{
+						auto t = e->getComponent<pr::Transform>();
+						auto r = e->getComponent<pr::Renderable>();
+						auto bbox = r->getBoundingBox();
+						auto local2world = t->getTransform();
+						auto minPoint = glm::vec3(local2world * glm::vec4(bbox.getMinPoint(), 1.0f));
+						auto maxPoint = glm::vec3(local2world * glm::vec4(bbox.getMaxPoint(), 1.0f));
+						minPoint = glm::vec3(glm::inverse(modelMatrix) * glm::vec4(minPoint, 1.0f));
+						maxPoint = glm::vec3(glm::inverse(modelMatrix) * glm::vec4(maxPoint, 1.0f));
+						boundingBox.expand(minPoint);
+						boundingBox.expand(maxPoint);
+					}
+				}
+				else if (node->getComponent<Renderable>())
+				{
+					auto r = node->getComponent<Renderable>();
+					boundingBox = r->getBoundingBox();
+				}
+				else
+				{
+					continue; // no prefab or mesh, skip this node
+				}
 
-				auto bbox = r->getBoundingBox();
+				auto t = node->getComponent<pr::Transform>();
 				auto M = t->getTransform();
 				auto M_I = glm::inverse(M);
 				auto startModel = glm::vec3(M_I * glm::vec4(start, 1.0));
@@ -515,11 +545,11 @@ namespace pr
 				auto direction = glm::normalize(endModel - startModel);
 				Ray ray(startModel, direction);
 				glm::vec3 hitPoint;
-				if (Intersection::rayBoxIntersection(ray, bbox, hitPoint))
+				if (Intersection::rayBoxIntersection(ray, boundingBox, hitPoint))
 				{
 					glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
 					float dist = glm::distance(h, start);
-					hitEntities.insert(std::make_pair(dist, e));
+					hitEntities.insert(std::make_pair(dist, node));
 				}
 			}
 		}
@@ -528,15 +558,15 @@ namespace pr
 		for (auto [_, e] : hitEntities)
 			entities.push_back(e);
 
-		if (!entities.empty())
-		{ 
-			// TODO: so this is a hack to get the root node of the hit models
-			Entity::Ptr entity = entities[0];
-			while (entity->getParent() != nullptr)
-				entity = entity->getParent();
-			if (entity->getID() != entities[0]->getID())
-				entities.insert(entities.begin(), entity);
-		}
+		//if (!entities.empty())
+		//{ 
+		//	// TODO: so this is a hack to get the root node of the hit models
+		//	Entity::Ptr entity = entities[0];
+		//	while (entity->getParent() != nullptr)
+		//		entity = entity->getParent();
+		//	if (entity->getID() != entities[0]->getID())
+		//		entities.insert(entities.begin(), entity);
+		//}
 
 		return entities;
 	}
