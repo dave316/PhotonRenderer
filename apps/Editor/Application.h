@@ -58,6 +58,7 @@ public:
 	Application(const char* title, unsigned int width, unsigned int height);
 	~Application();
 	bool init();
+	void initUnitySceneNEW();
 	void addSceneNode(pr::Entity::Ptr entity);
 	void addFileNode(IO::FileNode::Ptr node);
 	void addAssetNode(IO::FileNode::Ptr node);

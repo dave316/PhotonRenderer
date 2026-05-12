@@ -16,6 +16,10 @@ struct UniformProperty
 	float defaultValue;
 };
 
+glm::vec3 sRGBToLinear(glm::vec3 sRGB, float gamma);
+glm::vec4 sRGBAlphaToLinear(glm::vec4 sRGBAlpha, float gamma);
+pr::Material::Ptr getDefaultMaterial();
+
 class UnityTestImporter
 {
 public:

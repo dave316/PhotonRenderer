@@ -1279,39 +1279,39 @@ pr::Scene::Ptr UnityTestImporter::importScene(const std::string& assetPath, cons
 		auto rootEntity = traverse(rootGO, nullptr);
 		scene->addRoot(rootEntity);
 
-		for (auto e : rootEntity->getChildrenWithComponent<pr::Renderable>())
-		{
-			std::string name = e->getName();
-			std::string lod = name.substr(name.length() - 4, 4);
+		//for (auto e : rootEntity->getChildrenWithComponent<pr::Renderable>())
+		//{
+		//	std::string name = e->getName();
+		//	std::string lod = name.substr(name.length() - 4, 4);
 
-			if (lod.compare("LOD1") == 0 ||
-				lod.compare("LOD2") == 0)
-				e->setActive(false);
-		}
+		//	if (lod.compare("LOD1") == 0 ||
+		//		lod.compare("LOD2") == 0)
+		//		e->setActive(false);
+		//}
 	}
 
 	loadLightMaps(scene);
 	loadDirectionMaps(scene);
 	getLightProbes(scene);
 
-	auto unitySkyboxMat = unityScene->getSkyboxMaterial();
-	float rotation = unitySkyboxMat->getValue<float>("_Rotation");
-	auto texProp = unitySkyboxMat->getTexture("_Tex");
-	auto texGuid = texProp->getGUID();
-	auto texMetadata = importer.getMetadata(texGuid);
-	std::string envFn = texMetadata.filepath;
+	//auto unitySkyboxMat = unityScene->getSkyboxMaterial();
+	//float rotation = unitySkyboxMat->getValue<float>("_Rotation");
+	//auto texProp = unitySkyboxMat->getTexture("_Tex");
+	//auto texGuid = texProp->getGUID();
+	//auto texMetadata = importer.getMetadata(texGuid);
+	//std::string envFn = texMetadata.filepath;
 
-	auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
-	uint32 width = panoImg->getWidth();
-	uint32 height = panoImg->getHeight();
-	uint8* data = panoImg->getData();
-	uint32 dataSize = width * height * sizeof(float) * 4;
-	auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
-	panoTex->upload(data, dataSize);
-	//panoTex->createData();
-	//panoTex->uploadData();
-	auto skybox = IBL::convertEqui2CM(panoTex, 1024, rotation);
-	scene->setSkybox(skybox);
+	//auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
+	//uint32 width = panoImg->getWidth();
+	//uint32 height = panoImg->getHeight();
+	//uint8* data = panoImg->getData();
+	//uint32 dataSize = width * height * sizeof(float) * 4;
+	//auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
+	//panoTex->upload(data, dataSize);
+	////panoTex->createData();
+	////panoTex->uploadData();
+	//auto skybox = IBL::convertEqui2CM(panoTex, 1024, rotation);
+	//scene->setSkybox(skybox);
 
 	return scene;
 }

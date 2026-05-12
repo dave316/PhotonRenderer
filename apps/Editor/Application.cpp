@@ -13,6 +13,7 @@
 #include <tchar.h>
 
 #include <IO/SceneLoader.h>
+#include <IO/UnityTestImporter.h>
 
 using namespace std::chrono;
 using namespace std::placeholders;
@@ -23,10 +24,10 @@ glm::vec3 linearToSRGB(glm::vec3 linearRGB, float gamma)
 	return glm::pow(linearRGB, glm::vec3(1.0f / gamma));
 }
 
-glm::vec3 sRGBToLinear(glm::vec3 sRGB, float gamma)
-{
-	return glm::pow(sRGB, glm::vec3(gamma));
-}
+//glm::vec3 sRGBToLinear(glm::vec3 sRGB, float gamma)
+//{
+//	return glm::pow(sRGB, glm::vec3(gamma));
+//}
 
 glm::vec4 linearToSRGBAlpha(glm::vec4 linearRGBA, float gamma)
 {
@@ -36,13 +37,13 @@ glm::vec4 linearToSRGBAlpha(glm::vec4 linearRGBA, float gamma)
 	return glm::vec4(sRGB, alpha);
 }
 
-glm::vec4 sRGBAlphaToLinear(glm::vec4 sRGBAlpha, float gamma)
-{
-	glm::vec3 sRGB = glm::vec3(sRGBAlpha);
-	float alpha = sRGBAlpha.a;
-	glm::vec3 linearRGB = sRGBToLinear(sRGB, gamma);
-	return glm::vec4(linearRGB, alpha);
-}
+//glm::vec4 sRGBAlphaToLinear(glm::vec4 sRGBAlpha, float gamma)
+//{
+//	glm::vec3 sRGB = glm::vec3(sRGBAlpha);
+//	float alpha = sRGBAlpha.a;
+//	glm::vec3 linearRGB = sRGBToLinear(sRGB, gamma);
+//	return glm::vec4(linearRGB, alpha);
+//}
 
 glm::vec3 convertTemp2RGB(int tempInKelvin)
 {
@@ -99,23 +100,25 @@ bool Application::init()
 	gui->prepare(renderer->getDescriptorPool(), 2);
 	gui->preparePipeline(swapchain);
 	gui->addTexture(1, renderer->getFinalTex());
+		
+	//assetPath = "../../../../assets";
+	//scenes.push_back(pr::Scene::create("Scene"));
 
-	assetPath = "../../../../assets";
-	scenes.push_back(pr::Scene::create("Scene"));
+	//std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
+	//auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
+	//uint32 width = panoImg->getWidth();
+	//uint32 height = panoImg->getHeight();
+	//uint8* data = panoImg->getData();
+	//uint32 dataSize = width * height * sizeof(float) * 4;
+	//auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
+	////panoTex->createData();
+	//panoTex->upload(data, dataSize);
+	////panoTex->uploadData();
+	//auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
 
-	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
-	auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
-	uint32 width = panoImg->getWidth();
-	uint32 height = panoImg->getHeight();
-	uint8* data = panoImg->getData();
-	uint32 dataSize = width * height * sizeof(float) * 4;
-	auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
-	//panoTex->createData();
-	panoTex->upload(data, dataSize);
-	//panoTex->uploadData();
-	auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
+	//scenes[0]->setSkybox(skybox);
 
-	scenes[0]->setSkybox(skybox);
+	initUnitySceneNEW();
 
 	renderer->prepare(userCamera, scenes[sceneIndex]);
 	renderer->buildCmdBuffer(scenes[sceneIndex]);
@@ -131,6 +134,81 @@ bool Application::init()
 	setupInput();
 
 	return true;
+}
+
+void Application::initUnitySceneNEW()
+{
+	pr::Light::lightForward = glm::vec3(0, 0, 1);
+
+	std::string unityAssetPath = "C:/workspace/code/Archviz/Assets";
+	std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
+	std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
+
+	//std::string unityAssetPath = "C:/workspace/code/VikingVillage/Assets";
+	//std::string unityPrefabPath = unityAssetPath + "/Viking Village/Prefabs";
+	//std::string unitySceneFile = "Viking Village/Scenes/The_Viking_Village.unity";
+
+	UnityTestImporter importer;
+	auto scene = importer.importScene(unityAssetPath, unitySceneFile);
+	scene->checkWindingOrder();
+
+	//UnityTestImporter importer;
+	//auto root = importer.importPrefab(unityAssetPath, "/Viking Village/Prefabs/Buildings/pf_build_blacksmith_01.prefab");
+	//for (auto r : root->getComponentsInChildren<pr::Renderable>())
+	//	r->setDiffuseMode(0);
+	//scene = pr::Scene::create("scene");
+	//scene->addRoot(root);
+
+	for (auto entity : scene->getRootNodes())
+	{
+		auto name = entity->getName();
+		auto models = entity->getChildrenWithComponent<pr::Renderable>();
+		for (auto m : models)
+		{
+			auto r = m->getComponent<pr::Renderable>();
+			if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
+			{
+				r->setType(pr::RenderType::Opaque);
+				r->setPriority(1);
+			}
+			if (name.compare("3D HOUSE") == 0)
+			{
+				auto modelName = m->getName();
+				if (modelName.length() == 16)
+				{
+					auto prefix = m->getName().substr(0, 14);
+					if (prefix.compare("Glass_Exterior") == 0)
+					{
+						r->setType(pr::RenderType::Opaque);
+						r->setPriority(2);
+					}
+				}
+				else if (modelName.length() == 23)
+				{
+					auto prefix = modelName.substr(0, 21);
+					if (prefix.compare("Window_Glass_Interior") == 0)
+					{
+						r->setType(pr::RenderType::Opaque);
+						r->setPriority(2);
+					}
+				}
+			}
+		}
+	}
+
+	std::string assetPath = "../../../../assets";
+	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
+	auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
+	uint32 width = panoImg->getWidth();
+	uint32 height = panoImg->getHeight();
+	uint8* data = panoImg->getData();
+	uint32 dataSize = width * height * sizeof(float) * 4;
+	auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
+	panoTex->upload(data, dataSize);
+	auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
+	scene->setSkybox(skybox);
+
+	scenes.push_back(scene);
 }
 
 void Application::addSceneNode(pr::Entity::Ptr entity)
@@ -508,30 +586,30 @@ void Application::selectModel()
 	}
 }
 
-pr::Material::Ptr getDefaultMaterial()
-{
-	auto mat = pr::Material::create("Default", "Default");
-	mat->addProperty("baseColor", glm::vec4(1));
-	mat->addProperty("emissive", glm::vec4(0));
-	mat->addProperty("roughness", 1.0f);
-	mat->addProperty("metallic", 0.0f);
-	mat->addProperty("occlusion", 1.0f);
-	mat->addProperty("normalScale", 1.0f);
-	mat->addProperty("alphaMode", 0);
-	mat->addProperty("alphaCutOff", 0.5f);
-	mat->addProperty("computeFlatNormals", false);
-	mat->addProperty("ior", 1.5f);
-	std::vector<std::string> texNames = {
-		"baseColorTex", 
-		"normalTex", 
-		"metalRoughTex", 
-		"emissiveTex", 
-		"occlusionTex"
-	};
-	for (int i = 0; i < texNames.size(); i++)
-		mat->addTexture(texNames[i], nullptr);
-	return mat;
-}
+//pr::Material::Ptr getDefaultMaterial()
+//{
+//	auto mat = pr::Material::create("Default", "Default");
+//	mat->addProperty("baseColor", glm::vec4(1));
+//	mat->addProperty("emissive", glm::vec4(0));
+//	mat->addProperty("roughness", 1.0f);
+//	mat->addProperty("metallic", 0.0f);
+//	mat->addProperty("occlusion", 1.0f);
+//	mat->addProperty("normalScale", 1.0f);
+//	mat->addProperty("alphaMode", 0);
+//	mat->addProperty("alphaCutOff", 0.5f);
+//	mat->addProperty("computeFlatNormals", false);
+//	mat->addProperty("ior", 1.5f);
+//	std::vector<std::string> texNames = {
+//		"baseColorTex", 
+//		"normalTex", 
+//		"metalRoughTex", 
+//		"emissiveTex", 
+//		"occlusionTex"
+//	};
+//	for (int i = 0; i < texNames.size(); i++)
+//		mat->addTexture(texNames[i], nullptr);
+//	return mat;
+//}
 
 void Application::updateGUI()
 {
