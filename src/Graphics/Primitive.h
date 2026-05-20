@@ -55,27 +55,27 @@ struct Sphere
 	}
 };
 
-class Box
-{
-private:
-	glm::vec3 minPoint;
-	glm::vec3 maxPoint;
-
-public:
-	Box();
-	Box(glm::vec3& minPoint, glm::vec3& maxPoint);
-
-	glm::vec3 getMinPoint() const;
-	glm::vec3 getMaxPoint() const;
-	void expand(const glm::vec3& point);
-	void expand(const Box& box);
-	float radius();
-	float volume();
-	bool isInside(const glm::vec3& point);
-	glm::vec3 getCenter();
-	glm::vec3 getSize();
-	std::vector<glm::vec3> getPoints();
-};
+//class Box
+//{
+//private:
+//	glm::vec3 minPoint;
+//	glm::vec3 maxPoint;
+//
+//public:
+//	Box();
+//	Box(glm::vec3& minPoint, glm::vec3& maxPoint);
+//
+//	glm::vec3 getMinPoint() const;
+//	glm::vec3 getMaxPoint() const;
+//	void expand(const glm::vec3& point);
+//	void expand(const Box& box);
+//	float radius();
+//	float volume();
+//	bool isInside(const glm::vec3& point);
+//	glm::vec3 getCenter();
+//	glm::vec3 getSize();
+//	std::vector<glm::vec3> getPoints();
+//};
 
 struct TriangleSurface
 {

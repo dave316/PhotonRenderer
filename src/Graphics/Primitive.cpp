@@ -2,89 +2,89 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/constants.hpp>
 
-Box::Box()
-{
-	constexpr float maxVal = std::numeric_limits<float>::max();
-	constexpr float minVal = -maxVal;
-
-	minPoint = glm::vec3(maxVal);
-	maxPoint = glm::vec3(minVal);
-}
-
-Box::Box(glm::vec3& minPoint, glm::vec3& maxPoint) :
-	minPoint(minPoint),
-	maxPoint(maxPoint)
-{
-
-}
-
-glm::vec3 Box::getMinPoint() const
-{
-	return minPoint;
-}
-
-glm::vec3 Box::getMaxPoint() const
-{
-	return maxPoint;
-}
-
-void Box::expand(const glm::vec3& point)
-{
-	maxPoint = glm::max(maxPoint, point);
-	minPoint = glm::min(minPoint, point);
-}
-
-void Box::expand(const Box& box)
-{
-	expand(box.getMinPoint());
-	expand(box.getMaxPoint());
-}
-
-float Box::radius()
-{
-	glm::vec3 diff = maxPoint - minPoint;
-	return glm::sqrt(glm::dot(diff, diff) * 0.25f);
-}
-
-float Box::volume()
-{
-	glm::vec3 size = getSize();
-	return size.x * size.y * size.z;
-}
-
-bool Box::isInside(const glm::vec3& point)
-{
-	return(point.x > minPoint.x &&
-		point.y > minPoint.y &&
-		point.z > minPoint.z &&
-		point.x < maxPoint.x &&
-		point.y < maxPoint.y &&
-		point.z < maxPoint.z);
-}
-
-glm::vec3 Box::getCenter()
-{
-	return (maxPoint + minPoint) / 2.0f;
-}
-
-glm::vec3 Box::getSize()
-{
-	return (maxPoint - minPoint);
-}
-
-std::vector<glm::vec3> Box::getPoints()
-{
-	std::vector<glm::vec3> points;
-	points.push_back(minPoint);
-	points.push_back(glm::vec3(maxPoint.x, minPoint.y, minPoint.z));
-	points.push_back(glm::vec3(maxPoint.x, minPoint.y, maxPoint.z));
-	points.push_back(glm::vec3(minPoint.x, minPoint.y, maxPoint.z));
-	points.push_back(glm::vec3(minPoint.x, maxPoint.y, minPoint.z));
-	points.push_back(glm::vec3(maxPoint.x, maxPoint.y, minPoint.z));
-	points.push_back(maxPoint);
-	points.push_back(glm::vec3(minPoint.x, maxPoint.y, maxPoint.z));
-	return points;
-}
+//Box::Box()
+//{
+//	constexpr float maxVal = std::numeric_limits<float>::max();
+//	constexpr float minVal = -maxVal;
+//
+//	minPoint = glm::vec3(maxVal);
+//	maxPoint = glm::vec3(minVal);
+//}
+//
+//Box::Box(glm::vec3& minPoint, glm::vec3& maxPoint) :
+//	minPoint(minPoint),
+//	maxPoint(maxPoint)
+//{
+//
+//}
+//
+//glm::vec3 Box::getMinPoint() const
+//{
+//	return minPoint;
+//}
+//
+//glm::vec3 Box::getMaxPoint() const
+//{
+//	return maxPoint;
+//}
+//
+//void Box::expand(const glm::vec3& point)
+//{
+//	maxPoint = glm::max(maxPoint, point);
+//	minPoint = glm::min(minPoint, point);
+//}
+//
+//void Box::expand(const Box& box)
+//{
+//	expand(box.getMinPoint());
+//	expand(box.getMaxPoint());
+//}
+//
+//float Box::radius()
+//{
+//	glm::vec3 diff = maxPoint - minPoint;
+//	return glm::sqrt(glm::dot(diff, diff) * 0.25f);
+//}
+//
+//float Box::volume()
+//{
+//	glm::vec3 size = getSize();
+//	return size.x * size.y * size.z;
+//}
+//
+//bool Box::isInside(const glm::vec3& point)
+//{
+//	return(point.x > minPoint.x &&
+//		point.y > minPoint.y &&
+//		point.z > minPoint.z &&
+//		point.x < maxPoint.x &&
+//		point.y < maxPoint.y &&
+//		point.z < maxPoint.z);
+//}
+//
+//glm::vec3 Box::getCenter()
+//{
+//	return (maxPoint + minPoint) / 2.0f;
+//}
+//
+//glm::vec3 Box::getSize()
+//{
+//	return (maxPoint - minPoint);
+//}
+//
+//std::vector<glm::vec3> Box::getPoints()
+//{
+//	std::vector<glm::vec3> points;
+//	points.push_back(minPoint);
+//	points.push_back(glm::vec3(maxPoint.x, minPoint.y, minPoint.z));
+//	points.push_back(glm::vec3(maxPoint.x, minPoint.y, maxPoint.z));
+//	points.push_back(glm::vec3(minPoint.x, minPoint.y, maxPoint.z));
+//	points.push_back(glm::vec3(minPoint.x, maxPoint.y, minPoint.z));
+//	points.push_back(glm::vec3(maxPoint.x, maxPoint.y, minPoint.z));
+//	points.push_back(maxPoint);
+//	points.push_back(glm::vec3(minPoint.x, maxPoint.y, maxPoint.z));
+//	return points;
+//}
 
 
 glm::vec3 calcNormal(glm::vec3& v0, glm::vec3& v1, glm::vec3& v2)
