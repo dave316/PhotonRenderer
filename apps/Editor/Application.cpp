@@ -11,7 +11,7 @@
 #include <imgui_stdlib.h>
 #include <algorithm>
 #include <tchar.h>
-
+#include <glm/glm.hpp>
 #include <IO/SceneLoader.h>
 #include <IO/UnityTestImporter.h>
 
@@ -909,7 +909,7 @@ void Application::updateGUI()
 				if (gizmoOp == ImGuizmo::TRANSLATE)
 				{
 					auto renderEntities = selectedModel->getChildrenWithComponent<pr::Renderable>();
-					Box selectedBox;
+					AABB selectedBox;
 					for (auto e : renderEntities)
 					{
 						auto t = e->getComponent<pr::Transform>();
