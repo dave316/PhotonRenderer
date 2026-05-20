@@ -1,5 +1,16 @@
 #include "Geometry.h"
 
+Ray::Ray(glm::vec3 origin, glm::vec3 direction) :
+	origin(origin), direction(direction)
+{
+
+}
+
+glm::vec3 Ray::march(float t)
+{
+	return origin + t * direction;
+}
+
 AABB::AABB()
 {
 	float maxVal = std::numeric_limits<float>::max();
@@ -61,14 +72,28 @@ float AABB::radius()
 	return glm::sqrt(glm::dot(diff, diff) * 0.25f);
 }
 
-Sphere::Sphere() :
-	position(0),
-	radius(1)
+//Sphere::Sphere() :
+//	position(0),
+//	radius(1)
+//{
+//}
+//
+//Sphere::Sphere(glm::vec3& position, float radius)
+//{
+//	this->position = position;
+//	this->radius = radius;
+//}
+
+Sphere::Sphere(glm::vec3 position, float radius) :
+	position(position), radius(radius)
+{}
+
+float Sphere::area()
 {
+	return 0;
 }
 
-Sphere::Sphere(glm::vec3& position, float radius)
+float Sphere::volume()
 {
-	this->position = position;
-	this->radius = radius;
+	return 0;
 }

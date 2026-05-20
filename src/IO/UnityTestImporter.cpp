@@ -1240,7 +1240,7 @@ pr::Entity::Ptr UnityTestImporter::traverse(Unity::GameObject::Ptr gameObject, p
 
 		glm::vec3 boxMin = boxOffset - boxSize * 0.5f;
 		glm::vec3 boxMax = boxOffset + boxSize * 0.5f;
-		Box box(boxMin, boxMax);
+		AABB box(boxMin, boxMax);
 
 		std::string fn = rp->getSourceFile();
 		std::cout << "loading reflection probe " << fn << std::endl;

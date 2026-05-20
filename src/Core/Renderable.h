@@ -41,7 +41,7 @@ namespace pr
 		bool isEnabled() { return enabled; }
 		void setCurrentWeights(std::vector<float> weights);
 		pr::Skin::Ptr getSkin();
-		Box getBoundingBox();
+		AABB getBoundingBox();
 		pr::Mesh::Ptr getMesh();
 		uint32 getNumPrimitives();
 		uint32 getNumVariants();

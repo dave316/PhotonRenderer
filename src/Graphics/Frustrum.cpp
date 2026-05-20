@@ -1,5 +1,5 @@
 #include "Frustrum.h"
-
+#include <Graphics/GraphicsContext.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace Math
@@ -15,7 +15,7 @@ namespace Math
 		return glm::dot(normal, p) - distance;
 	}
 
-	bool Plane::isInside(Box& bbox)
+	bool Plane::isInside(AABB& bbox)
 	{
 		glm::vec3 maxPoint = bbox.getMaxPoint();
 		glm::vec3 center = bbox.getCenter();
@@ -50,7 +50,7 @@ namespace Math
 		bottom = Plane(p, glm::cross(frontMultFar + u * halfVSide, r));
 	}
 
-	bool Frustrum::isInside(Box& bbox, glm::mat4 localToWorld)
+	bool Frustrum::isInside(AABB& bbox, glm::mat4 localToWorld)
 	{
 		glm::vec3 maxPoint = bbox.getMaxPoint();
 		glm::vec3 center = bbox.getCenter();
@@ -72,7 +72,7 @@ namespace Math
 		glm::vec3 worldExtents = glm::vec3(i, j, k);
 		glm::vec3 minP = worldCenter - worldExtents;
 		glm::vec3 maxP = worldCenter + worldExtents;
-		Box worldBox(minP, maxP);
+		AABB worldBox(minP, maxP);
 
 		return nearP.isInside(worldBox) && farP.isInside(worldBox) &&
 				right.isInside(worldBox) && left.isInside(worldBox) &&

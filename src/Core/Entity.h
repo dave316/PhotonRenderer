@@ -5,6 +5,7 @@
 
 #include "Component.h"
 #include "Transform.h"
+#include <Platform/Types.h>
 
 #include <map>
 #include <string>

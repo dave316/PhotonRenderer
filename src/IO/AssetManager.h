@@ -4,6 +4,7 @@
 #pragma once
 
 #include <Core/Entity.h>
+#include <Core/Renderable.h>
 #include <filesystem>
 #include <thread>
 

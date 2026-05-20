@@ -11,8 +11,8 @@ namespace Intersections
 {
 	inline static bool rayBoxIntersection(Ray& ray, const AABB& box, glm::vec3& hitPoint)
 	{
-		glm::vec3 bMin = (box.getMinPoint() - ray.origin) * ray.dirInv;
-		glm::vec3 bMax = (box.getMaxPoint() - ray.origin) * ray.dirInv;
+		glm::vec3 bMin = (box.getMinPoint() - ray.origin) / ray.direction;
+		glm::vec3 bMax = (box.getMaxPoint() - ray.origin) / ray.direction;
 		glm::vec3 mMin = glm::min(bMin, bMax);
 		glm::vec3 mMax = glm::max(bMin, bMax);
 		float tmin = glm::max(glm::max(mMin.x, mMin.y), mMin.z);
@@ -62,7 +62,29 @@ namespace Intersections
 		return false;
 	}
 
-	inline static bool raySphereIntersection(Ray& ray, Sphere& sphere, float& t)
+	//inline static bool raySphereIntersection(Ray& ray, Sphere& sphere, float& t)
+	//{
+	//	glm::vec3 v = ray.origin - sphere.position;
+	//	float a = glm::dot(v, ray.direction);
+	//	float b = glm::dot(v, v) - sphere.radius * sphere.radius;
+	//	if (a > 0.0f && b > 0.0f)
+	//		return false;
+
+	//	float d = a * a - b;
+	//	if (d < 0.0f)
+	//		return false;
+
+	//	t = -a - glm::sqrt(d);
+	//	//if (t < 0.0f)
+	//	//	t = 0.0f;
+	//	
+	//	//hitPoint = ray.origin + t * ray.direction;
+	//	//hitNormal = glm::normalize(hitPoint - sphere.position);
+
+	//	return true;
+	//}
+
+	inline static bool raySphereIntersection(Ray& ray, const Sphere& sphere, glm::vec3& hitpoint)
 	{
 		glm::vec3 v = ray.origin - sphere.position;
 		float a = glm::dot(v, ray.direction);
@@ -74,13 +96,11 @@ namespace Intersections
 		if (d < 0.0f)
 			return false;
 
-		t = -a - glm::sqrt(d);
-		//if (t < 0.0f)
-		//	t = 0.0f;
-		
-		//hitPoint = ray.origin + t * ray.direction;
-		//hitNormal = glm::normalize(hitPoint - sphere.position);
+		float t = -a - glm::sqrt(d);
+		if (t < 0.0f)
+			t = 0.0f;
 
+		hitpoint = ray.origin + t * ray.direction;
 		return true;
 	}
 

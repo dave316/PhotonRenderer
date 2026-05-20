@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Material.h"
+#include <Math/Geometry.h>
 
 struct Vertex
 {
@@ -17,43 +18,43 @@ struct Vertex
 	glm::vec4 weights = glm::vec4(0);
 };
 
-struct Ray
-{
-	glm::vec3 origin;
-	glm::vec3 direction;
+//struct Ray
+//{
+//	glm::vec3 origin;
+//	glm::vec3 direction;
+//
+//	Ray(glm::vec3 origin, glm::vec3 direction) :
+//		origin(origin), direction(direction)
+//	{
+//
+//	}
+//
+//	glm::vec3 Ray::march(float t)
+//	{
+//		return origin + t * direction;
+//	}
+//};
 
-	Ray(glm::vec3 origin, glm::vec3 direction) :
-		origin(origin), direction(direction)
-	{
-
-	}
-
-	glm::vec3 Ray::march(float t)
-	{
-		return origin + t * direction;
-	}
-};
-
-struct Sphere
-{
-	glm::vec3 position;
-	float radius;
-
-	Sphere(glm::vec3 position = glm::vec3(0), float radius = 1.0f) :
-		position(position), radius(radius)
-	{
-	}
-
-	float area()
-	{
-		return 0;
-	}
-
-	float volume()
-	{
-		return 0;
-	}
-};
+//struct Sphere
+//{
+//	glm::vec3 position;
+//	float radius;
+//
+//	Sphere(glm::vec3 position = glm::vec3(0), float radius = 1.0f) :
+//		position(position), radius(radius)
+//	{
+//	}
+//
+//	float area()
+//	{
+//		return 0;
+//	}
+//
+//	float volume()
+//	{
+//		return 0;
+//	}
+//};
 
 //class Box
 //{
@@ -213,7 +214,7 @@ namespace pr
 		void setMorphTarget(pr::Texture2DArray::Ptr tex);
 		void bind(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
 		TriangleSurface getSurface();
-		Box getBoundingBox();
+		AABB getBoundingBox();
 		uint32 getVertexCount() {
 			return vertexCount;
 		}
@@ -254,7 +255,7 @@ namespace pr
 		uint32 indexCount = 0;
 		//uint32 topology = 4; // GL_TRIANGLES
 		TriangleSurface surface;
-		Box boundingBox;
+		AABB boundingBox;
 	};
 }
 

@@ -114,9 +114,9 @@ namespace pr
 		return variants;
 	}
 
-	Box Mesh::getBoundingBox()
+	AABB Mesh::getBoundingBox()
 	{
-		Box boundingBox;
+		AABB boundingBox;
 		for (auto subMesh : subMeshes)
 			boundingBox.expand(subMesh.primitive->getBoundingBox());
 		return boundingBox;

@@ -292,14 +292,14 @@ namespace pr
 		vertexCount = static_cast<uint32>(surface.vertices.size());
 		indexCount = static_cast<uint32>(surface.indices.size());
 		
-		boundingBox = Box(surface.minPoint, surface.maxPoint);
+		boundingBox = AABB(surface.minPoint, surface.maxPoint);
 	}
 
 	void Primitive::preTransform(const glm::mat4& T)
 	{
 		glm::mat3 N = glm::mat3(glm::inverseTranspose(T));
 
-		boundingBox = Box();
+		boundingBox = AABB();
 		for (auto& v : surface.vertices)
 		{
 			v.position = glm::vec3(T * glm::vec4(v.position, 1.0f));
@@ -355,7 +355,7 @@ namespace pr
 		return surface;
 	}
 
-	Box Primitive::getBoundingBox()
+	AABB Primitive::getBoundingBox()
 	{
 		return boundingBox;
 	}

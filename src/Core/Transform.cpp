@@ -80,7 +80,7 @@ namespace pr
 		updateLocalTransform();
 	}
 
-	void Transform::setBounds(Box& aabb)
+	void Transform::setBounds(AABB& aabb)
 	{
 		boundingBox = aabb;
 	}
@@ -130,7 +130,7 @@ namespace pr
 		return scale;
 	}
 
-	Box Transform::getBounds()
+	AABB Transform::getBounds()
 	{
 		return boundingBox;
 	}

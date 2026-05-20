@@ -38,7 +38,7 @@ namespace pr
 		bool isTransmissive();
 		std::vector<float> getWeights();
 		std::vector<std::string> getVariants();
-		Box getBoundingBox();
+		AABB getBoundingBox();
 		uint32 numPrimitives();
 		uint32 getNumVariants();
 		void switchVariant(uint32 index);

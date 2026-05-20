@@ -2,7 +2,7 @@
 
 #include <Core/Animator.h>
 #include <Core/Renderable.h>
-#include <Graphics/Intersection.h>
+#include <Math/Intersection.h>
 #include <set>
 
 #include <glm/gtc/matrix_inverse.hpp>
@@ -214,7 +214,7 @@ namespace pr
 						else
 						{
 							auto M = e->getComponent<Transform>()->getTransform();
-							Box meshbox;
+							AABB meshbox;
 							for (auto s : mesh->getSubMeshes())
 							{
 								auto surf = s.primitive->getSurface();
@@ -315,7 +315,7 @@ namespace pr
 			//auto meshBox = r->getBoundingBox();
 			auto M = t->getTransform();
 			auto mesh = r->getMesh();
-			Box meshbox;
+			AABB meshbox;
 			for (auto s : mesh->getSubMeshes())
 			{
 				auto surf = s.primitive->getSurface();
@@ -467,9 +467,9 @@ namespace pr
 		}
 	}
 
-	Box Scene::getBoundingBox()
+	AABB Scene::getBoundingBox()
 	{
-		Box sceneBox;
+		AABB sceneBox;
 
 		//auto rootNodes = scene->getRootNodes();
 		for (auto root : rootNodes)
@@ -479,7 +479,7 @@ namespace pr
 				auto t = e->getComponent<Transform>();
 				auto r = e->getComponent<Renderable>();
 
-				Box bbox = r->getBoundingBox();
+				AABB bbox = r->getBoundingBox();
 				glm::mat4 M = t->getTransform();
 				glm::vec3 minPoint = glm::vec3(M * glm::vec4(bbox.getMinPoint(), 1.0f));
 				glm::vec3 maxPoint = glm::vec3(M * glm::vec4(bbox.getMaxPoint(), 1.0f));
@@ -507,7 +507,7 @@ namespace pr
 				if (!node->isActive())
 					continue;
 
-				Box boundingBox;
+				AABB boundingBox;
 				if (node->isPrefab())
 				{
 					auto mainTransform = node->getComponent<pr::Transform>();
@@ -545,7 +545,7 @@ namespace pr
 				auto direction = glm::normalize(endModel - startModel);
 				Ray ray(startModel, direction);
 				glm::vec3 hitPoint;
-				if (Intersection::rayBoxIntersection(ray, boundingBox, hitPoint))
+				if (Intersections::rayBoxIntersection(ray, boundingBox, hitPoint))
 				{
 					glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
 					float dist = glm::distance(h, start);

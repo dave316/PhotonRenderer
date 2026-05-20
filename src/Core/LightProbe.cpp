@@ -2,7 +2,7 @@
 
 namespace pr
 {
-	LightProbe::LightProbe(TextureCubeMap::Ptr cubeMap, Box boundingBox) :
+	LightProbe::LightProbe(TextureCubeMap::Ptr cubeMap, AABB boundingBox) :
 		cubeMap(cubeMap),
 		boundingBox(boundingBox)
 	{
@@ -26,7 +26,7 @@ namespace pr
 	//	return cubeMap->getFaceSize();
 	//}
 
-	Box LightProbe::getboundingBox()
+	AABB LightProbe::getboundingBox()
 	{
 		return boundingBox;
 	}

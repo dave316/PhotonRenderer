@@ -177,7 +177,7 @@ namespace pr
 		return skin;
 	}
 
-	Box Renderable::getBoundingBox()
+	AABB Renderable::getBoundingBox()
 	{
 		return mesh->getBoundingBox();
 	}

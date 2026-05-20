@@ -4,7 +4,8 @@
 #pragma once
 
 #include <Graphics/FPSCamera.h>
-#include <Graphics/Primitive.h>
+//#include <Graphics/Primitive.h>
+#include <Math/Geometry.h>
 
 namespace Math
 {
@@ -15,7 +16,7 @@ namespace Math
 
 		Plane(glm::vec3 p = glm::vec3(0), glm::vec3 n = glm::vec3(0, 0, 1));
 		float getSignedDistance(glm::vec3 p);
-		bool isInside(Box& box);
+		bool isInside(AABB& box);
 	};
 
 	struct Frustrum
@@ -28,7 +29,7 @@ namespace Math
 		Plane bottom;
 
 		Frustrum(FPSCamera& camera);
-		bool isInside(Box& bbox, glm::mat4 localToWorld);
+		bool isInside(AABB& bbox, glm::mat4 localToWorld);
 	};
 
 	// TODO: integrate in Frustrum class

@@ -4,7 +4,8 @@
 #pragma once
 
 #include "Component.h"
-#include <Graphics/Primitive.h>
+#include <Math/Geometry.h>
+//#include <Graphics/Primitive.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -40,7 +41,7 @@ namespace pr
 		glm::mat4 transform;
 		glm::mat3 normalTransform;
 
-		Box boundingBox;
+		AABB boundingBox;
 
 	public:
 		Transform();
@@ -53,7 +54,7 @@ namespace pr
 		void update(glm::mat4 parentTransform);
 		void translate(glm::vec3 t);
 		void rotate(float angle, glm::vec3 axis);
-		void setBounds(Box& aabb);
+		void setBounds(AABB& aabb);
 
 		glm::vec3 getLocalPosition();
 		glm::quat getLocalRotation();
@@ -64,7 +65,7 @@ namespace pr
 		glm::vec3 getScale();
 		glm::mat4 getTransform();
 		glm::mat3 getNormalMatrix();
-		Box getBounds();
+		AABB getBounds();
 	};
 }
 

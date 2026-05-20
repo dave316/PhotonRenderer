@@ -5,11 +5,20 @@
 
 #include <glm/glm.hpp>
 
+//struct Ray
+//{
+//	glm::vec3 origin;
+//	glm::vec3 direction;
+//	glm::vec3 dirInv;
+//};
+
 struct Ray
 {
 	glm::vec3 origin;
 	glm::vec3 direction;
-	glm::vec3 dirInv;
+
+	Ray(glm::vec3 origin, glm::vec3 direction);
+	glm::vec3 march(float t);
 };
 
 struct Triangle
@@ -47,13 +56,23 @@ public:
 	float radius();
 };
 
+//struct Sphere
+//{
+//	glm::vec3 position;
+//	float radius;
+//
+//	Sphere();
+//	Sphere(glm::vec3& position, float radius);
+//};
+
 struct Sphere
 {
 	glm::vec3 position;
 	float radius;
 
-	Sphere();
-	Sphere(glm::vec3& position, float radius);
+	Sphere(glm::vec3 position = glm::vec3(0), float radius = 1.0f);
+	float area();
+	float volume();
 };
 
 
