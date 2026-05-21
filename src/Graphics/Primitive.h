@@ -18,66 +18,6 @@ struct Vertex
 	glm::vec4 weights = glm::vec4(0);
 };
 
-//struct Ray
-//{
-//	glm::vec3 origin;
-//	glm::vec3 direction;
-//
-//	Ray(glm::vec3 origin, glm::vec3 direction) :
-//		origin(origin), direction(direction)
-//	{
-//
-//	}
-//
-//	glm::vec3 Ray::march(float t)
-//	{
-//		return origin + t * direction;
-//	}
-//};
-
-//struct Sphere
-//{
-//	glm::vec3 position;
-//	float radius;
-//
-//	Sphere(glm::vec3 position = glm::vec3(0), float radius = 1.0f) :
-//		position(position), radius(radius)
-//	{
-//	}
-//
-//	float area()
-//	{
-//		return 0;
-//	}
-//
-//	float volume()
-//	{
-//		return 0;
-//	}
-//};
-
-//class Box
-//{
-//private:
-//	glm::vec3 minPoint;
-//	glm::vec3 maxPoint;
-//
-//public:
-//	Box();
-//	Box(glm::vec3& minPoint, glm::vec3& maxPoint);
-//
-//	glm::vec3 getMinPoint() const;
-//	glm::vec3 getMaxPoint() const;
-//	void expand(const glm::vec3& point);
-//	void expand(const Box& box);
-//	float radius();
-//	float volume();
-//	bool isInside(const glm::vec3& point);
-//	glm::vec3 getCenter();
-//	glm::vec3 getSize();
-//	std::vector<glm::vec3> getPoints();
-//};
-
 struct TriangleSurface
 {
 	std::vector<Vertex> vertices;
