@@ -56,6 +56,28 @@ void AABB::expand(const AABB& box)
 	expand(box.getMaxPoint());
 }
 
+float AABB::radius()
+{
+	glm::vec3 diff = maxPoint - minPoint;
+	return glm::sqrt(glm::dot(diff, diff) * 0.25f);
+}
+
+float AABB::volume()
+{
+	glm::vec3 size = getSize();
+	return size.x * size.y * size.z;
+}
+
+bool AABB::isInside(const glm::vec3& point)
+{
+	return(point.x > minPoint.x &&
+		point.y > minPoint.y &&
+		point.z > minPoint.z &&
+		point.x < maxPoint.x &&
+		point.y < maxPoint.y &&
+		point.z < maxPoint.z);
+}
+
 glm::vec3 AABB::getCenter()
 {
 	return (maxPoint + minPoint) / 2.0f;
@@ -64,12 +86,6 @@ glm::vec3 AABB::getCenter()
 glm::vec3 AABB::getSize()
 {
 	return maxPoint - minPoint;
-}
-
-float AABB::radius()
-{
-	glm::vec3 diff = maxPoint - minPoint;
-	return glm::sqrt(glm::dot(diff, diff) * 0.25f);
 }
 
 //Sphere::Sphere() :

@@ -51,9 +51,12 @@ public:
 	void expand(const glm::vec3& point);
 	void expand(const Triangle& tri);
 	void expand(const AABB& box);
+	float radius();
+	float volume();
+	bool isInside(const glm::vec3& point);
 	glm::vec3 getCenter();
 	glm::vec3 getSize();
-	float radius();
+	std::vector<glm::vec3> getPoints();	
 };
 
 //struct Sphere
