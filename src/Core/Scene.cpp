@@ -513,6 +513,7 @@ namespace pr
 					auto mainTransform = node->getComponent<pr::Transform>();
 					auto modelMatrix = mainTransform->getTransform();
 					auto renderEntities = node->getChildrenWithComponent<pr::Renderable>();
+
 					for (auto e : renderEntities)
 					{
 						auto t = e->getComponent<pr::Transform>();
@@ -557,6 +558,39 @@ namespace pr
 		std::vector<Entity::Ptr> entities;
 		for (auto [_, e] : hitEntities)
 			entities.push_back(e);
+
+		std::cout << "selected " << hitEntities.size() << " meshes!" << std::endl;
+		uint32 numExactHits = 0;
+		for (auto [_, e] : hitEntities)
+		{
+			auto r = e->getComponent<pr::Renderable>();
+			if (!r) // TODO: build AABBTree for a prefab
+				continue;
+			auto t = e->getComponent<pr::Transform>();
+			auto M = t->getTransform();
+			auto M_I = glm::inverse(M);
+			auto startModel = glm::vec3(M_I * glm::vec4(start, 1.0));
+			auto endModel = glm::vec3(M_I * glm::vec4(end, 1.0));
+			auto direction = glm::normalize(endModel - startModel);
+			Ray ray(startModel, direction);
+			
+			bool subMeshHit = false;
+			auto mesh = r->getMesh();
+			for (auto& sm : mesh->getSubMeshes())
+			{
+				glm::vec2 uv;
+				uint32 triID;
+				glm::vec3 hitPoint;
+				if (sm.primitive->raycast(ray, hitPoint, uv, triID))
+					subMeshHit = true;
+			}
+
+			if (subMeshHit)
+				numExactHits++;
+		}
+
+		std::cout << "exact mesh hits:  " << numExactHits << std::endl;
+
 
 		//if (!entities.empty())
 		//{ 

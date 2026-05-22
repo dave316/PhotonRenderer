@@ -149,6 +149,7 @@ namespace pr
 		void updateGeometry(TriangleSurface& surface);
 		void preTransform(const glm::mat4& T);
 		void buildAABBTree();
+		bool raycast(Ray& ray, glm::vec3& hitPoint, glm::vec2& uv, unsigned int& triID);
 		void flipWindingOrder();
 		void draw(GPU::CommandBuffer::Ptr cmdBuffer);
 		void update(GPU::DescriptorPool::Ptr descriptorPool);
@@ -197,7 +198,7 @@ namespace pr
 		//uint32 topology = 4; // GL_TRIANGLES
 		TriangleSurface surface;
 		AABB boundingBox;
-		AABBNode* root;
+		AABBNode* root = nullptr;
 	};
 }
 

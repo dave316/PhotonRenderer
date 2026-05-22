@@ -204,6 +204,9 @@ namespace pr
 		
 		boundingBox = AABB(surface.minPoint, surface.maxPoint);
 
+		if (root != nullptr)
+			delete root;
+
 		buildAABBTree();
 	}
 
@@ -252,6 +255,11 @@ namespace pr
 		std::vector<Triangle> tempTriangles = triangles;
 		root = new AABBNode(nullptr);
 		root->addTriangles(tempTriangles);
+	}
+
+	bool Primitive::raycast(Ray& ray, glm::vec3& hitPoint, glm::vec2& uv, unsigned int& triID)
+	{
+		return root->raycast(ray, hitPoint, uv, triID);
 	}
 
 	void Primitive::flipWindingOrder()
