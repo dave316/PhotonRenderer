@@ -556,8 +556,8 @@ namespace pr
 		}
 
 		std::vector<Entity::Ptr> entities;
-		for (auto [_, e] : hitEntities)
-			entities.push_back(e);
+		//for (auto [_, e] : hitEntities)
+		//	entities.push_back(e);
 
 		std::cout << "selected " << hitEntities.size() << " meshes!" << std::endl;
 		uint32 numExactHits = 0;
@@ -583,10 +583,14 @@ namespace pr
 				glm::vec3 hitPoint;
 				if (sm.primitive->raycast(ray, hitPoint, uv, triID))
 					subMeshHit = true;
-			}
+			}		
 
 			if (subMeshHit)
+			{
+				entities.push_back(e);
 				numExactHits++;
+			}
+				
 		}
 
 		std::cout << "exact mesh hits:  " << numExactHits << std::endl;
