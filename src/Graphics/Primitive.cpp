@@ -203,6 +203,8 @@ namespace pr
 		indexCount = static_cast<uint32>(surface.indices.size());
 		
 		boundingBox = AABB(surface.minPoint, surface.maxPoint);
+
+		buildAABBTree();
 	}
 
 	void Primitive::preTransform(const glm::mat4& T)
@@ -218,6 +220,38 @@ namespace pr
 		}
 
 		updateGeometry(surface);
+	}
+
+	void Primitive::buildAABBTree()
+	{
+		std::vector<Triangle> triangles;
+		int index = 0;
+		for (int i = 0; i < surface.indices.size(); i += 3)
+		{
+			uint32 i0 = surface.indices[i];
+			uint32 i1 = surface.indices[i + 1];
+			uint32 i2 = surface.indices[i + 2];
+
+			Triangle tri;
+			tri.v0 = surface.vertices[i0].position;
+			tri.v1 = surface.vertices[i1].position;
+			tri.v2 = surface.vertices[i2].position;
+			tri.n0 = surface.vertices[i0].normal;
+			tri.n1 = surface.vertices[i1].normal;
+			tri.n2 = surface.vertices[i2].normal;
+			tri.triID = index;
+			index++;
+
+			AABB box;
+			box.expand(tri);
+			tri.plane = box.getMaxPoint() + box.getMinPoint();
+
+			triangles.push_back(tri);
+		}
+
+		std::vector<Triangle> tempTriangles = triangles;
+		root = new AABBNode(nullptr);
+		root->addTriangles(tempTriangles);
 	}
 
 	void Primitive::flipWindingOrder()
