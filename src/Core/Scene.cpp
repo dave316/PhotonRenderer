@@ -608,7 +608,7 @@ namespace pr
 				}
 
 				if (anyMeshHit) // store the node with the closest hitpoint
-					closestHits.insert(std::pair(minMeshDist, e));
+					closestHits.insert(std::pair(minMeshDist - 0.0001, e));
 			}
 			else if (e->getComponent<pr::Renderable>())
 			{
@@ -623,7 +623,6 @@ namespace pr
 
 				bool subMeshHit = false;
 				float minDist = std::numeric_limits<float>::max();
-				glm::vec3 primitiveHitPoint = glm::vec3(0);
 				auto mesh = r->getMesh();
 				for (auto& sm : mesh->getSubMeshes())
 				{
@@ -635,10 +634,7 @@ namespace pr
 						glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
 						float dist = glm::distance(h, start);
 						if (dist < minDist)
-						{
 							minDist = dist;
-							primitiveHitPoint = h;
-						}
 						subMeshHit = true;
 					}
 				}
