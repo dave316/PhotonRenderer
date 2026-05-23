@@ -493,7 +493,7 @@ namespace pr
 
 	std::vector<Entity::Ptr> Scene::selectModelsRaycast(glm::vec3 start, glm::vec3 end)
 	{
-		std::map<float, Entity::Ptr> hitEntities;
+		std::vector<Entity::Ptr> hitEntities;
 		for (auto root : rootNodes)
 		{
 			if (!root->isActive())
@@ -547,54 +547,112 @@ namespace pr
 				Ray ray(startModel, direction);
 				glm::vec3 hitPoint;
 				if (Intersections::rayBoxIntersection(ray, boundingBox, hitPoint))
-				{
-					glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
-					float dist = glm::distance(h, start);
-					hitEntities.insert(std::make_pair(dist, node));
-				}
+					hitEntities.push_back(node);
 			}
 		}
+
+		std::cout << "selected " << hitEntities.size() << " meshes! (hit bounding box)" << std::endl;
+		std::map<float, Entity::Ptr> closestHits;
+		for (auto e : hitEntities)
+		{
+			if (e->isPrefab())
+			{
+				bool anyMeshHit = false;
+				auto renderEntities = e->getChildrenWithComponent<pr::Renderable>();
+				float minMeshDist = std::numeric_limits<float>::max();
+				glm::vec3 meshHitPoint = glm::vec3(0);
+				for (auto e : renderEntities)
+				{
+					auto t = e->getComponent<pr::Transform>();
+					auto r = e->getComponent<pr::Renderable>();
+					auto M = t->getTransform();
+					auto M_I = glm::inverse(M);
+					auto startModel = glm::vec3(M_I * glm::vec4(start, 1.0));
+					auto endModel = glm::vec3(M_I * glm::vec4(end, 1.0));
+					auto direction = glm::normalize(endModel - startModel);
+					Ray ray(startModel, direction);
+
+					// check for each submesh if we have a hit it save the closest hitpoint
+					bool subMeshHit = false;
+					float minDist = std::numeric_limits<float>::max();
+					glm::vec3 primitiveHitPoint = glm::vec3(0);
+					auto mesh = r->getMesh();
+					for (auto& sm : mesh->getSubMeshes())
+					{
+						glm::vec2 uv;
+						uint32 triID;
+						glm::vec3 hitPoint;
+						if (sm.primitive->raycast(ray, hitPoint, uv, triID))
+						{
+							glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
+							float dist = glm::distance(h, start);
+							if (dist < minDist)
+							{
+								minDist = dist;
+								primitiveHitPoint = h;
+							}
+							subMeshHit = true;
+						}							
+					}
+
+					// if we had a hit compare to current closest hitpoint
+					if (subMeshHit)
+					{
+						if (minDist < minMeshDist)
+						{
+							minMeshDist = minDist;
+							meshHitPoint = primitiveHitPoint;
+						}
+						anyMeshHit = true;
+					}						
+				}
+
+				if (anyMeshHit) // store the node with the closest hitpoint
+					closestHits.insert(std::pair(minMeshDist, e));
+			}
+			else if (e->getComponent<pr::Renderable>())
+			{
+				auto r = e->getComponent<pr::Renderable>();
+				auto t = e->getComponent<pr::Transform>();
+				auto M = t->getTransform();
+				auto M_I = glm::inverse(M);
+				auto startModel = glm::vec3(M_I * glm::vec4(start, 1.0));
+				auto endModel = glm::vec3(M_I * glm::vec4(end, 1.0));
+				auto direction = glm::normalize(endModel - startModel);
+				Ray ray(startModel, direction);
+
+				bool subMeshHit = false;
+				float minDist = std::numeric_limits<float>::max();
+				glm::vec3 primitiveHitPoint = glm::vec3(0);
+				auto mesh = r->getMesh();
+				for (auto& sm : mesh->getSubMeshes())
+				{
+					glm::vec2 uv;
+					uint32 triID;
+					glm::vec3 hitPoint;
+					if (sm.primitive->raycast(ray, hitPoint, uv, triID))
+					{
+						glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
+						float dist = glm::distance(h, start);
+						if (dist < minDist)
+						{
+							minDist = dist;
+							primitiveHitPoint = h;
+						}
+						subMeshHit = true;
+					}
+				}
+
+				if (subMeshHit)
+					closestHits.insert(std::make_pair(minDist, e));
+			}
+		}
+
+		std::cout << "exact mesh hits:  " << closestHits.size() << " (ray/tri intersection)" << std::endl;
 
 		std::vector<Entity::Ptr> entities;
-		//for (auto [_, e] : hitEntities)
-		//	entities.push_back(e);
-
-		std::cout << "selected " << hitEntities.size() << " meshes!" << std::endl;
-		uint32 numExactHits = 0;
-		for (auto [_, e] : hitEntities)
-		{
-			auto r = e->getComponent<pr::Renderable>();
-			if (!r) // TODO: build AABBTree for a prefab
-				continue;
-			auto t = e->getComponent<pr::Transform>();
-			auto M = t->getTransform();
-			auto M_I = glm::inverse(M);
-			auto startModel = glm::vec3(M_I * glm::vec4(start, 1.0));
-			auto endModel = glm::vec3(M_I * glm::vec4(end, 1.0));
-			auto direction = glm::normalize(endModel - startModel);
-			Ray ray(startModel, direction);
-			
-			bool subMeshHit = false;
-			auto mesh = r->getMesh();
-			for (auto& sm : mesh->getSubMeshes())
-			{
-				glm::vec2 uv;
-				uint32 triID;
-				glm::vec3 hitPoint;
-				if (sm.primitive->raycast(ray, hitPoint, uv, triID))
-					subMeshHit = true;
-			}		
-
-			if (subMeshHit)
-			{
-				entities.push_back(e);
-				numExactHits++;
-			}
-				
-		}
-
-		std::cout << "exact mesh hits:  " << numExactHits << std::endl;
-
+		for (auto [_, e] : closestHits)
+			entities.push_back(e);
 
 		//if (!entities.empty())
 		//{ 
