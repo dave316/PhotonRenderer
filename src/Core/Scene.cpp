@@ -555,7 +555,43 @@ namespace pr
 		std::map<float, std::vector<Entity::Ptr>> closestHits;
 		for (auto e : hitEntities)
 		{
-			if (e->isPrefab())
+			if (e->getComponent<pr::Renderable>())
+			{
+				auto r = e->getComponent<pr::Renderable>();
+				auto t = e->getComponent<pr::Transform>();
+				auto M = t->getTransform();
+				auto M_I = glm::inverse(M);
+				auto startModel = glm::vec3(M_I * glm::vec4(start, 1.0));
+				auto endModel = glm::vec3(M_I * glm::vec4(end, 1.0));
+				auto direction = glm::normalize(endModel - startModel);
+				Ray ray(startModel, direction);
+
+				bool subMeshHit = false;
+				float minDist = std::numeric_limits<float>::max();
+				auto mesh = r->getMesh();
+				for (auto& sm : mesh->getSubMeshes())
+				{
+					glm::vec2 uv;
+					uint32 triID;
+					glm::vec3 hitPoint;
+					if (sm.primitive->raycast(ray, hitPoint, uv, triID))
+					{
+						glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
+						float dist = glm::distance(h, start);
+						if (dist < minDist)
+							minDist = dist;
+						subMeshHit = true;
+					}
+				}
+
+				if (subMeshHit) // store the node with the closest hitpoint
+				{
+					if (closestHits.find(minDist) == closestHits.end())
+						closestHits.insert(std::make_pair(minDist, std::vector<Entity::Ptr>()));
+					closestHits[minDist].push_back(e);
+				}
+			}
+			else if (e->isPrefab())
 			{
 				bool anyMeshHit = false;
 				auto renderEntities = e->getChildrenWithComponent<pr::Renderable>();
@@ -614,42 +650,6 @@ namespace pr
 					closestHits[minMeshDist].push_back(e);
 				}					
 			}
-			else if (e->getComponent<pr::Renderable>())
-			{
-				auto r = e->getComponent<pr::Renderable>();
-				auto t = e->getComponent<pr::Transform>();
-				auto M = t->getTransform();
-				auto M_I = glm::inverse(M);
-				auto startModel = glm::vec3(M_I * glm::vec4(start, 1.0));
-				auto endModel = glm::vec3(M_I * glm::vec4(end, 1.0));
-				auto direction = glm::normalize(endModel - startModel);
-				Ray ray(startModel, direction);
-
-				bool subMeshHit = false;
-				float minDist = std::numeric_limits<float>::max();
-				auto mesh = r->getMesh();
-				for (auto& sm : mesh->getSubMeshes())
-				{
-					glm::vec2 uv;
-					uint32 triID;
-					glm::vec3 hitPoint;
-					if (sm.primitive->raycast(ray, hitPoint, uv, triID))
-					{
-						glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
-						float dist = glm::distance(h, start);
-						if (dist < minDist)
-							minDist = dist;
-						subMeshHit = true;
-					}
-				}
-
-				if (subMeshHit) // store the node with the closest hitpoint
-				{
-					if (closestHits.find(minDist) == closestHits.end())
-						closestHits.insert(std::make_pair(minDist, std::vector<Entity::Ptr>()));
-					closestHits[minDist].push_back(e);
-				}
-			}
 		}
 
 		std::cout << "exact mesh hits:  " << closestHits.size() << " (ray/tri intersection)" << std::endl;
@@ -672,7 +672,7 @@ namespace pr
 
 			for (auto e : hits)
 			{
-				if (!e->isPrefab())
+				if (e->getComponent<Renderable>())
 					entities.push_back(e);
 			}
 		}
