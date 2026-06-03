@@ -552,7 +552,7 @@ namespace pr
 		}
 
 		std::cout << "selected " << hitEntities.size() << " meshes! (hit bounding box)" << std::endl;
-		std::map<float, Entity::Ptr> closestHits;
+		std::map<float, std::vector<Entity::Ptr>> closestHits;
 		for (auto e : hitEntities)
 		{
 			if (e->isPrefab())
@@ -608,7 +608,11 @@ namespace pr
 				}
 
 				if (anyMeshHit) // store the node with the closest hitpoint
-					closestHits.insert(std::pair(minMeshDist - 0.0001, e));
+				{
+					if (closestHits.find(minMeshDist) == closestHits.end())
+						closestHits.insert(std::make_pair(minMeshDist, std::vector<Entity::Ptr>()));
+					closestHits[minMeshDist].push_back(e);
+				}					
 			}
 			else if (e->getComponent<pr::Renderable>())
 			{
@@ -639,26 +643,39 @@ namespace pr
 					}
 				}
 
-				if (subMeshHit)
-					closestHits.insert(std::make_pair(minDist, e));
+				if (subMeshHit) // store the node with the closest hitpoint
+				{
+					if (closestHits.find(minDist) == closestHits.end())
+						closestHits.insert(std::make_pair(minDist, std::vector<Entity::Ptr>()));
+					closestHits[minDist].push_back(e);
+				}
 			}
 		}
 
 		std::cout << "exact mesh hits:  " << closestHits.size() << " (ray/tri intersection)" << std::endl;
 
 		std::vector<Entity::Ptr> entities;
-		for (auto [_, e] : closestHits)
-			entities.push_back(e);
+		for (auto [_, hits] : closestHits)
+		{
+			int32 idx = -1;
+			for (uint32 i = 0; i < hits.size(); i++)
+			{
+				if (hits[i]->isPrefab())
+				{
+					idx = i;
+					break;
+				}
+			}
 
-		//if (!entities.empty())
-		//{ 
-		//	// TODO: so this is a hack to get the root node of the hit models
-		//	Entity::Ptr entity = entities[0];
-		//	while (entity->getParent() != nullptr)
-		//		entity = entity->getParent();
-		//	if (entity->getID() != entities[0]->getID())
-		//		entities.insert(entities.begin(), entity);
-		//}
+			if (idx >= 0 && entities.empty())
+				entities.push_back(hits[idx]);
+
+			for (auto e : hits)
+			{
+				if (!e->isPrefab())
+					entities.push_back(e);
+			}
+		}
 
 		return entities;
 	}
