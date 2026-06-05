@@ -34,8 +34,8 @@ bool Application::init()
 	renderer = pr::Renderer::create();
 	renderer->init(window, swapchain);
 
-	//initScene();
-	initUnitySceneNEW();
+	initScene();
+	//initUnitySceneNEW();
 
 	renderer->prepare(camera, scene);
 	renderer->buildCmdBuffer(scene, swapchain);
@@ -78,7 +78,7 @@ void Application::initScene()
 	////scene->update(0.0f);
 
 	std::string assetPath = "../../../../assets";
-	std::string modelName = "AlphaBlendModeTest";
+	std::string modelName = "DamagedHelmet";
 	std::string modelVariant = "glTF";
 	bool binary = false;
 	IO::glTF::Importer importer;

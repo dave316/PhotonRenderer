@@ -195,7 +195,6 @@ namespace pr
 		uint32 primID;
 		uint32 vertexCount = 0;
 		uint32 indexCount = 0;
-		//uint32 topology = 4; // GL_TRIANGLES
 		TriangleSurface surface;
 		AABB boundingBox;
 		AABBNode* root = nullptr;
