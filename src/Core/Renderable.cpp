@@ -2,23 +2,22 @@
 #include <Graphics/GraphicsContext.h>
 namespace pr
 {
-	Renderable::Renderable(pr::Mesh::Ptr mesh, RenderType type) : 
+	Renderable::Renderable(pr::Mesh::Ptr mesh) : 
 		mesh(mesh),
-		type(type),
 		priority(0)
 	{
 		if (mesh->hasMorphTargets())
 			morphWeights = mesh->getWeights();
 		
-		auto& subMeshes = mesh->getSubMeshes();
-		for (auto& s : subMeshes)
-		{
-			auto mat = s.material;
-			if (mat->isTransmissive())
-				this->type = RenderType::Transparent;
-			if (mat->isTransparent())
-				priority = 1;
-		}
+		//auto& subMeshes = mesh->getSubMeshes();
+		//for (auto& s : subMeshes)
+		//{
+		//	auto mat = s.material;
+		//	if (mat->isTransmissive())
+		//		this->type = RenderType::Transparent;
+		//	if (mat->isTransparent())
+		//		priority = 1;
+		//}
 
 		//auto& ctx = GraphicsContext::getInstance();
 		//modelUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(UniformData), 0);
@@ -32,13 +31,13 @@ namespace pr
 	{
 		this->mesh = mesh;
 
-		auto& subMeshes = mesh->getSubMeshes();
-		for (auto& s : subMeshes)
-		{
-			auto mat = s.material;
-			if (mat->isTransmissive())
-				type = RenderType::Transparent;
-		}
+		//auto& subMeshes = mesh->getSubMeshes();
+		//for (auto& s : subMeshes)
+		//{
+		//	auto mat = s.material;
+		//	if (mat->isTransmissive())
+		//		type = RenderType::Transparent;
+		//}
 	}
 
 	void Renderable::setDescriptor(GPU::DescriptorPool::Ptr descriptorPool)
@@ -88,37 +87,37 @@ namespace pr
 		modelUBO->uploadMapped(&model);
 	}
 
-	void Renderable::render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
-	{
-		if (enabled)
-		{
-			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
-			if (skin)
-				skin->bind(cmdBuffer, pipeline);
-			mesh->draw(cmdBuffer, pipeline);
-		}
-	}
+	//void Renderable::render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	//{
+	//	if (enabled)
+	//	{
+	//		cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
+	//		if (skin)
+	//			skin->bind(cmdBuffer, pipeline);
+	//		mesh->draw(cmdBuffer, pipeline);
+	//	}
+	//}
 
-	void Renderable::renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
-	{
-		if (enabled)
-		{
-			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
-			if (skin)
-				skin->bind(cmdBuffer, pipeline);
-			mesh->drawDepth(cmdBuffer, pipeline);
-		}
-	}
+	//void Renderable::renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	//{
+	//	if (enabled)
+	//	{
+	//		cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
+	//		if (skin)
+	//			skin->bind(cmdBuffer, pipeline);
+	//		mesh->drawDepth(cmdBuffer, pipeline);
+	//	}
+	//}
 
 	void Renderable::setSkin(pr::Skin::Ptr skin)
 	{
 		this->skin = skin;
 	}
 
-	void Renderable::setType(RenderType type)
-	{
-		this->type = type;
-	}
+	//void Renderable::setType(RenderType type)
+	//{
+	//	this->type = type;
+	//}
 
 	void Renderable::setPriority(uint32 priority)
 	{
@@ -162,10 +161,10 @@ namespace pr
 		return Renderable::mesh->hasMorphTargets();
 	}
 
-	bool Renderable::isTransmissive() // TODO: this only works if all submeshes are transparent
-	{
-		return mesh->isTransmissive();
-	}
+	//bool Renderable::isTransmissive() // TODO: this only works if all submeshes are transparent
+	//{
+	//	return mesh->isTransmissive();
+	//}
 
 	void Renderable::setCurrentWeights(std::vector<float> weights)
 	{
@@ -192,35 +191,35 @@ namespace pr
 		return mesh->numPrimitives();
 	}
 
-	uint32 Renderable::getNumVariants()
-	{
-		return mesh->getNumVariants();
-	}
+	//uint32 Renderable::getNumVariants()
+	//{
+	//	return mesh->getNumVariants();
+	//}
 
-	void Renderable::switchVariant(uint32 index)
-	{
-		mesh->switchVariant(index);
-	}
+	//void Renderable::switchVariant(uint32 index)
+	//{
+	//	mesh->switchVariant(index);
+	//}
 
 	void Renderable::setEnabled(bool enabled)
 	{
 		this->enabled = enabled;
 	}
 
-	std::string Renderable::getShaderName()
-	{
-		return mesh->getShaderName();
-	}
+	//std::string Renderable::getShaderName()
+	//{
+	//	return mesh->getShaderName();
+	//}
 
 	uint32 Renderable::getPriority()
 	{
 		return priority;
 	}
 
-	RenderType Renderable::getType()
-	{
-		return type;
-	}
+	//RenderType Renderable::getType()
+	//{
+	//	return type;
+	//}
 
 	glm::vec2 Renderable::getLMOffset()
 	{

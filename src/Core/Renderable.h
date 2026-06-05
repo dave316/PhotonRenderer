@@ -11,24 +11,24 @@
 
 namespace pr
 {
-	enum class RenderType
-	{
-		Opaque,
-		Transparent
-	};
+	//enum class RenderType
+	//{
+	//	Opaque,
+	//	Transparent
+	//};
 
 	class Renderable : public Component
 	{
 	public:
-		Renderable(pr::Mesh::Ptr mesh, RenderType type = RenderType::Opaque);
+		Renderable(pr::Mesh::Ptr mesh); // , RenderType type = RenderType::Opaque);
 		~Renderable();
 		void setMesh(pr::Mesh::Ptr mesh);
 		void setDescriptor(GPU::DescriptorPool::Ptr descriptorPool);
 		void update(glm::mat4 modelMatrix);
-		void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
-		void renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
+		//void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
+		//void renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
 		void setSkin(pr::Skin::Ptr skin);
-		void setType(RenderType type);
+		//void setType(RenderType type);
 		void setPriority(uint32 priority);
 		void setDiffuseMode(int mode);
 		void setLightMapIndex(int mode);
@@ -37,18 +37,18 @@ namespace pr
 		void setProbeSH9(std::vector<glm::vec3>& sh9);
 		bool isSkinnedMesh();
 		bool hasMorphtargets();
-		bool isTransmissive();
+		//bool isTransmissive();
 		bool isEnabled() { return enabled; }
 		void setCurrentWeights(std::vector<float> weights);
 		pr::Skin::Ptr getSkin();
 		AABB getBoundingBox();
 		pr::Mesh::Ptr getMesh();
 		uint32 getNumPrimitives();
-		uint32 getNumVariants();
-		void switchVariant(uint32 index);
+		//uint32 getNumVariants();
+		//void switchVariant(uint32 index);
 		void setEnabled(bool enabled);
-		std::string getShaderName();
-		RenderType getType();
+		//std::string getShaderName();
+		//RenderType getType();
 		uint32 getPriority();
 		glm::vec2 getLMOffset();
 		glm::vec2 getLMScale();
@@ -82,6 +82,9 @@ namespace pr
 	private:
 		pr::Mesh::Ptr mesh = nullptr;
 		pr::Skin::Ptr skin = nullptr;
+
+		std::vector<Material::Ptr> materials;
+
 		GPU::DescriptorSet::Ptr descriptorSet;
 		GPU::Buffer::Ptr modelUBO = nullptr;
 		std::vector<float> morphWeights;
@@ -97,7 +100,7 @@ namespace pr
 		int specularProbeIndex = 0;
 		std::vector<glm::vec3> sh9;
 
-		RenderType type;
+		//RenderType type;
 		uint32 priority;
 	};
 }
