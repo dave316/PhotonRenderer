@@ -153,20 +153,32 @@ namespace pr
 					auto mesh = r->getMesh();
 					auto meshCopy = pr::Mesh::create(mesh->getName());
 
-					for (auto m : mesh->getSubMeshes())
+					for (auto p : mesh->getPrimitives())
 					{
-						auto surface = m.primitive->getSurface();
+						auto surface = p->getSurface();
 						surface.flipWindingOrder();
 
-						SubMesh s;
-						s.primitive = pr::Primitive::create(m.primitive->getName(), surface, GPU::Topology::Triangles);
-						s.primitive->createData();
-						s.primitive->uploadData();
-						s.material = m.material;
-						meshCopy->addSubMesh(s);
+						auto newPrim = Primitive::create(p->getName(), surface, GPU::Topology::Triangles);
+						newPrim->createData();
+						newPrim->uploadData();
+						meshCopy->addPrimitive(newPrim);
 					}
 
+					//for (auto m : mesh->getSubMeshes())
+					//{
+					//	auto surface = m.primitive->getSurface();
+					//	surface.flipWindingOrder();
+
+					//	SubMesh s;
+					//	s.primitive = pr::Primitive::create(m.primitive->getName(), surface, GPU::Topology::Triangles);
+					//	s.primitive->createData();
+					//	s.primitive->uploadData();
+					//	s.material = m.material;
+					//	meshCopy->addSubMesh(s);
+					//}
+
 					auto newRend = pr::Renderable::create(meshCopy);
+					newRend->setMaterials(r->getMaterials());
 					newRend->setLightMapST(r->getLMOffset(), r->getLMScale());
 					newRend->setLightMapIndex(r->getLMIndex());
 					newRend->setDiffuseMode(r->getDiffuseMode());

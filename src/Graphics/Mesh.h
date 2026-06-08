@@ -44,6 +44,7 @@ namespace pr
 		//{
 		//	return subMeshes;
 		//}
+		std::vector<Primitive::Ptr> getPrimitives() { return primitives; }
 
 		typedef std::shared_ptr<Mesh> Ptr;
 		static Ptr create(const std::string& name)
