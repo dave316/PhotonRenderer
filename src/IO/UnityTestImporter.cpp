@@ -1202,16 +1202,15 @@ pr::Entity::Ptr UnityTestImporter::traverse(Unity::GameObject::Ptr gameObject, p
 					surface.maxPoint = maxPoint;
 					surface.minPoint = minPoint;
 
-					pr::SubMesh s;
-					s.primitive = pr::Primitive::create(name, surface, GPU::Topology::Triangles);
-					s.primitive->createData();
-					s.primitive->uploadData();
-					s.material = loadMaterial(mr->getMaterial(m));
+					auto prim = pr::Primitive::create(name, surface, GPU::Topology::Triangles);
+					prim->createData();
+					prim->uploadData();
+					//s.material = loadMaterial(mr->getMaterial(m));
 
-					if (s.material->isTransparent())
-						isTransparent = true;
+					//if (s.material->isTransparent())
+					//	isTransparent = true;
 
-					mesh->addSubMesh(s);
+					mesh->addPrimitive(prim);
 				}
 				else
 				{
@@ -1220,8 +1219,11 @@ pr::Entity::Ptr UnityTestImporter::traverse(Unity::GameObject::Ptr gameObject, p
 			}
 
 			auto r = pr::Renderable::create(mesh);
-			if (isTransparent)
-				r->setType(pr::RenderType::Transparent);
+			std::vector<pr::Material::Ptr> materials;
+			for (int m = 0; m < mr->getNumMaterials(); m++)
+				materials.push_back(loadMaterial(mr->getMaterial(m)));
+			//if (isTransparent)
+			//	r->setType(pr::RenderType::Transparent);
 			r->setEnabled(mr->isEnabled());
 			r->setDiffuseMode(mr->getDiffuseMode());
 			r->setLightMapIndex(mr->getLMIndex());

@@ -322,8 +322,8 @@ bool Application::loadGLTFModel(const std::string& name, const std::string& full
 			}
 
 			auto r = root->getComponentsInChildren<pr::Renderable>();
-			if (!r.empty())
-				materials = r[0]->getMesh()->getVariants();
+			//if (!r.empty())
+			//	materials = r[0]->getMesh()->getVariants();
 			if (materials.empty())
 				materials.push_back("None");
 		}

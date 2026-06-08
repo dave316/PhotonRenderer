@@ -159,42 +159,42 @@ void Application::initUnitySceneNEW()
 	//scene = pr::Scene::create("scene");
 	//scene->addRoot(root);
 
-	for (auto entity : scene->getRootNodes())
-	{
-		auto name = entity->getName();
-		auto models = entity->getChildrenWithComponent<pr::Renderable>();
-		for (auto m : models)
-		{
-			auto r = m->getComponent<pr::Renderable>();
-			if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
-			{
-				r->setType(pr::RenderType::Opaque);
-				r->setPriority(1);
-			}
-			if (name.compare("3D HOUSE") == 0)
-			{
-				auto modelName = m->getName();
-				if (modelName.length() == 16)
-				{
-					auto prefix = m->getName().substr(0, 14);
-					if (prefix.compare("Glass_Exterior") == 0)
-					{
-						r->setType(pr::RenderType::Opaque);
-						r->setPriority(2);
-					}
-				}
-				else if (modelName.length() == 23)
-				{
-					auto prefix = modelName.substr(0, 21);
-					if (prefix.compare("Window_Glass_Interior") == 0)
-					{
-						r->setType(pr::RenderType::Opaque);
-						r->setPriority(2);
-					}
-				}
-			}
-		}
-	}
+	//for (auto entity : scene->getRootNodes())
+	//{
+	//	auto name = entity->getName();
+	//	auto models = entity->getChildrenWithComponent<pr::Renderable>();
+	//	for (auto m : models)
+	//	{
+	//		auto r = m->getComponent<pr::Renderable>();
+	//		if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
+	//		{
+	//			r->setType(pr::RenderType::Opaque);
+	//			r->setPriority(1);
+	//		}
+	//		if (name.compare("3D HOUSE") == 0)
+	//		{
+	//			auto modelName = m->getName();
+	//			if (modelName.length() == 16)
+	//			{
+	//				auto prefix = m->getName().substr(0, 14);
+	//				if (prefix.compare("Glass_Exterior") == 0)
+	//				{
+	//					r->setType(pr::RenderType::Opaque);
+	//					r->setPriority(2);
+	//				}
+	//			}
+	//			else if (modelName.length() == 23)
+	//			{
+	//				auto prefix = modelName.substr(0, 21);
+	//				if (prefix.compare("Window_Glass_Interior") == 0)
+	//				{
+	//					r->setType(pr::RenderType::Opaque);
+	//					r->setPriority(2);
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 
 	std::string assetPath = "../../../../assets";
 	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
@@ -366,11 +366,13 @@ void Application::addAssetNode(IO::FileNode::Ptr node)
 			uint32 matIdx = 0;
 			for (auto r : root->getComponentsInChildren<pr::Renderable>())
 			{
-				auto mesh = r->getMesh();
-				for (auto& subMesh : mesh->getSubMeshes())
+				auto prims = r->getMesh()->getPrimitives();
+				auto mats = r->getMaterials();
+
+				for (int i = 0; i < mats.size(); i++)
 				{
-					auto prim = subMesh.primitive;
-					auto mat = subMesh.material;
+					auto prim = prims[i];
+					auto mat = mats[i];
 					if (prim)
 						primitives.insert(std::make_pair(prim->getName(), prim));
 					if (mat)
@@ -758,15 +760,17 @@ void Application::updateGUI()
 			{
 				if (ImGui::MenuItem("Box", NULL, false, true))
 				{
-					pr::SubMesh subMesh;
-					subMesh.primitive = createCube(glm::vec3(0), 1.0f);
-					subMesh.material = getDefaultMaterial();
+					auto prim = createCube(glm::vec3(0), 1.0f);
+					auto mat = getDefaultMaterial();
 
 					auto mesh = pr::Mesh::create("Box");
-					mesh->addSubMesh(subMesh);
+					mesh->addPrimitive(prim);
+
+					auto r = pr::Renderable::create(mesh);
+					r->addMaterial(mat);
 
 					auto box = pr::Entity::create("Box", nullptr);
-					box->addComponent(pr::Renderable::create(mesh));
+					box->addComponent(r);
 
 					scenes[sceneIndex]->addRoot(box);
 					scenes[sceneIndex]->initDescriptors(renderer->getDescriptorPool());
@@ -776,15 +780,17 @@ void Application::updateGUI()
 				}
 				if (ImGui::MenuItem("Sphere", NULL, false, true))
 				{
-					pr::SubMesh subMesh;
-					subMesh.primitive = createUVSphere(glm::vec3(0), 0.5f, 64, 64);
-					subMesh.material = getDefaultMaterial();
+					auto prim = createUVSphere(glm::vec3(0), 0.5f, 64, 64);
+					auto mat = getDefaultMaterial();
 
 					auto mesh = pr::Mesh::create("Spere");
-					mesh->addSubMesh(subMesh);
+					mesh->addPrimitive(prim);
+
+					auto r = pr::Renderable::create(mesh);
+					r->addMaterial(mat);
 
 					auto sphere = pr::Entity::create("Spere", nullptr);
-					sphere->addComponent(pr::Renderable::create(mesh));
+					sphere->addComponent(r);
 
 					scenes[sceneIndex]->addRoot(sphere);
 					scenes[sceneIndex]->initDescriptors(renderer->getDescriptorPool());
@@ -794,15 +800,17 @@ void Application::updateGUI()
 				}
 				if (ImGui::MenuItem("Quad", NULL, false, true))
 				{
-					pr::SubMesh subMesh;
-					subMesh.primitive = createQuad(glm::vec3(0), 1.0f);
-					subMesh.material = getDefaultMaterial();
+					auto prim = createQuad(glm::vec3(0), 1.0f);
+					auto mat = getDefaultMaterial();
 
 					auto mesh = pr::Mesh::create("Quad");
-					mesh->addSubMesh(subMesh);
+					mesh->addPrimitive(prim);
+
+					auto r = pr::Renderable::create(mesh);
+					r->addMaterial(mat);
 
 					auto quad = pr::Entity::create("Quad", nullptr);
-					quad->addComponent(pr::Renderable::create(mesh));
+					quad->addComponent(r);
 
 					scenes[sceneIndex]->addRoot(quad);
 					scenes[sceneIndex]->initDescriptors(renderer->getDescriptorPool());
@@ -1003,11 +1011,12 @@ void Application::updateGUI()
 				if (ImGui::CollapsingHeader("Renderable", ImGuiTreeNodeFlags_DefaultOpen))
 				{
 					auto mesh = r->getMesh();
-					auto& subMeshes = mesh->getSubMeshes();
+					auto primitives = mesh->getPrimitives();
+					auto materials = r->getMaterials();
 					ImGui::InputText("Mesh", &mesh->getName());
 					meshNames.clear();
-					for (auto& subMesh : subMeshes)
-						meshNames.push_back(subMesh.primitive->getName());
+					for (auto p : primitives)
+						meshNames.push_back(p->getName());
 
 					static int primitiveSelected = -1;
 					if (ImGui::BeginListBox("Primitives"))
@@ -1032,10 +1041,8 @@ void Application::updateGUI()
 						if (payload != nullptr)
 						{
 							int primID = *(int*)(payload->Data);
-							pr::SubMesh subMesh;
-							subMesh.primitive = assetManager.getPrimitive(primID);
-							subMesh.material = nullptr;
-							mesh->addSubMesh(subMesh);
+							auto prim = assetManager.getPrimitive(primID);
+							mesh->addPrimitive(prim);
 
 							scenes[sceneIndex]->initDescriptors(renderer->getDescriptorPool());
 							renderer->buildCmdBuffer(scenes[sceneIndex]);
@@ -1044,24 +1051,24 @@ void Application::updateGUI()
 						ImGui::EndDragDropTarget();
 					}
 
-					if (primitiveSelected >= 0 && primitiveSelected < subMeshes.size())
+					if (primitiveSelected >= 0 && primitiveSelected < primitives.size())
 					{
-						auto vertexCount = subMeshes[primitiveSelected].primitive->getVertexCount();
-						auto triangleCount = subMeshes[primitiveSelected].primitive->getIndexCount() / 3;
+						auto vertexCount = primitives[primitiveSelected]->getVertexCount();
+						auto triangleCount = primitives[primitiveSelected]->getIndexCount() / 3;
 						std::string verticesTxt = "Vertices: " + std::to_string(vertexCount);
 						std::string trianglesTxt = "Triangles: " + std::to_string(triangleCount);
 						ImGui::Text(verticesTxt.c_str());
 						ImGui::Text(trianglesTxt.c_str());
 						
-						if (subMeshes[primitiveSelected].material)
+						if (r->getMaterials()[primitiveSelected])
 						{
-							auto matName = subMeshes[primitiveSelected].material->getName();
+							auto matName = materials[primitiveSelected]->getName();
 							auto maTxt = "Material: " + matName;
 							ImGui::Text(maTxt.c_str());
 							if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
 							{
-								auto primitive = subMeshes[primitiveSelected];
-								auto material = subMeshes[primitiveSelected].material;
+								auto primitive = primitives[primitiveSelected];
+								auto material = materials[primitiveSelected];
 								std::string nameTxt = "Name: " + matName;
 
 								auto properties = material->getProperties();
@@ -1135,7 +1142,7 @@ void Application::updateGUI()
 								if (payload != nullptr)
 								{
 									int matID = *(int*)(payload->Data);
-									subMeshes[primitiveSelected].material = assetManager.getMaterial(matID);
+									materials[primitiveSelected] = assetManager.getMaterial(matID);
 
 									scenes[sceneIndex]->initDescriptors(renderer->getDescriptorPool());
 									renderer->buildCmdBuffer(scenes[sceneIndex]);

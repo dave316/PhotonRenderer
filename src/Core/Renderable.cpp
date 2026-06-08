@@ -47,6 +47,11 @@ namespace pr
 		this->materials = materials;
 	}
 
+	void Renderable::addMaterial(pr::Material::Ptr material)
+	{
+		this->materials.push_back(material);
+	}
+
 	void Renderable::setDescriptor(GPU::DescriptorPool::Ptr descriptorPool)
 	{
 		auto& ctx = GraphicsContext::getInstance();

@@ -24,6 +24,7 @@ namespace pr
 		~Renderable();
 		void setMesh(pr::Mesh::Ptr mesh);
 		void setMaterials(std::vector<pr::Material::Ptr>& materials);
+		void addMaterial(pr::Material::Ptr material);
 		void setDescriptor(GPU::DescriptorPool::Ptr descriptorPool);
 		void update(glm::mat4 modelMatrix);
 		void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);

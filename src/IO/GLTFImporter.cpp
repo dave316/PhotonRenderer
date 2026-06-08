@@ -920,9 +920,9 @@ namespace IO
 					name = ss.str();
 				}
 				auto mesh = pr::Mesh::create(name);
-				for (auto v : gltf.variants)
-					mesh->addVariant(v);
-				
+				//for (auto v : gltf.variants)
+				//	mesh->addVariant(v);
+				//
 				for (int primIdx = 0; primIdx < gltfMesh.primitives.size(); primIdx++)
 				{
 					auto& gltfPrimitve = gltfMesh.primitives[primIdx];
@@ -975,46 +975,49 @@ namespace IO
 					if (!morphTargets.empty())
 						primitive->setMorphTarget(createMorphTexture(morphTargets));
 
-					pr::SubMesh m;
-					m.primitive = primitive;
-					if (gltfPrimitve.mode >= 4 && surface.computeFlatNormals)
-					{
-						auto mat2 = pr::Material::create("Default", "Default");
-						mat2->addProperty("baseColor", mat->getProperty("baseColor"));
-						mat2->addProperty("emissive", mat->getProperty("emissive"));
-						mat2->addProperty("roughness", mat->getProperty("roughness"));
-						mat2->addProperty("metallic", mat->getProperty("metallic"));
-						mat2->addProperty("occlusion", mat->getProperty("occlusion"));
-						mat2->addProperty("normalScale", mat->getProperty("normalScale"));
-						mat2->addProperty("alphaMode", mat->getProperty("alphaMode"));
-						mat2->addProperty("alphaCutOff", mat->getProperty("alphaCutOff"));
-						mat2->addProperty("computeFlatNormals", (int)surface.computeFlatNormals);
-						mat2->addProperty("ior", mat->getProperty("ior"));
-						mat2->setDoubleSided(mat->isDoubleSided());
-						std::vector<std::string> texNames = {
-							"baseColorTex", "normalTex", "metalRoughTex", "emissiveTex", "occlusionTex"
-						};
-						for (int i = 0; i < texNames.size(); i++)
-						{
-							auto texInfo = mat->getTexInfo(texNames[i]);
-							auto texture = mat->getTexture(texNames[i]);
-							if (texture)
-								mat2->addTexture(texNames[i], texture, texInfo);
-							else
-								mat2->addTexture("", nullptr);
-						}
-							
-						m.material = mat2;
-					}						
-					else
-						m.material = mat;
-					for (auto [varIdx, matIdx] : gltfPrimitve.variants)
-					{
-						if (matIdx < materials.size())
-							m.variants.push_back(materials[matIdx]);
-					}
+					//pr::SubMesh m;
+					//m.primitive = primitive;
+					mesh->addPrimitive(primitive);
 
-					mesh->addSubMesh(m);
+					// TODO: add material to renderable
+					//if (gltfPrimitve.mode >= 4 && surface.computeFlatNormals)
+					//{
+					//	auto mat2 = pr::Material::create("Default", "Default");
+					//	mat2->addProperty("baseColor", mat->getProperty("baseColor"));
+					//	mat2->addProperty("emissive", mat->getProperty("emissive"));
+					//	mat2->addProperty("roughness", mat->getProperty("roughness"));
+					//	mat2->addProperty("metallic", mat->getProperty("metallic"));
+					//	mat2->addProperty("occlusion", mat->getProperty("occlusion"));
+					//	mat2->addProperty("normalScale", mat->getProperty("normalScale"));
+					//	mat2->addProperty("alphaMode", mat->getProperty("alphaMode"));
+					//	mat2->addProperty("alphaCutOff", mat->getProperty("alphaCutOff"));
+					//	mat2->addProperty("computeFlatNormals", (int)surface.computeFlatNormals);
+					//	mat2->addProperty("ior", mat->getProperty("ior"));
+					//	mat2->setDoubleSided(mat->isDoubleSided());
+					//	std::vector<std::string> texNames = {
+					//		"baseColorTex", "normalTex", "metalRoughTex", "emissiveTex", "occlusionTex"
+					//	};
+					//	for (int i = 0; i < texNames.size(); i++)
+					//	{
+					//		auto texInfo = mat->getTexInfo(texNames[i]);
+					//		auto texture = mat->getTexture(texNames[i]);
+					//		if (texture)
+					//			mat2->addTexture(texNames[i], texture, texInfo);
+					//		else
+					//			mat2->addTexture("", nullptr);
+					//	}
+					//		
+					//	m.material = mat2;
+					//}						
+					//else
+					//	m.material = mat;
+					////for (auto [varIdx, matIdx] : gltfPrimitve.variants)
+					////{
+					////	if (matIdx < materials.size())
+					////		m.variants.push_back(materials[matIdx]);
+					////}
+
+					//mesh->addSubMesh(m);
 				}
 
 				mesh->setMorphWeights(gltfMesh.weights);

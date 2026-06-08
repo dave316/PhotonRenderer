@@ -211,25 +211,26 @@ namespace IO
 
 			for (auto r : root->getComponentsInChildren<pr::Renderable>())
 			{
-				auto mesh = r->getMesh();
-				for (auto& subMesh : mesh->getSubMeshes())
+				auto mats = r->getMaterials();
+				auto prims = r->getMesh()->getPrimitives();
+				for (int i = 0; i < materials.size(); i++)
 				{
-					auto prim = subMesh.primitive;
-					auto mat = subMesh.material;
+					auto prim = prims[i];
+					auto mat = mats[i];
 					primitives.insert(std::make_pair(prim->getID(), prim));
 					materials.insert(std::make_pair(mat->getID(), mat));
 
-					for (auto mat : subMesh.variants)
-					{
-						if (materials.find(mat->getID()) != materials.end())
-						{
-							// TODO: material has already been added
-						}
-						else
-						{
-							materials.insert(make_pair(mat->getID(), mat));
-						}
-					}
+					//for (auto mat : subMesh.variants)
+					//{
+					//	if (materials.find(mat->getID()) != materials.end())
+					//	{
+					//		// TODO: material has already been added
+					//	}
+					//	else
+					//	{
+					//		materials.insert(make_pair(mat->getID(), mat));
+					//	}
+					//}
 				}
 			}
 

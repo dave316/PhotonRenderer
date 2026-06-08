@@ -16,6 +16,11 @@ namespace pr
 	//	subMeshes.push_back(subMesh);
 	//}
 
+	void Mesh::addPrimitive(Primitive::Ptr primitive)
+	{
+		this->primitives.push_back(primitive);
+	}
+
 	void Mesh::setMorphWeights(std::vector<float>& weights)
 	{
 		this->weights = weights;
