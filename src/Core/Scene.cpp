@@ -227,9 +227,9 @@ namespace pr
 						{
 							auto M = e->getComponent<Transform>()->getTransform();
 							AABB meshbox;
-							for (auto s : mesh->getSubMeshes())
+							for (auto p : mesh->getPrimitives())
 							{
-								auto surf = s.primitive->getSurface();
+								auto surf = p->getSurface();
 								for (auto v : surf.vertices)
 								{
 									glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0f));
@@ -328,9 +328,9 @@ namespace pr
 			auto M = t->getTransform();
 			auto mesh = r->getMesh();
 			AABB meshbox;
-			for (auto s : mesh->getSubMeshes())
+			for (auto p : mesh->getPrimitives())
 			{
-				auto surf = s.primitive->getSurface();
+				auto surf = p->getSurface();
 				for (auto v : surf.vertices)
 				{
 					glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0f));
@@ -458,9 +458,11 @@ namespace pr
 
 		//currentVariant = (++currentVariant) % numVariants;
 		//auto rootNodes = scene->getRootNodes();
-		for (auto root : rootNodes)
-			for (auto r : root->getComponentsInChildren<Renderable>())
-				r->switchVariant(index);
+
+		// TODO: FIX!!!!
+		//for (auto root : rootNodes)
+		//	for (auto r : root->getComponentsInChildren<Renderable>())
+		//		r->switchVariant(index);
 	}
 
 	void Scene::switchAnimation(int index)
@@ -581,12 +583,12 @@ namespace pr
 				bool subMeshHit = false;
 				float minDist = std::numeric_limits<float>::max();
 				auto mesh = r->getMesh();
-				for (auto& sm : mesh->getSubMeshes())
+				for (auto p : mesh->getPrimitives())
 				{
 					glm::vec2 uv;
 					uint32 triID;
 					glm::vec3 hitPoint;
-					if (sm.primitive->raycast(ray, hitPoint, uv, triID))
+					if (p->raycast(ray, hitPoint, uv, triID))
 					{
 						glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
 						float dist = glm::distance(h, start);
@@ -625,12 +627,12 @@ namespace pr
 					float minDist = std::numeric_limits<float>::max();
 					glm::vec3 primitiveHitPoint = glm::vec3(0);
 					auto mesh = r->getMesh();
-					for (auto& sm : mesh->getSubMeshes())
+					for (auto p : mesh->getPrimitives())
 					{
 						glm::vec2 uv;
 						uint32 triID;
 						glm::vec3 hitPoint;
-						if (sm.primitive->raycast(ray, hitPoint, uv, triID))
+						if (p->raycast(ray, hitPoint, uv, triID))
 						{
 							glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
 							float dist = glm::distance(h, start);
@@ -702,18 +704,18 @@ namespace pr
 			for (auto m : models)
 			{
 				auto r = m->getComponent<Renderable>();
-				if (r->isEnabled() && r->getType() == RenderType::Opaque)
+				if (r->isEnabled())// && r->getType() == RenderType::Opaque)
 				{
 					unsigned int p = r->getPriority();
 					if (mapping.find(p) == mapping.end())
 						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
 
-					auto mesh = r->getMesh();
-					auto subMeshes = mesh->getSubMeshes();
+					//auto mesh = r->getMesh();
+					//auto subMeshes = mesh->getSubMeshes();
 					std::set<std::string> usedShader;
-					for (auto s : subMeshes)
+					for (auto mat : r->getMaterials())
 					{
-						auto mat = s.material;
+						//auto mat = s.material;
 						if (mat) // TODO: add pink debug material when it is missing
 						{
 							std::string shaderName = mat->getShaderName();
@@ -748,18 +750,18 @@ namespace pr
 			for (auto m : models)
 			{
 				auto r = m->getComponent<Renderable>();
-				if (r->isEnabled() && r->getType() == RenderType::Transparent)
+				if (r->isEnabled())// && r->getType() == RenderType::Transparent)
 				{
 					unsigned int p = r->getPriority();
 					if (mapping.find(p) == mapping.end())
 						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
 
-					auto mesh = r->getMesh();
-					auto subMeshes = mesh->getSubMeshes();
+					//auto mesh = r->getMesh();
+					//auto subMeshes = mesh->getSubMeshes();
 					std::set<std::string> usedShader;
-					for (auto s : subMeshes)
+					for (auto mat : r->getMaterials())
 					{
-						auto mat = s.material;
+						//auto mat = s.material;
 						std::string shaderName = mat->getShaderName();
 						if (usedShader.find(shaderName) != usedShader.end())
 							continue;
