@@ -94,27 +94,65 @@ namespace pr
 		modelUBO->uploadMapped(&model);
 	}
 
-	//void Renderable::render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
-	//{
-	//	if (enabled)
-	//	{
-	//		cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
-	//		if (skin)
-	//			skin->bind(cmdBuffer, pipeline);
-	//		mesh->draw(cmdBuffer, pipeline);
-	//	}
-	//}
+	void Renderable::render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	{
+		if (enabled)
+		{
+			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
+			if (skin)
+				skin->bind(cmdBuffer, pipeline);
+			//mesh->draw(cmdBuffer, pipeline);
 
-	//void Renderable::renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
-	//{
-	//	if (enabled)
-	//	{
-	//		cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
-	//		if (skin)
-	//			skin->bind(cmdBuffer, pipeline);
-	//		mesh->drawDepth(cmdBuffer, pipeline);
-	//	}
-	//}
+			for (int i = 0; i < materials.size(); i++)
+			{
+				auto mat = materials[i];
+				auto prim = mesh->getPrimitives()[i];
+				// TODO: There is a problem when primitives have different materials because
+				// now the shader is set for the whole mesh! It would be better to extract
+				// the primitives/materials and group/sort according to shader/material!
+				//if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
+				//if (mat)
+				{
+					if (mat->isDoubleSided())
+						cmdBuffer->setCullMode(0);
+
+					mat->bindMainMat(cmdBuffer, pipeline);
+					prim->bind(cmdBuffer, pipeline);
+					prim->draw(cmdBuffer);
+
+					if (mat->isDoubleSided())
+						cmdBuffer->setCullMode(2);
+				}
+			}
+		}
+	}
+
+	void Renderable::renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	{
+		if (enabled)
+		{
+			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
+			if (skin)
+				skin->bind(cmdBuffer, pipeline);
+			//mesh->drawDepth(cmdBuffer, pipeline);
+
+			for (int i = 0; i < materials.size(); i++)
+			{
+				auto mat = materials[i];
+				auto prim = mesh->getPrimitives()[i];
+
+				if (mat->isDoubleSided())
+					cmdBuffer->setCullMode(0);
+
+				mat->bindShadowMat(cmdBuffer, pipeline);
+				prim->bind(cmdBuffer, pipeline);
+				prim->draw(cmdBuffer);
+
+				if (mat->isDoubleSided())
+					cmdBuffer->setCullMode(2);
+			}
+		}
+	}
 
 	void Renderable::setSkin(pr::Skin::Ptr skin)
 	{

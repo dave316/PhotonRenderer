@@ -26,8 +26,8 @@ namespace pr
 		void setMaterials(std::vector<pr::Material::Ptr>& materials);
 		void setDescriptor(GPU::DescriptorPool::Ptr descriptorPool);
 		void update(glm::mat4 modelMatrix);
-		//void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
-		//void renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
+		void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
+		void renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
 		void setSkin(pr::Skin::Ptr skin);
 		//void setType(RenderType type);
 		void setPriority(uint32 priority);
