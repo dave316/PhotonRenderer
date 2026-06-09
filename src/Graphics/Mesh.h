@@ -3,7 +3,7 @@
 
 #pragma once
 
-//#include "Material.h"
+#include "Material.h"
 #include "Primitive.h"
 
 namespace pr
@@ -20,7 +20,6 @@ namespace pr
 	public:
 		Mesh(const std::string& name);
 		void addSubMesh(SubMesh subMesh);
-		//void addPrimitive(Primitive::Ptr primitive);
 		void addVariant(std::string name);
 		void setMorphWeights(std::vector<float>& weights);
 		void flipWindingOrder();
@@ -44,7 +43,6 @@ namespace pr
 		{
 			return subMeshes;
 		}
-		//std::vector<Primitive::Ptr> getPrimitives() { return primitives; }
 
 		typedef std::shared_ptr<Mesh> Ptr;
 		static Ptr create(const std::string& name)
@@ -59,9 +57,8 @@ namespace pr
 		std::string name;
 		std::vector<std::string> variants;
 		std::vector<SubMesh> subMeshes;
-		//std::vector<Primitive::Ptr> primitives;
 		std::vector<float> weights;
 	};
 }
 
-#endif // INCLUDED_PRIMITIVE
+#endif // INCLUDED_MESH

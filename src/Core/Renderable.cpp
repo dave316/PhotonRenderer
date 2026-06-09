@@ -10,8 +10,6 @@ namespace pr
 		if (mesh->hasMorphTargets())
 			morphWeights = mesh->getWeights();
 
-		//materials.resize(mesh->getPrimitives().size());
-		
 		auto& subMeshes = mesh->getSubMeshes();
 		for (auto& s : subMeshes)
 		{
@@ -42,16 +40,6 @@ namespace pr
 				type = RenderType::Transparent;
 		}
 	}
-
-	//void Renderable::setMaterials(std::vector<pr::Material::Ptr>& materials)
-	//{
-	//	this->materials = materials;
-	//}
-
-	//void Renderable::addMaterial(pr::Material::Ptr material)
-	//{
-	//	this->materials.push_back(material);
-	//}
 
 	void Renderable::setDescriptor(GPU::DescriptorPool::Ptr descriptorPool)
 	{

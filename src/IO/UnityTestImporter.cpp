@@ -1220,11 +1220,8 @@ pr::Entity::Ptr UnityTestImporter::traverse(Unity::GameObject::Ptr gameObject, p
 			}
 
 			auto r = pr::Renderable::create(mesh);
-			std::vector<pr::Material::Ptr> materials;
-			for (int m = 0; m < mr->getNumMaterials(); m++)
-				materials.push_back(loadMaterial(mr->getMaterial(m)));
-			//if (isTransparent)
-			//	r->setType(pr::RenderType::Transparent);
+			if (isTransparent)
+				r->setType(pr::RenderType::Transparent);
 			r->setEnabled(mr->isEnabled());
 			r->setDiffuseMode(mr->getDiffuseMode());
 			r->setLightMapIndex(mr->getLMIndex());

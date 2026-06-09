@@ -16,11 +16,6 @@ namespace pr
 		subMeshes.push_back(subMesh);
 	}
 
-	//void Mesh::addPrimitive(Primitive::Ptr primitive)
-	//{
-	//	this->primitives.push_back(primitive);
-	//}
-
 	void Mesh::setMorphWeights(std::vector<float>& weights)
 	{
 		this->weights = weights;
@@ -41,7 +36,7 @@ namespace pr
 			// TODO: There is a problem when primitives have different materials because
 			// now the shader is set for the whole mesh! It would be better to extract
 			// the primitives/materials and group/sort according to shader/material!
-			//if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
+			if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
 			//if (mat)
 			{
 				if (mat->isDoubleSided())

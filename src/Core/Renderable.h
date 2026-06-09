@@ -23,8 +23,6 @@ namespace pr
 		Renderable(pr::Mesh::Ptr mesh, RenderType type = RenderType::Opaque);
 		~Renderable();
 		void setMesh(pr::Mesh::Ptr mesh);
-		//void setMaterials(std::vector<pr::Material::Ptr>& materials);
-		//void addMaterial(pr::Material::Ptr material);
 		void setDescriptor(GPU::DescriptorPool::Ptr descriptorPool);
 		void update(glm::mat4 modelMatrix);
 		void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
@@ -58,7 +56,6 @@ namespace pr
 		int getLMIndex();
 		int getRPIndex();
 		std::string getReflName();
-		//std::vector<Material::Ptr> getMaterials() { return materials; }
 		struct UniformData
 		{
 			glm::mat4 M;
@@ -84,8 +81,6 @@ namespace pr
 	private:
 		pr::Mesh::Ptr mesh = nullptr;
 		pr::Skin::Ptr skin = nullptr;
-
-		//std::vector<Material::Ptr> materials;
 
 		GPU::DescriptorSet::Ptr descriptorSet;
 		GPU::Buffer::Ptr modelUBO = nullptr;
