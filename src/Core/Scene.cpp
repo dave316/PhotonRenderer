@@ -153,32 +153,20 @@ namespace pr
 					auto mesh = r->getMesh();
 					auto meshCopy = pr::Mesh::create(mesh->getName());
 
-					for (auto p : mesh->getPrimitives())
+					for (auto m : mesh->getSubMeshes())
 					{
-						auto surface = p->getSurface();
+						auto surface = m.primitive->getSurface();
 						surface.flipWindingOrder();
 
-						auto newPrim = Primitive::create(p->getName(), surface, GPU::Topology::Triangles);
-						newPrim->createData();
-						newPrim->uploadData();
-						meshCopy->addPrimitive(newPrim);
+						SubMesh s;
+						s.primitive = pr::Primitive::create(m.primitive->getName(), surface, GPU::Topology::Triangles);
+						s.primitive->createData();
+						s.primitive->uploadData();
+						s.material = m.material;
+						meshCopy->addSubMesh(s);
 					}
 
-					//for (auto m : mesh->getSubMeshes())
-					//{
-					//	auto surface = m.primitive->getSurface();
-					//	surface.flipWindingOrder();
-
-					//	SubMesh s;
-					//	s.primitive = pr::Primitive::create(m.primitive->getName(), surface, GPU::Topology::Triangles);
-					//	s.primitive->createData();
-					//	s.primitive->uploadData();
-					//	s.material = m.material;
-					//	meshCopy->addSubMesh(s);
-					//}
-
 					auto newRend = pr::Renderable::create(meshCopy);
-					newRend->setMaterials(r->getMaterials());
 					newRend->setLightMapST(r->getLMOffset(), r->getLMScale());
 					newRend->setLightMapIndex(r->getLMIndex());
 					newRend->setDiffuseMode(r->getDiffuseMode());
@@ -227,9 +215,9 @@ namespace pr
 						{
 							auto M = e->getComponent<Transform>()->getTransform();
 							AABB meshbox;
-							for (auto p : mesh->getPrimitives())
+							for (auto& m : mesh->getSubMeshes())
 							{
-								auto surf = p->getSurface();
+								auto surf = m.primitive->getSurface();
 								for (auto v : surf.vertices)
 								{
 									glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0f));
@@ -328,9 +316,9 @@ namespace pr
 			auto M = t->getTransform();
 			auto mesh = r->getMesh();
 			AABB meshbox;
-			for (auto p : mesh->getPrimitives())
+			for (auto m : mesh->getSubMeshes())
 			{
-				auto surf = p->getSurface();
+				auto surf = m.primitive->getSurface();
 				for (auto v : surf.vertices)
 				{
 					glm::vec3 pos = glm::vec3(M * glm::vec4(v.position, 1.0f));
@@ -583,12 +571,12 @@ namespace pr
 				bool subMeshHit = false;
 				float minDist = std::numeric_limits<float>::max();
 				auto mesh = r->getMesh();
-				for (auto p : mesh->getPrimitives())
+				for (auto m : mesh->getSubMeshes())
 				{
 					glm::vec2 uv;
 					uint32 triID;
 					glm::vec3 hitPoint;
-					if (p->raycast(ray, hitPoint, uv, triID))
+					if (m.primitive->raycast(ray, hitPoint, uv, triID))
 					{
 						glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
 						float dist = glm::distance(h, start);
@@ -627,12 +615,12 @@ namespace pr
 					float minDist = std::numeric_limits<float>::max();
 					glm::vec3 primitiveHitPoint = glm::vec3(0);
 					auto mesh = r->getMesh();
-					for (auto p : mesh->getPrimitives())
+					for (auto m : mesh->getSubMeshes())
 					{
 						glm::vec2 uv;
 						uint32 triID;
 						glm::vec3 hitPoint;
-						if (p->raycast(ray, hitPoint, uv, triID))
+						if (m.primitive->raycast(ray, hitPoint, uv, triID))
 						{
 							glm::vec3 h = glm::vec3(M * glm::vec4(hitPoint, 1.0));
 							float dist = glm::distance(h, start);
@@ -704,18 +692,18 @@ namespace pr
 			for (auto m : models)
 			{
 				auto r = m->getComponent<Renderable>();
-				if (r->isEnabled())// && r->getType() == RenderType::Opaque)
+				if (r->isEnabled() && r->getType() == RenderType::Opaque)
 				{
 					unsigned int p = r->getPriority();
 					if (mapping.find(p) == mapping.end())
 						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
 
-					//auto mesh = r->getMesh();
-					//auto subMeshes = mesh->getSubMeshes();
+					auto mesh = r->getMesh();
+					auto subMeshes = mesh->getSubMeshes();
 					std::set<std::string> usedShader;
-					for (auto mat : r->getMaterials())
+					for (auto& s : subMeshes)
 					{
-						//auto mat = s.material;
+						auto mat = s.material;
 						if (mat) // TODO: add pink debug material when it is missing
 						{
 							std::string shaderName = mat->getShaderName();
@@ -750,18 +738,18 @@ namespace pr
 			for (auto m : models)
 			{
 				auto r = m->getComponent<Renderable>();
-				if (r->isEnabled())// && r->getType() == RenderType::Transparent)
+				if (r->isEnabled() && r->getType() == RenderType::Transparent)
 				{
 					unsigned int p = r->getPriority();
 					if (mapping.find(p) == mapping.end())
 						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
 
-					//auto mesh = r->getMesh();
-					//auto subMeshes = mesh->getSubMeshes();
+					auto mesh = r->getMesh();
+					auto subMeshes = mesh->getSubMeshes();
 					std::set<std::string> usedShader;
-					for (auto mat : r->getMaterials())
+					for (auto& s : subMeshes)
 					{
-						//auto mat = s.material;
+						auto mat = s.material;
 						std::string shaderName = mat->getShaderName();
 						if (usedShader.find(shaderName) != usedShader.end())
 							continue;

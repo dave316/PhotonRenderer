@@ -2,24 +2,25 @@
 #include <Graphics/GraphicsContext.h>
 namespace pr
 {
-	Renderable::Renderable(pr::Mesh::Ptr mesh) : 
+	Renderable::Renderable(pr::Mesh::Ptr mesh, RenderType type) :
 		mesh(mesh),
+		type(type),
 		priority(0)
 	{
 		if (mesh->hasMorphTargets())
 			morphWeights = mesh->getWeights();
 
-		materials.resize(mesh->getPrimitives().size());
+		//materials.resize(mesh->getPrimitives().size());
 		
-		//auto& subMeshes = mesh->getSubMeshes();
-		//for (auto& s : subMeshes)
-		//{
-		//	auto mat = s.material;
-		//	if (mat->isTransmissive())
-		//		this->type = RenderType::Transparent;
-		//	if (mat->isTransparent())
-		//		priority = 1;
-		//}
+		auto& subMeshes = mesh->getSubMeshes();
+		for (auto& s : subMeshes)
+		{
+			auto mat = s.material;
+			if (mat->isTransmissive())
+				this->type = RenderType::Transparent;
+			if (mat->isTransparent())
+				priority = 1;
+		}
 
 		//auto& ctx = GraphicsContext::getInstance();
 		//modelUBO = ctx.createBuffer(GPU::BufferUsage::TransferDst | GPU::BufferUsage::UniformBuffer, sizeof(UniformData), 0);
@@ -33,24 +34,24 @@ namespace pr
 	{
 		this->mesh = mesh;
 
-		//auto& subMeshes = mesh->getSubMeshes();
-		//for (auto& s : subMeshes)
-		//{
-		//	auto mat = s.material;
-		//	if (mat->isTransmissive())
-		//		type = RenderType::Transparent;
-		//}
+		auto& subMeshes = mesh->getSubMeshes();
+		for (auto& s : subMeshes)
+		{
+			auto mat = s.material;
+			if (mat->isTransmissive())
+				type = RenderType::Transparent;
+		}
 	}
 
-	void Renderable::setMaterials(std::vector<pr::Material::Ptr>& materials)
-	{
-		this->materials = materials;
-	}
+	//void Renderable::setMaterials(std::vector<pr::Material::Ptr>& materials)
+	//{
+	//	this->materials = materials;
+	//}
 
-	void Renderable::addMaterial(pr::Material::Ptr material)
-	{
-		this->materials.push_back(material);
-	}
+	//void Renderable::addMaterial(pr::Material::Ptr material)
+	//{
+	//	this->materials.push_back(material);
+	//}
 
 	void Renderable::setDescriptor(GPU::DescriptorPool::Ptr descriptorPool)
 	{
@@ -106,29 +107,7 @@ namespace pr
 			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
 			if (skin)
 				skin->bind(cmdBuffer, pipeline);
-			//mesh->draw(cmdBuffer, pipeline);
-
-			for (int i = 0; i < materials.size(); i++)
-			{
-				auto mat = materials[i];
-				auto prim = mesh->getPrimitives()[i];
-				// TODO: There is a problem when primitives have different materials because
-				// now the shader is set for the whole mesh! It would be better to extract
-				// the primitives/materials and group/sort according to shader/material!
-				//if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
-				//if (mat)
-				{
-					if (mat->isDoubleSided())
-						cmdBuffer->setCullMode(0);
-
-					mat->bindMainMat(cmdBuffer, pipeline);
-					prim->bind(cmdBuffer, pipeline);
-					prim->draw(cmdBuffer);
-
-					if (mat->isDoubleSided())
-						cmdBuffer->setCullMode(2);
-				}
-			}
+			mesh->draw(cmdBuffer, pipeline);
 		}
 	}
 
@@ -139,23 +118,7 @@ namespace pr
 			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
 			if (skin)
 				skin->bind(cmdBuffer, pipeline);
-			//mesh->drawDepth(cmdBuffer, pipeline);
-
-			for (int i = 0; i < materials.size(); i++)
-			{
-				auto mat = materials[i];
-				auto prim = mesh->getPrimitives()[i];
-
-				if (mat->isDoubleSided())
-					cmdBuffer->setCullMode(0);
-
-				mat->bindShadowMat(cmdBuffer, pipeline);
-				prim->bind(cmdBuffer, pipeline);
-				prim->draw(cmdBuffer);
-
-				if (mat->isDoubleSided())
-					cmdBuffer->setCullMode(2);
-			}
+			mesh->drawDepth(cmdBuffer, pipeline);
 		}
 	}
 
@@ -164,10 +127,10 @@ namespace pr
 		this->skin = skin;
 	}
 
-	//void Renderable::setType(RenderType type)
-	//{
-	//	this->type = type;
-	//}
+	void Renderable::setType(RenderType type)
+	{
+		this->type = type;
+	}
 
 	void Renderable::setPriority(uint32 priority)
 	{
@@ -211,10 +174,10 @@ namespace pr
 		return Renderable::mesh->hasMorphTargets();
 	}
 
-	//bool Renderable::isTransmissive() // TODO: this only works if all submeshes are transparent
-	//{
-	//	return mesh->isTransmissive();
-	//}
+	bool Renderable::isTransmissive() // TODO: this only works if all submeshes are transparent
+	{
+		return mesh->isTransmissive();
+	}
 
 	void Renderable::setCurrentWeights(std::vector<float> weights)
 	{
@@ -241,35 +204,35 @@ namespace pr
 		return mesh->numPrimitives();
 	}
 
-	//uint32 Renderable::getNumVariants()
-	//{
-	//	return mesh->getNumVariants();
-	//}
+	uint32 Renderable::getNumVariants()
+	{
+		return mesh->getNumVariants();
+	}
 
-	//void Renderable::switchVariant(uint32 index)
-	//{
-	//	mesh->switchVariant(index);
-	//}
+	void Renderable::switchVariant(uint32 index)
+	{
+		mesh->switchVariant(index);
+	}
 
 	void Renderable::setEnabled(bool enabled)
 	{
 		this->enabled = enabled;
 	}
 
-	//std::string Renderable::getShaderName()
-	//{
-	//	return mesh->getShaderName();
-	//}
+	std::string Renderable::getShaderName()
+	{
+		return mesh->getShaderName();
+	}
 
 	uint32 Renderable::getPriority()
 	{
 		return priority;
 	}
 
-	//RenderType Renderable::getType()
-	//{
-	//	return type;
-	//}
+	RenderType Renderable::getType()
+	{
+		return type;
+	}
 
 	glm::vec2 Renderable::getLMOffset()
 	{

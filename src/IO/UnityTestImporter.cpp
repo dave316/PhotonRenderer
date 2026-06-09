@@ -1202,15 +1202,16 @@ pr::Entity::Ptr UnityTestImporter::traverse(Unity::GameObject::Ptr gameObject, p
 					surface.maxPoint = maxPoint;
 					surface.minPoint = minPoint;
 
-					auto prim = pr::Primitive::create(name, surface, GPU::Topology::Triangles);
-					prim->createData();
-					prim->uploadData();
-					//s.material = loadMaterial(mr->getMaterial(m));
+					pr::SubMesh s;
+					s.primitive = pr::Primitive::create(name, surface, GPU::Topology::Triangles);
+					s.primitive->createData();
+					s.primitive->uploadData();
+					s.material = loadMaterial(mr->getMaterial(m));
 
-					//if (s.material->isTransparent())
-					//	isTransparent = true;
+					if (s.material->isTransparent())
+						isTransparent = true;
 
-					mesh->addPrimitive(prim);
+					mesh->addSubMesh(s);
 				}
 				else
 				{

@@ -366,13 +366,11 @@ void Application::addAssetNode(IO::FileNode::Ptr node)
 			uint32 matIdx = 0;
 			for (auto r : root->getComponentsInChildren<pr::Renderable>())
 			{
-				auto prims = r->getMesh()->getPrimitives();
-				auto mats = r->getMaterials();
-
-				for (int i = 0; i < mats.size(); i++)
+				auto mesh = r->getMesh();
+				for (auto& m : mesh->getSubMeshes())
 				{
-					auto prim = prims[i];
-					auto mat = mats[i];
+					auto prim = m.primitive;
+					auto mat = m.material;
 					if (prim)
 						primitives.insert(std::make_pair(prim->getName(), prim));
 					if (mat)
@@ -760,15 +758,14 @@ void Application::updateGUI()
 			{
 				if (ImGui::MenuItem("Box", NULL, false, true))
 				{
-					auto prim = createCube(glm::vec3(0), 1.0f);
-					auto mat = getDefaultMaterial();
+					pr::SubMesh m;
+					m.primitive = createCube(glm::vec3(0), 1.0f);
+					m.material = getDefaultMaterial();
 
 					auto mesh = pr::Mesh::create("Box");
-					mesh->addPrimitive(prim);
+					mesh->addSubMesh(m);
 
 					auto r = pr::Renderable::create(mesh);
-					r->addMaterial(mat);
-
 					auto box = pr::Entity::create("Box", nullptr);
 					box->addComponent(r);
 
@@ -780,15 +777,14 @@ void Application::updateGUI()
 				}
 				if (ImGui::MenuItem("Sphere", NULL, false, true))
 				{
-					auto prim = createUVSphere(glm::vec3(0), 0.5f, 64, 64);
-					auto mat = getDefaultMaterial();
+					pr::SubMesh m;
+					m.primitive = createUVSphere(glm::vec3(0), 0.5f, 64, 64);
+					m.material = getDefaultMaterial();
 
 					auto mesh = pr::Mesh::create("Spere");
-					mesh->addPrimitive(prim);
+					mesh->addSubMesh(m);
 
 					auto r = pr::Renderable::create(mesh);
-					r->addMaterial(mat);
-
 					auto sphere = pr::Entity::create("Spere", nullptr);
 					sphere->addComponent(r);
 
@@ -800,15 +796,14 @@ void Application::updateGUI()
 				}
 				if (ImGui::MenuItem("Quad", NULL, false, true))
 				{
-					auto prim = createQuad(glm::vec3(0), 1.0f);
-					auto mat = getDefaultMaterial();
+					pr::SubMesh m;
+					m.primitive = createQuad(glm::vec3(0), 1.0f);
+					m.material = getDefaultMaterial();
 
 					auto mesh = pr::Mesh::create("Quad");
-					mesh->addPrimitive(prim);
+					mesh->addSubMesh(m);
 
 					auto r = pr::Renderable::create(mesh);
-					r->addMaterial(mat);
-
 					auto quad = pr::Entity::create("Quad", nullptr);
 					quad->addComponent(r);
 
@@ -1011,12 +1006,12 @@ void Application::updateGUI()
 				if (ImGui::CollapsingHeader("Renderable", ImGuiTreeNodeFlags_DefaultOpen))
 				{
 					auto mesh = r->getMesh();
-					auto primitives = mesh->getPrimitives();
-					auto materials = r->getMaterials();
+					auto subMeshes = mesh->getSubMeshes();
+
 					ImGui::InputText("Mesh", &mesh->getName());
 					meshNames.clear();
-					for (auto p : primitives)
-						meshNames.push_back(p->getName());
+					for (auto m : subMeshes)
+						meshNames.push_back(m.primitive->getName());
 
 					static int primitiveSelected = -1;
 					if (ImGui::BeginListBox("Primitives"))
@@ -1041,8 +1036,11 @@ void Application::updateGUI()
 						if (payload != nullptr)
 						{
 							int primID = *(int*)(payload->Data);
-							auto prim = assetManager.getPrimitive(primID);
-							mesh->addPrimitive(prim);
+
+							pr::SubMesh m;
+							m.primitive = assetManager.getPrimitive(primID);
+							m.material = nullptr;
+							mesh->addSubMesh(m);
 
 							scenes[sceneIndex]->initDescriptors(renderer->getDescriptorPool());
 							renderer->buildCmdBuffer(scenes[sceneIndex]);
@@ -1051,24 +1049,24 @@ void Application::updateGUI()
 						ImGui::EndDragDropTarget();
 					}
 
-					if (primitiveSelected >= 0 && primitiveSelected < primitives.size())
+					if (primitiveSelected >= 0 && primitiveSelected < subMeshes.size())
 					{
-						auto vertexCount = primitives[primitiveSelected]->getVertexCount();
-						auto triangleCount = primitives[primitiveSelected]->getIndexCount() / 3;
+						auto vertexCount = subMeshes[primitiveSelected].primitive->getVertexCount();
+						auto triangleCount = subMeshes[primitiveSelected].primitive->getIndexCount() / 3;
 						std::string verticesTxt = "Vertices: " + std::to_string(vertexCount);
 						std::string trianglesTxt = "Triangles: " + std::to_string(triangleCount);
 						ImGui::Text(verticesTxt.c_str());
 						ImGui::Text(trianglesTxt.c_str());
 						
-						if (r->getMaterials()[primitiveSelected])
+						if (subMeshes[primitiveSelected].material)
 						{
-							auto matName = materials[primitiveSelected]->getName();
+							auto matName = subMeshes[primitiveSelected].material->getName();
 							auto maTxt = "Material: " + matName;
 							ImGui::Text(maTxt.c_str());
 							if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
 							{
-								auto primitive = primitives[primitiveSelected];
-								auto material = materials[primitiveSelected];
+								auto primitive = subMeshes[primitiveSelected].primitive;
+								auto material = subMeshes[primitiveSelected].material;
 								std::string nameTxt = "Name: " + matName;
 
 								auto properties = material->getProperties();
@@ -1142,7 +1140,7 @@ void Application::updateGUI()
 								if (payload != nullptr)
 								{
 									int matID = *(int*)(payload->Data);
-									materials[primitiveSelected] = assetManager.getMaterial(matID);
+									subMeshes[primitiveSelected].material = assetManager.getMaterial(matID);
 
 									scenes[sceneIndex]->initDescriptors(renderer->getDescriptorPool());
 									renderer->buildCmdBuffer(scenes[sceneIndex]);
