@@ -701,7 +701,7 @@ namespace pr
 					if (e->isActive())
 					{
 						auto r = e->getComponent<Renderable>();
-						r->render(cmdBuf, pipeline);
+						//r->render(cmdBuf, pipeline);
 					}
 				}
 			}
@@ -754,7 +754,7 @@ namespace pr
 						if (e->isActive())
 						{
 							auto r = e->getComponent<Renderable>();
-							r->render(cmdBuf, pipeline);
+							//r->render(cmdBuf, pipeline);
 						}
 					}
 				}

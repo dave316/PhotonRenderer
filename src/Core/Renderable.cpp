@@ -88,27 +88,27 @@ namespace pr
 		modelUBO->uploadMapped(&model);
 	}
 
-	void Renderable::render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
-	{
-		if (enabled)
-		{
-			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
-			if (skin)
-				skin->bind(cmdBuffer, pipeline);
-			mesh->draw(cmdBuffer, pipeline);
-		}
-	}
+	//void Renderable::render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	//{
+	//	if (enabled)
+	//	{
+	//		cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
+	//		if (skin)
+	//			skin->bind(cmdBuffer, pipeline);
+	//		mesh->draw(cmdBuffer, pipeline);
+	//	}
+	//}
 
-	void Renderable::renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
-	{
-		if (enabled)
-		{
-			cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
-			if (skin)
-				skin->bind(cmdBuffer, pipeline);
-			mesh->drawDepth(cmdBuffer, pipeline);
-		}
-	}
+	//void Renderable::renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	//{
+	//	if (enabled)
+	//	{
+	//		cmdBuffer->bindDescriptorSets(pipeline, descriptorSet, 1);
+	//		if (skin)
+	//			skin->bind(cmdBuffer, pipeline);
+	//		mesh->drawDepth(cmdBuffer, pipeline);
+	//	}
+	//}
 
 	void Renderable::setSkin(pr::Skin::Ptr skin)
 	{

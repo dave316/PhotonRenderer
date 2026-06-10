@@ -2,7 +2,7 @@
 #define INCLUDED_SCENE
 
 #pragma once
-
+#include <Core/Renderable.h>
 #include <Core/Entity.h>
 #include <Core/LightProbe.h>
 #include <Graphics/Texture.h>
@@ -66,6 +66,7 @@ namespace pr
 		}
 		AABB getBoundingBox();
 		std::vector<Entity::Ptr> selectModelsRaycast(glm::vec3 start, glm::vec3 end);
+		std::vector<std::pair<std::string, std::vector<RenderItem>>> getOpaqueEntitiesNew();
 		std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> getOpaqueEntities();
 		std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> getTransparentEntities();
 		std::vector<pr::Entity::Ptr> getRootNodes();

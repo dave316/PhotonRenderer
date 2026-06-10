@@ -1,7 +1,7 @@
 #include "Scene.h"
 
 #include <Core/Animator.h>
-#include <Core/Renderable.h>
+
 #include <Math/Intersection.h>
 #include <set>
 
@@ -680,6 +680,32 @@ namespace pr
 		}
 
 		return entities;
+	}
+
+	std::vector<std::pair<std::string, std::vector<RenderItem>>> Scene::getOpaqueEntitiesNew()
+	{
+		std::map<int, std::map<std::string, std::vector<RenderItem>>> mapping;
+		for (auto root : rootNodes)
+		{
+			for (auto e : root->getChildrenWithComponent<Renderable>())
+			{
+				auto r = e->getComponent<Renderable>();
+				if (r->isEnabled() && r->getType() == RenderType::Opaque)
+				{
+					uint32 p = r->getPriority();
+					if (mapping.find(p) == mapping.end())
+						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<RenderItem>>()));
+
+					auto mesh = r->getMesh();
+					for (auto& m : mesh->getSubMeshes())
+					{
+						RenderItem ri;
+						ri.subMesh = m;
+						ri.modelDesc = r->getModelDesc();
+					}
+				}
+			}
+		}
 	}
 
 	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> Scene::getOpaqueEntities()

@@ -380,7 +380,7 @@ namespace pr
 				if (e->isActive())
 				{
 					auto r = e->getComponent<Renderable>();
-					r->renderDepth(csmCmdBuf, shadowCSMPipeline);
+					//r->renderDepth(csmCmdBuf, shadowCSMPipeline);
 				}
 			}
 		}
@@ -419,7 +419,7 @@ namespace pr
 					if (e->isActive())
 					{
 						auto r = e->getComponent<Renderable>();
-						r->renderDepth(cmdBuf, shadowOMNIPipeline);
+						//r->renderDepth(cmdBuf, shadowOMNIPipeline);
 					}
 				}
 			}

@@ -27,48 +27,48 @@ namespace pr
 			m.primitive->flipWindingOrder();
 	}
 
-	void Mesh::draw(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
-	{
-		for (auto subMesh : subMeshes)
-		{
-			auto mat = subMesh.material;
+	//void Mesh::draw(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	//{
+	//	for (auto subMesh : subMeshes)
+	//	{
+	//		auto mat = subMesh.material;
 
-			// TODO: There is a problem when primitives have different materials because
-			// now the shader is set for the whole mesh! It would be better to extract
-			// the primitives/materials and group/sort according to shader/material!
-			if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
-			//if (mat)
-			{
-				if (mat->isDoubleSided())
-					cmdBuffer->setCullMode(0);
+	//		// TODO: There is a problem when primitives have different materials because
+	//		// now the shader is set for the whole mesh! It would be better to extract
+	//		// the primitives/materials and group/sort according to shader/material!
+	//		if (pipeline->getPipelineName().compare(mat->getShaderName()) == 0)
+	//		//if (mat)
+	//		{
+	//			if (mat->isDoubleSided())
+	//				cmdBuffer->setCullMode(0);
 
-				mat->bindMainMat(cmdBuffer, pipeline);
-				subMesh.primitive->bind(cmdBuffer, pipeline);
-				subMesh.primitive->draw(cmdBuffer);
+	//			mat->bindMainMat(cmdBuffer, pipeline);
+	//			subMesh.primitive->bind(cmdBuffer, pipeline);
+	//			subMesh.primitive->draw(cmdBuffer);
 
-				if (mat->isDoubleSided())
-					cmdBuffer->setCullMode(2);
-			}
-		}
-	}
+	//			if (mat->isDoubleSided())
+	//				cmdBuffer->setCullMode(2);
+	//		}
+	//	}
+	//}
 
-	void Mesh::drawDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
-	{
-		for (auto subMesh : subMeshes)
-		{
-			auto mat = subMesh.material;
+	//void Mesh::drawDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline)
+	//{
+	//	for (auto subMesh : subMeshes)
+	//	{
+	//		auto mat = subMesh.material;
 
-			if (mat->isDoubleSided())
-				cmdBuffer->setCullMode(0);
+	//		if (mat->isDoubleSided())
+	//			cmdBuffer->setCullMode(0);
 
-			mat->bindShadowMat(cmdBuffer, pipeline);
-			subMesh.primitive->bind(cmdBuffer, pipeline);
-			subMesh.primitive->draw(cmdBuffer);
+	//		mat->bindShadowMat(cmdBuffer, pipeline);
+	//		subMesh.primitive->bind(cmdBuffer, pipeline);
+	//		subMesh.primitive->draw(cmdBuffer);
 
-			if (mat->isDoubleSided())
-				cmdBuffer->setCullMode(2);
-		}
-	}
+	//		if (mat->isDoubleSided())
+	//			cmdBuffer->setCullMode(2);
+	//	}
+	//}
 
 	void Mesh::setDescriptor(GPU::DescriptorPool::Ptr descriptorPool)
 	{

@@ -265,7 +265,7 @@ namespace pr
 			{
 				auto r = m->getComponent<Renderable>();
 				auto t = m->getComponent<Transform>();
-				r->render(cmdBuf, unlitPipeline);
+				//r->render(cmdBuf, unlitPipeline);
 			}
 		}
 
@@ -285,7 +285,7 @@ namespace pr
 			{
 				auto r = m->getComponent<Renderable>();
 				auto t = m->getComponent<Transform>();
-				r->render(cmdBuf, unlitPipelineStencil);
+				//r->render(cmdBuf, unlitPipelineStencil);
 			}
 		}
 

@@ -217,7 +217,7 @@ namespace pr
 				if (e->isActive())
 				{
 					auto r = e->getComponent<Renderable>();
-					r->render(scatterCmdBuf, scatterPipeline);
+					//r->render(scatterCmdBuf, scatterPipeline);
 				}
 			}
 		}

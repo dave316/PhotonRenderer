@@ -17,6 +17,12 @@ namespace pr
 		Transparent
 	};
 
+	struct RenderItem
+	{
+		SubMesh subMesh;
+		GPU::DescriptorSet::Ptr modelDesc;
+	};
+
 	class Renderable : public Component
 	{
 	public:
@@ -25,8 +31,8 @@ namespace pr
 		void setMesh(pr::Mesh::Ptr mesh);
 		void setDescriptor(GPU::DescriptorPool::Ptr descriptorPool);
 		void update(glm::mat4 modelMatrix);
-		void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
-		void renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
+		//void render(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
+		//void renderDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
 		void setSkin(pr::Skin::Ptr skin);
 		void setType(RenderType type);
 		void setPriority(uint32 priority);
@@ -56,6 +62,7 @@ namespace pr
 		int getLMIndex();
 		int getRPIndex();
 		std::string getReflName();
+		GPU::DescriptorSet::Ptr getModelDesc() { return descriptorSet; }
 		struct UniformData
 		{
 			glm::mat4 M;
