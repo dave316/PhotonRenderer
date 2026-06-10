@@ -697,15 +697,37 @@ namespace pr
 						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<RenderItem>>()));
 
 					auto mesh = r->getMesh();
+					std::set<std::string> usedShader;
 					for (auto& m : mesh->getSubMeshes())
 					{
 						RenderItem ri;
 						ri.subMesh = m;
 						ri.modelDesc = r->getModelDesc();
+
+						auto mat = m.material;
+						if (mat) // TODO: add pink debug material when it is missing
+						{
+							std::string shaderName = mat->getShaderName();
+							if (usedShader.find(shaderName) != usedShader.end())
+								continue;
+
+							auto& shaderMapping = mapping[p];
+							if (shaderMapping.find(shaderName) == shaderMapping.end())
+								shaderMapping.insert(std::make_pair(shaderName, std::vector<RenderItem>()));
+							shaderMapping[shaderName].push_back(ri);
+							usedShader.insert(shaderName);
+						}
 					}
 				}
 			}
 		}
+
+		std::vector<std::pair<std::string, std::vector<RenderItem>>> renderQueue;
+		for (auto [_, shaderMapping] : mapping)
+			for (auto [name, models] : shaderMapping)
+				renderQueue.push_back(std::make_pair(name, models));
+
+		return renderQueue;
 	}
 
 	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> Scene::getOpaqueEntities()
