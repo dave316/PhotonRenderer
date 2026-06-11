@@ -696,26 +696,27 @@ namespace pr
 				cmdBuf->bindDescriptorSets(pipeline, descriptorSetVolume, 7);
 				cmdBuf->bindDescriptorSets(pipeline, scatter.getDescriptorSet(), 8);
 
-				for (auto renderItem : renderQueue)
+				for (auto [matID, renderItems] : renderQueue)
 				{
-					cmdBuf->bindDescriptorSets(pipeline, renderItem.modelDesc, 1);
-					auto m = renderItem.subMesh;
-					if (m.material)
+					auto mat = renderItems[0].subMesh.material; // TODO: This should fetched from the asset manager using the ID!
+					if (mat)
 					{
-						if (m.material->isDoubleSided())
+						if (mat->isDoubleSided())
 							cmdBuf->setCullMode(0);
-						m.material->bindMainMat(cmdBuf, pipeline);
-						m.primitive->bind(cmdBuf, pipeline);
-						m.primitive->draw(cmdBuf);
+						mat->bindMainMat(cmdBuf, pipeline);
 
-						if (m.material->isDoubleSided())
+						for (auto ri : renderItems)
+						{
+							cmdBuf->bindDescriptorSets(pipeline, ri.modelDesc, 1);
+
+							auto prim = ri.subMesh.primitive;
+							prim->bind(cmdBuf, pipeline);
+							prim->draw(cmdBuf);
+						}
+
+						if (mat->isDoubleSided())
 							cmdBuf->setCullMode(2);
 					}
-					//if (e->isActive())
-					//{
-					//	auto r = e->getComponent<Renderable>();
-					//	//r->render(cmdBuf, pipeline);
-					//}
 				}
 			}
 
@@ -777,11 +778,6 @@ namespace pr
 							if (m.material->isDoubleSided())
 								cmdBuf->setCullMode(2);
 						}
-						//if (e->isActive())
-						//{
-						//	auto r = e->getComponent<Renderable>();
-						//	//r->render(cmdBuf, pipeline);
-						//}
 					}
 				}
 

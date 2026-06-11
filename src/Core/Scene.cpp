@@ -682,22 +682,21 @@ namespace pr
 		return entities;
 	}
 
-	std::vector<std::pair<std::string, std::vector<RenderItem>>> Scene::getOpaqueEntities()
+	std::vector<std::pair<std::string, std::vector<std::pair<int, std::vector<RenderItem>>>>> Scene::getOpaqueEntities()
 	{
-		std::map<int, std::map<std::string, std::vector<RenderItem>>> mapping;
+		std::map<int, std::map<std::string, std::map<int, std::vector<RenderItem>>>> mapping;
 		for (auto root : rootNodes)
 		{
-			for (auto e : root->getChildrenWithComponent<Renderable>())
+			for (auto e : root->getChildrenWithComponent<Renderable>(true))
 			{
 				auto r = e->getComponent<Renderable>();
 				if (r->isEnabled() && r->getType() == RenderType::Opaque)
 				{
 					uint32 p = r->getPriority();
 					if (mapping.find(p) == mapping.end())
-						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<RenderItem>>()));
+						mapping.insert(std::make_pair(p, std::map<std::string, std::map<int, std::vector<RenderItem>>>()));
 
 					auto mesh = r->getMesh();
-					//std::set<std::string> usedShader;
 					for (auto& m : mesh->getSubMeshes())
 					{
 						RenderItem ri;
@@ -705,27 +704,33 @@ namespace pr
 						ri.modelDesc = r->getModelDesc();
 
 						auto mat = m.material;
-						if (mat) // TODO: add pink debug material when it is missing
-						{
-							std::string shaderName = mat->getShaderName();
-							//if (usedShader.find(shaderName) != usedShader.end())
-							//	continue;
-
-							auto& shaderMapping = mapping[p];
-							if (shaderMapping.find(shaderName) == shaderMapping.end())
-								shaderMapping.insert(std::make_pair(shaderName, std::vector<RenderItem>()));
-							shaderMapping[shaderName].push_back(ri);
-							//usedShader.insert(shaderName);
-						}
+						uint32 matID = mat->getID();
+						std::string shaderName = mat->getShaderName();
+						auto& shaderMapping = mapping[p];
+						if (shaderMapping.find(shaderName) == shaderMapping.end())
+							shaderMapping.insert(std::make_pair(shaderName, std::map<int, std::vector<RenderItem>>()));
+						auto& materialMapping = shaderMapping[shaderName];
+						if (materialMapping.find(matID) == materialMapping.end())
+							materialMapping.insert(std::make_pair(matID, std::vector<RenderItem>()));
+						materialMapping[matID].push_back(ri);
 					}
 				}
 			}
 		}
 
-		std::vector<std::pair<std::string, std::vector<RenderItem>>> renderQueue;
+		std::vector<std::pair<std::string, std::vector<std::pair<int, std::vector<RenderItem>>>>> renderQueue;
 		for (auto [_, shaderMapping] : mapping)
-			for (auto [name, models] : shaderMapping)
-				renderQueue.push_back(std::make_pair(name, models));
+		{
+			for (auto [name, materialMapping] : shaderMapping)
+			{
+				//renderQueue.push_back(std::make_pair(name, std::vector<std::pair<int, std::vector<RenderItem>>>()));
+				std::vector<std::pair<int, std::vector<RenderItem>>> materials;
+				for (auto [id, models] : materialMapping)
+					materials.push_back(std::make_pair(id, models));
+
+				renderQueue.push_back(std::make_pair(name, materials));
+			}
+		}
 
 		return renderQueue;
 	}
@@ -733,12 +738,11 @@ namespace pr
 	std::vector<std::pair<std::string, std::vector<RenderItem>>> Scene::getTransparentEntities()
 	{
 		std::map<int, std::map<std::string, std::vector<RenderItem>>> mapping;
-		for (auto entity : rootNodes)
+		for (auto root : rootNodes)
 		{
-			auto models = entity->getChildrenWithComponent<Renderable>(true);
-			for (auto m : models)
+			for (auto e : root->getChildrenWithComponent<Renderable>(true))
 			{
-				auto r = m->getComponent<Renderable>();
+				auto r = e->getComponent<Renderable>();
 				if (r->isEnabled() && r->getType() == RenderType::Transparent)
 				{
 					uint32 p = r->getPriority();
@@ -746,7 +750,6 @@ namespace pr
 						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<RenderItem>>()));
 
 					auto mesh = r->getMesh();
-					//std::set<std::string> usedShader;
 					for (auto& m : mesh->getSubMeshes())
 					{
 						RenderItem ri;
@@ -755,14 +758,11 @@ namespace pr
 
 						auto mat = m.material;
 						std::string shaderName = mat->getShaderName();
-						//if (usedShader.find(shaderName) != usedShader.end())
-						//	continue;
 
 						auto& shaderMapping = mapping[p];
 						if (shaderMapping.find(shaderName) == shaderMapping.end())
 							shaderMapping.insert(std::make_pair(shaderName, std::vector<RenderItem>()));
 						shaderMapping[shaderName].push_back(ri);
-						//usedShader.insert(shaderName);
 					}
 				}
 			}
