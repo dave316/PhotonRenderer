@@ -696,13 +696,26 @@ namespace pr
 				cmdBuf->bindDescriptorSets(pipeline, descriptorSetVolume, 7);
 				cmdBuf->bindDescriptorSets(pipeline, scatter.getDescriptorSet(), 8);
 
-				for (auto e : renderQueue)
+				for (auto renderItem : renderQueue)
 				{
-					if (e->isActive())
+					cmdBuf->bindDescriptorSets(pipeline, renderItem.modelDesc, 1);
+					auto m = renderItem.subMesh;
+					if (m.material)
 					{
-						auto r = e->getComponent<Renderable>();
-						//r->render(cmdBuf, pipeline);
+						if (m.material->isDoubleSided())
+							cmdBuf->setCullMode(0);
+						m.material->bindMainMat(cmdBuf, pipeline);
+						m.primitive->bind(cmdBuf, pipeline);
+						m.primitive->draw(cmdBuf);
+
+						if (m.material->isDoubleSided())
+							cmdBuf->setCullMode(2);
 					}
+					//if (e->isActive())
+					//{
+					//	auto r = e->getComponent<Renderable>();
+					//	//r->render(cmdBuf, pipeline);
+					//}
 				}
 			}
 
@@ -749,13 +762,26 @@ namespace pr
 					cmdBuf->bindDescriptorSets(pipeline, descriptorSetVolume, 7);
 					cmdBuf->bindDescriptorSets(pipeline, scatter.getDescriptorSet(), 8);
 
-					for (auto e : renderQueue)
+					for (auto renderItem : renderQueue)
 					{
-						if (e->isActive())
+						cmdBuf->bindDescriptorSets(pipeline, renderItem.modelDesc, 1);
+						auto m = renderItem.subMesh;
+						if (m.material)
 						{
-							auto r = e->getComponent<Renderable>();
-							//r->render(cmdBuf, pipeline);
+							if (m.material->isDoubleSided())
+								cmdBuf->setCullMode(0);
+							m.material->bindMainMat(cmdBuf, pipeline);
+							m.primitive->bind(cmdBuf, pipeline);
+							m.primitive->draw(cmdBuf);
+
+							if (m.material->isDoubleSided())
+								cmdBuf->setCullMode(2);
 						}
+						//if (e->isActive())
+						//{
+						//	auto r = e->getComponent<Renderable>();
+						//	//r->render(cmdBuf, pipeline);
+						//}
 					}
 				}
 

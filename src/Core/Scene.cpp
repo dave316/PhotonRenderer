@@ -682,7 +682,7 @@ namespace pr
 		return entities;
 	}
 
-	std::vector<std::pair<std::string, std::vector<RenderItem>>> Scene::getOpaqueEntitiesNew()
+	std::vector<std::pair<std::string, std::vector<RenderItem>>> Scene::getOpaqueEntities()
 	{
 		std::map<int, std::map<std::string, std::vector<RenderItem>>> mapping;
 		for (auto root : rootNodes)
@@ -730,56 +730,9 @@ namespace pr
 		return renderQueue;
 	}
 
-	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> Scene::getOpaqueEntities()
+	std::vector<std::pair<std::string, std::vector<RenderItem>>> Scene::getTransparentEntities()
 	{
-		std::map<int, std::map<std::string, std::vector<Entity::Ptr>>> mapping;
-		for (auto entity : rootNodes)
-		{
-			std::string name = entity->getName();
-			auto models = entity->getChildrenWithComponent<Renderable>(true);
-			for (auto m : models)
-			{
-				auto r = m->getComponent<Renderable>();
-				if (r->isEnabled() && r->getType() == RenderType::Opaque)
-				{
-					unsigned int p = r->getPriority();
-					if (mapping.find(p) == mapping.end())
-						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
-
-					auto mesh = r->getMesh();
-					auto subMeshes = mesh->getSubMeshes();
-					std::set<std::string> usedShader;
-					for (auto& s : subMeshes)
-					{
-						auto mat = s.material;
-						if (mat) // TODO: add pink debug material when it is missing
-						{
-							std::string shaderName = mat->getShaderName();
-							if (usedShader.find(shaderName) != usedShader.end())
-								continue;
-
-							auto& shaderMapping = mapping[p];
-							if (shaderMapping.find(shaderName) == shaderMapping.end())
-								shaderMapping.insert(std::make_pair(shaderName, std::vector<Entity::Ptr>()));
-							shaderMapping[shaderName].push_back(m);
-							usedShader.insert(shaderName);
-						}
-					}
-				}
-			}
-		}
-
-		std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> renderQueue;
-		for (auto [_, shaderMapping] : mapping)
-			for (auto [name, models] : shaderMapping)
-				renderQueue.push_back(std::make_pair(name, models));
-
-		return renderQueue;
-	}
-
-	std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> Scene::getTransparentEntities()
-	{
-		std::map<int, std::map<std::string, std::vector<Entity::Ptr>>> mapping;
+		std::map<int, std::map<std::string, std::vector<RenderItem>>> mapping;
 		for (auto entity : rootNodes)
 		{
 			auto models = entity->getChildrenWithComponent<Renderable>(true);
@@ -788,31 +741,34 @@ namespace pr
 				auto r = m->getComponent<Renderable>();
 				if (r->isEnabled() && r->getType() == RenderType::Transparent)
 				{
-					unsigned int p = r->getPriority();
+					uint32 p = r->getPriority();
 					if (mapping.find(p) == mapping.end())
-						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<Entity::Ptr>>()));
+						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<RenderItem>>()));
 
 					auto mesh = r->getMesh();
-					auto subMeshes = mesh->getSubMeshes();
 					std::set<std::string> usedShader;
-					for (auto& s : subMeshes)
+					for (auto& m : mesh->getSubMeshes())
 					{
-						auto mat = s.material;
+						RenderItem ri;
+						ri.subMesh = m;
+						ri.modelDesc = r->getModelDesc();
+
+						auto mat = m.material;
 						std::string shaderName = mat->getShaderName();
 						if (usedShader.find(shaderName) != usedShader.end())
 							continue;
 
 						auto& shaderMapping = mapping[p];
 						if (shaderMapping.find(shaderName) == shaderMapping.end())
-							shaderMapping.insert(std::make_pair(shaderName, std::vector<Entity::Ptr>()));
-						shaderMapping[shaderName].push_back(m);
+							shaderMapping.insert(std::make_pair(shaderName, std::vector<RenderItem>()));
+						shaderMapping[shaderName].push_back(ri);
 						usedShader.insert(shaderName);
 					}
 				}
 			}
 		}
 
-		std::vector<std::pair<std::string, std::vector<Entity::Ptr>>> renderQueue;
+		std::vector<std::pair<std::string, std::vector<RenderItem>>> renderQueue;
 		for (auto [_, shaderMapping] : mapping)
 		{
 			for (auto it = shaderMapping.rbegin(); it != shaderMapping.rend(); ++it)

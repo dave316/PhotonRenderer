@@ -377,11 +377,11 @@ namespace pr
 		{
 			for (auto e : renderQueue)
 			{
-				if (e->isActive())
-				{
-					auto r = e->getComponent<Renderable>();
-					//r->renderDepth(csmCmdBuf, shadowCSMPipeline);
-				}
+				//if (e->isActive())
+				//{
+				//	auto r = e->getComponent<Renderable>();
+				//	r->renderDepth(csmCmdBuf, shadowCSMPipeline);
+				//}
 			}
 		}
 
@@ -416,11 +416,11 @@ namespace pr
 			{
 				for (auto e : renderQueue)
 				{
-					if (e->isActive())
-					{
-						auto r = e->getComponent<Renderable>();
-						//r->renderDepth(cmdBuf, shadowOMNIPipeline);
-					}
+					//if (e->isActive())
+					//{
+					//	auto r = e->getComponent<Renderable>();
+					//	r->renderDepth(cmdBuf, shadowOMNIPipeline);
+					//}
 				}
 			}
 

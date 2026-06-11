@@ -214,11 +214,11 @@ namespace pr
 				scatterCmdBuf->bindDescriptorSets(scatterPipeline, descriptorSet, setIndex);
 			for (auto e : renderQueue)
 			{
-				if (e->isActive())
-				{
-					auto r = e->getComponent<Renderable>();
-					//r->render(scatterCmdBuf, scatterPipeline);
-				}
+				//if (e->isActive())
+				//{
+				//	auto r = e->getComponent<Renderable>();
+				//	r->render(scatterCmdBuf, scatterPipeline);
+				//}
 			}
 		}
 
