@@ -23,8 +23,6 @@ namespace pr
 		void addVariant(std::string name);
 		void setMorphWeights(std::vector<float>& weights);
 		void flipWindingOrder();
-		//void draw(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
-		//void drawDepth(GPU::CommandBuffer::Ptr cmdBuffer, GPU::GraphicsPipeline::Ptr pipeline);
 		void setDescriptor(GPU::DescriptorPool::Ptr descriptorPool);
 		void setMaterial(unsigned int index, pr::Material::Ptr material);
 		bool hasMorphTargets();

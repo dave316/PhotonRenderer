@@ -697,7 +697,7 @@ namespace pr
 						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<RenderItem>>()));
 
 					auto mesh = r->getMesh();
-					std::set<std::string> usedShader;
+					//std::set<std::string> usedShader;
 					for (auto& m : mesh->getSubMeshes())
 					{
 						RenderItem ri;
@@ -708,14 +708,14 @@ namespace pr
 						if (mat) // TODO: add pink debug material when it is missing
 						{
 							std::string shaderName = mat->getShaderName();
-							if (usedShader.find(shaderName) != usedShader.end())
-								continue;
+							//if (usedShader.find(shaderName) != usedShader.end())
+							//	continue;
 
 							auto& shaderMapping = mapping[p];
 							if (shaderMapping.find(shaderName) == shaderMapping.end())
 								shaderMapping.insert(std::make_pair(shaderName, std::vector<RenderItem>()));
 							shaderMapping[shaderName].push_back(ri);
-							usedShader.insert(shaderName);
+							//usedShader.insert(shaderName);
 						}
 					}
 				}
@@ -746,7 +746,7 @@ namespace pr
 						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<RenderItem>>()));
 
 					auto mesh = r->getMesh();
-					std::set<std::string> usedShader;
+					//std::set<std::string> usedShader;
 					for (auto& m : mesh->getSubMeshes())
 					{
 						RenderItem ri;
@@ -755,14 +755,14 @@ namespace pr
 
 						auto mat = m.material;
 						std::string shaderName = mat->getShaderName();
-						if (usedShader.find(shaderName) != usedShader.end())
-							continue;
+						//if (usedShader.find(shaderName) != usedShader.end())
+						//	continue;
 
 						auto& shaderMapping = mapping[p];
 						if (shaderMapping.find(shaderName) == shaderMapping.end())
 							shaderMapping.insert(std::make_pair(shaderName, std::vector<RenderItem>()));
 						shaderMapping[shaderName].push_back(ri);
-						usedShader.insert(shaderName);
+						//usedShader.insert(shaderName);
 					}
 				}
 			}

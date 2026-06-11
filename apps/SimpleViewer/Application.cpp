@@ -232,42 +232,42 @@ void Application::initUnitySceneNEW()
 	//scene = pr::Scene::create("scene");
 	//scene->addRoot(root);
 
-	//for (auto entity : scene->getRootNodes())
-	//{
-	//	auto name = entity->getName();
-	//	auto models = entity->getChildrenWithComponent<pr::Renderable>();
-	//	for (auto m : models)
-	//	{
-	//		auto r = m->getComponent<pr::Renderable>();
-	//		if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
-	//		{
-	//			r->setType(pr::RenderType::Opaque);
-	//			r->setPriority(1);
-	//		}
-	//		if (name.compare("3D HOUSE") == 0)
-	//		{
-	//			auto modelName = m->getName();
-	//			if (modelName.length() == 16)
-	//			{
-	//				auto prefix = m->getName().substr(0, 14);
-	//				if (prefix.compare("Glass_Exterior") == 0)
-	//				{
-	//					r->setType(pr::RenderType::Opaque);
-	//					r->setPriority(2);
-	//				}
-	//			}
-	//			else if (modelName.length() == 23)
-	//			{
-	//				auto prefix = modelName.substr(0, 21);
-	//				if (prefix.compare("Window_Glass_Interior") == 0)
-	//				{
-	//					r->setType(pr::RenderType::Opaque);
-	//					r->setPriority(2);
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
+	for (auto entity : scene->getRootNodes())
+	{
+		auto name = entity->getName();
+		auto models = entity->getChildrenWithComponent<pr::Renderable>();
+		for (auto m : models)
+		{
+			auto r = m->getComponent<pr::Renderable>();
+			if (name.compare("3D FX") == 0 && m->getName().compare("Sphere001") == 0)
+			{
+				r->setType(pr::RenderType::Opaque);
+				r->setPriority(1);
+			}
+			if (name.compare("3D HOUSE") == 0)
+			{
+				auto modelName = m->getName();
+				if (modelName.length() == 16)
+				{
+					auto prefix = m->getName().substr(0, 14);
+					if (prefix.compare("Glass_Exterior") == 0)
+					{
+						r->setType(pr::RenderType::Opaque);
+						r->setPriority(2);
+					}
+				}
+				else if (modelName.length() == 23)
+				{
+					auto prefix = modelName.substr(0, 21);
+					if (prefix.compare("Window_Glass_Interior") == 0)
+					{
+						r->setType(pr::RenderType::Opaque);
+						r->setPriority(2);
+					}
+				}
+			}
+		}
+	}
 
 	std::string assetPath = "../../../../assets";
 	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
