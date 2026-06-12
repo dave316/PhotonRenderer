@@ -212,13 +212,22 @@ namespace pr
 			scatterCmdBuf->bindPipeline(scatterPipeline);
 			for (auto&& [setIndex, descriptorSet] : descriptorSets)
 				scatterCmdBuf->bindDescriptorSets(scatterPipeline, descriptorSet, setIndex);
-			for (auto e : renderQueue)
+			for (auto renderItem : renderQueue)
 			{
-				//if (e->isActive())
-				//{
-				//	auto r = e->getComponent<Renderable>();
-				//	r->render(scatterCmdBuf, scatterPipeline);
-				//}
+				scatterCmdBuf->bindDescriptorSets(scatterPipeline, renderItem.modelDesc, 1);
+				auto m = renderItem.subMesh;
+				if (m.material)
+				{
+					if (m.material->isDoubleSided())
+						scatterCmdBuf->setCullMode(0);
+
+					m.material->bindMainMat(scatterCmdBuf, scatterPipeline);
+					m.primitive->bind(scatterCmdBuf, scatterPipeline);
+					m.primitive->draw(scatterCmdBuf);
+
+					if (m.material->isDoubleSided())
+						scatterCmdBuf->setCullMode(2);
+				}
 			}
 		}
 

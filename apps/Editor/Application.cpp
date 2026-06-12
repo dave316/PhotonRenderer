@@ -101,24 +101,24 @@ bool Application::init()
 	gui->preparePipeline(swapchain);
 	gui->addTexture(1, renderer->getFinalTex());
 		
-	//assetPath = "../../../../assets";
-	//scenes.push_back(pr::Scene::create("Scene"));
+	assetPath = "../../../../assets";
+	scenes.push_back(pr::Scene::create("Scene"));
 
-	//std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
-	//auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
-	//uint32 width = panoImg->getWidth();
-	//uint32 height = panoImg->getHeight();
-	//uint8* data = panoImg->getData();
-	//uint32 dataSize = width * height * sizeof(float) * 4;
-	//auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
-	////panoTex->createData();
-	//panoTex->upload(data, dataSize);
-	////panoTex->uploadData();
-	//auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
+	std::string envFn = assetPath + "/glTF-Sample-Environments/doge2.hdr";
+	auto panoImg = IO::ImageLoader::loadHDRFromFile(envFn);
+	uint32 width = panoImg->getWidth();
+	uint32 height = panoImg->getHeight();
+	uint8* data = panoImg->getData();
+	uint32 dataSize = width * height * sizeof(float) * 4;
+	auto panoTex = pr::Texture2D::create(width, height, GPU::Format::RGBA32F);
+	//panoTex->createData();
+	panoTex->upload(data, dataSize);
+	//panoTex->uploadData();
+	auto skybox = IBL::convertEqui2CM(panoTex, 1024, 0.0f);
 
-	//scenes[0]->setSkybox(skybox);
+	scenes[0]->setSkybox(skybox);
 
-	initUnitySceneNEW();
+	//initUnitySceneNEW();
 
 	renderer->prepare(userCamera, scenes[sceneIndex]);
 	renderer->buildCmdBuffer(scenes[sceneIndex]);

@@ -373,15 +373,23 @@ namespace pr
 		csmCmdBuf->bindDescriptorSets(shadowCSMPipeline, descriptorSetShadow, 4);
 
 		auto opaqueNodes = scene->getOpaqueEntities();
-		for (auto&& [shaderName, renderQueue] : opaqueNodes)
+		for (auto&& [_, renderQueue] : opaqueNodes)
 		{
-			for (auto e : renderQueue)
+			for (auto renderItem : renderQueue)
 			{
-				//if (e->isActive())
-				//{
-				//	auto r = e->getComponent<Renderable>();
-				//	r->renderDepth(csmCmdBuf, shadowCSMPipeline);
-				//}
+				csmCmdBuf->bindDescriptorSets(shadowCSMPipeline, renderItem.modelDesc, 1);
+				auto m = renderItem.subMesh;
+				if (m.material)
+				{
+					if (m.material->isDoubleSided())
+						csmCmdBuf->setCullMode(0);
+					m.material->bindShadowMat(csmCmdBuf, shadowCSMPipeline);
+					m.primitive->bind(csmCmdBuf, shadowCSMPipeline);
+					m.primitive->draw(csmCmdBuf);
+
+					if (m.material->isDoubleSided())
+						csmCmdBuf->setCullMode(2);
+				}
 			}
 		}
 
@@ -412,15 +420,24 @@ namespace pr
 			cmdBuf->bindDescriptorSets(shadowOMNIPipeline, descriptorSetOmniLight, 5);
 
 			auto opaqueNodes = scene->getOpaqueEntities();
-			for (auto&& [shaderName, renderQueue] : opaqueNodes)
+			for (auto&& [_, renderQueue] : opaqueNodes)
 			{
-				for (auto e : renderQueue)
+				for (auto renderItem : renderQueue)
 				{
-					//if (e->isActive())
-					//{
-					//	auto r = e->getComponent<Renderable>();
-					//	r->renderDepth(cmdBuf, shadowOMNIPipeline);
-					//}
+					cmdBuf->bindDescriptorSets(shadowOMNIPipeline, renderItem.modelDesc, 1);
+					auto m = renderItem.subMesh;
+					if (m.material)
+					{
+						if (m.material->isDoubleSided())
+							cmdBuf->setCullMode(0);
+
+						m.material->bindShadowMat(cmdBuf, shadowOMNIPipeline);
+						m.primitive->bind(cmdBuf, shadowOMNIPipeline);
+						m.primitive->draw(cmdBuf);
+
+						if (m.material->isDoubleSided())
+							cmdBuf->setCullMode(2);
+					}
 				}
 			}
 

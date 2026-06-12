@@ -34,8 +34,8 @@ bool Application::init()
 	renderer = pr::Renderer::create();
 	renderer->init(window, swapchain);
 
-	//initScene();
-	initUnitySceneNEW();
+	initScene();
+	//initUnitySceneNEW();
 
 	renderer->prepare(camera, scene);
 	renderer->buildCmdBuffer(scene, swapchain);
@@ -111,14 +111,14 @@ void Application::initScene()
 	//	}
 	//}
 
-	//auto light = pr::Light::create(pr::LightType::POINT, glm::vec3(1), 200.0f, 100.0f);
+	//auto light = pr::Light::create(pr::LightType::DIRECTIONAL, glm::vec3(1), 200.0f, 100.0f);
 	//light->setColorTemp(10000);
-	//light->setLuminousPower(1500);
-	////light->setLuminousPower(25);
+	////light->setLuminousPower(1500);
+	//light->setLuminousPower(25);
 	//mainLight = pr::Entity::create("sun", nullptr);
 	//auto t = mainLight->getComponent<pr::Transform>();
 	//mainLight->addComponent(light);
-	////t->setLocalRotation(glm::angleAxis(glm::radians(85.0f), glm::vec3(-1, 0, 0)) * glm::angleAxis(glm::radians(35.0f), glm::vec3(0, 1, 0)));
+	//t->setLocalRotation(glm::angleAxis(glm::radians(85.0f), glm::vec3(-1, 0, 0)) * glm::angleAxis(glm::radians(35.0f), glm::vec3(0, 1, 0)));
 	////t->setLocalRotation(glm::angleAxis(glm::radians(90.0f), glm::vec3(-1, 0, 0)));
 	//t->setLocalPosition(glm::vec3(0, 5, 0));
 	//scene->addRoot(mainLight);
