@@ -213,7 +213,7 @@ void Application::initUnitySceneNEW()
 {
 	pr::Light::lightForward = glm::vec3(0, 0, 1);
 
-	std::string unityAssetPath = "c:/workspace/code/Archviz/Assets";
+	std::string unityAssetPath = "C:/workspace/code/Archviz/Assets";
 	std::string unityPrefabPath = unityAssetPath + "/ArchVizPRO Interior Vol.6/3D PREFAB";
 	std::string unitySceneFile = "ArchVizPRO Interior Vol.6/3D Scene/AVP6_Desktop.unity";
 

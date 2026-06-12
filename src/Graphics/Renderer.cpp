@@ -696,25 +696,19 @@ namespace pr
 				cmdBuf->bindDescriptorSets(pipeline, descriptorSetVolume, 7);
 				cmdBuf->bindDescriptorSets(pipeline, scatter.getDescriptorSet(), 8);
 
-				for (auto [matID, renderItems] : renderQueue)
+				for (auto renderItem : renderQueue)
 				{
-					auto mat = renderItems[0].subMesh.material; // TODO: This should fetched from the asset manager using the ID!
-					if (mat)
+					cmdBuf->bindDescriptorSets(pipeline, renderItem.modelDesc, 1);
+					auto m = renderItem.subMesh;
+					if (m.material)
 					{
-						if (mat->isDoubleSided())
+						if (m.material->isDoubleSided())
 							cmdBuf->setCullMode(0);
-						mat->bindMainMat(cmdBuf, pipeline);
+						m.material->bindMainMat(cmdBuf, pipeline);
+						m.primitive->bind(cmdBuf, pipeline);
+						m.primitive->draw(cmdBuf);
 
-						for (auto ri : renderItems)
-						{
-							cmdBuf->bindDescriptorSets(pipeline, ri.modelDesc, 1);
-
-							auto prim = ri.subMesh.primitive;
-							prim->bind(cmdBuf, pipeline);
-							prim->draw(cmdBuf);
-						}
-
-						if (mat->isDoubleSided())
+						if (m.material->isDoubleSided())
 							cmdBuf->setCullMode(2);
 					}
 				}

@@ -66,7 +66,7 @@ namespace pr
 		}
 		AABB getBoundingBox();
 		std::vector<Entity::Ptr> selectModelsRaycast(glm::vec3 start, glm::vec3 end);
-		std::vector<std::pair<std::string, std::vector<std::pair<int, std::vector<RenderItem>>>>> getOpaqueEntities();
+		std::vector<std::pair<std::string, std::vector<RenderItem>>> getOpaqueEntities();
 		std::vector<std::pair<std::string, std::vector<RenderItem>>> getTransparentEntities();
 		std::vector<pr::Entity::Ptr> getRootNodes();
 		pr::TextureCubeMap::Ptr getSkybox();

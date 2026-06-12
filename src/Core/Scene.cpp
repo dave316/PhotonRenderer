@@ -682,9 +682,9 @@ namespace pr
 		return entities;
 	}
 
-	std::vector<std::pair<std::string, std::vector<std::pair<int, std::vector<RenderItem>>>>> Scene::getOpaqueEntities()
+	std::vector<std::pair<std::string, std::vector<RenderItem>>> Scene::getOpaqueEntities()
 	{
-		std::map<int, std::map<std::string, std::map<int, std::vector<RenderItem>>>> mapping;
+		std::map<int, std::map<std::string, std::vector<RenderItem>>> mapping;
 		for (auto root : rootNodes)
 		{
 			for (auto e : root->getChildrenWithComponent<Renderable>(true))
@@ -694,7 +694,7 @@ namespace pr
 				{
 					uint32 p = r->getPriority();
 					if (mapping.find(p) == mapping.end())
-						mapping.insert(std::make_pair(p, std::map<std::string, std::map<int, std::vector<RenderItem>>>()));
+						mapping.insert(std::make_pair(p, std::map<std::string, std::vector<RenderItem>>()));
 
 					auto mesh = r->getMesh();
 					for (auto& m : mesh->getSubMeshes())
@@ -704,31 +704,25 @@ namespace pr
 						ri.modelDesc = r->getModelDesc();
 
 						auto mat = m.material;
-						uint32 matID = mat->getID();
 						std::string shaderName = mat->getShaderName();
+						
 						auto& shaderMapping = mapping[p];
 						if (shaderMapping.find(shaderName) == shaderMapping.end())
-							shaderMapping.insert(std::make_pair(shaderName, std::map<int, std::vector<RenderItem>>()));
-						auto& materialMapping = shaderMapping[shaderName];
-						if (materialMapping.find(matID) == materialMapping.end())
-							materialMapping.insert(std::make_pair(matID, std::vector<RenderItem>()));
-						materialMapping[matID].push_back(ri);
+							shaderMapping.insert(std::make_pair(shaderName, std::vector<RenderItem>()));
+						shaderMapping[shaderName].push_back(ri);
 					}
 				}
 			}
 		}
 
-		std::vector<std::pair<std::string, std::vector<std::pair<int, std::vector<RenderItem>>>>> renderQueue;
+		std::vector<std::pair<std::string, std::vector<RenderItem>>> renderQueue;
 		for (auto [_, shaderMapping] : mapping)
 		{
-			for (auto [name, materialMapping] : shaderMapping)
+			for (auto it = shaderMapping.rbegin(); it != shaderMapping.rend(); ++it)
 			{
-				//renderQueue.push_back(std::make_pair(name, std::vector<std::pair<int, std::vector<RenderItem>>>()));
-				std::vector<std::pair<int, std::vector<RenderItem>>> materials;
-				for (auto [id, models] : materialMapping)
-					materials.push_back(std::make_pair(id, models));
-
-				renderQueue.push_back(std::make_pair(name, materials));
+				auto name = it->first;
+				auto models = it->second;
+				renderQueue.push_back(std::make_pair(name, models));
 			}
 		}
 

@@ -264,8 +264,22 @@ namespace pr
 			if (m->isActive())
 			{
 				auto r = m->getComponent<Renderable>();
-				auto t = m->getComponent<Transform>();
-				//r->render(cmdBuf, unlitPipeline);
+				auto mesh = r->getMesh();
+				for (auto& m : mesh->getSubMeshes())
+				{
+					cmdBuf->bindDescriptorSets(unlitPipeline, r->getModelDesc(), 1);
+					if (m.material)
+					{
+						if (m.material->isDoubleSided())
+							cmdBuf->setCullMode(0);
+						m.material->bindMainMat(cmdBuf, unlitPipeline);
+						m.primitive->bind(cmdBuf, unlitPipeline);
+						m.primitive->draw(cmdBuf);
+
+						if (m.material->isDoubleSided())
+							cmdBuf->setCullMode(2);
+					}
+				}
 			}
 		}
 
@@ -284,8 +298,22 @@ namespace pr
 			if (m->isActive())
 			{
 				auto r = m->getComponent<Renderable>();
-				auto t = m->getComponent<Transform>();
-				//r->render(cmdBuf, unlitPipelineStencil);
+				auto mesh = r->getMesh();
+				for (auto& m : mesh->getSubMeshes())
+				{
+					cmdBuf->bindDescriptorSets(unlitPipelineStencil, r->getModelDesc(), 1);
+					if (m.material)
+					{
+						if (m.material->isDoubleSided())
+							cmdBuf->setCullMode(0);
+						m.material->bindMainMat(cmdBuf, unlitPipelineStencil);
+						m.primitive->bind(cmdBuf, unlitPipelineStencil);
+						m.primitive->draw(cmdBuf);
+
+						if (m.material->isDoubleSided())
+							cmdBuf->setCullMode(2);
+					}
+				}
 			}
 		}
 
