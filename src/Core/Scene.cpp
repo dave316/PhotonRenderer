@@ -701,6 +701,7 @@ namespace pr
 					{
 						RenderItem ri;
 						ri.subMesh = m;
+						ri.skin = r->getSkin();
 						ri.modelDesc = r->getModelDesc();
 
 						auto mat = m.material;
@@ -748,6 +749,7 @@ namespace pr
 					{
 						RenderItem ri;
 						ri.subMesh = m;
+						ri.skin = r->getSkin();
 						ri.modelDesc = r->getModelDesc();
 
 						auto mat = m.material;

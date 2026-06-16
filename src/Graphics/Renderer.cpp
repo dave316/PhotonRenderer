@@ -699,6 +699,8 @@ namespace pr
 				for (auto renderItem : renderQueue)
 				{
 					cmdBuf->bindDescriptorSets(pipeline, renderItem.modelDesc, 1);
+					if (renderItem.skin)
+						renderItem.skin->bind(cmdBuf, pipeline);
 					auto m = renderItem.subMesh;
 					if (m.material)
 					{
@@ -760,6 +762,8 @@ namespace pr
 					for (auto renderItem : renderQueue)
 					{
 						cmdBuf->bindDescriptorSets(pipeline, renderItem.modelDesc, 1);
+						if (renderItem.skin)
+							renderItem.skin->bind(cmdBuf, pipeline);
 						auto m = renderItem.subMesh;
 						if (m.material)
 						{

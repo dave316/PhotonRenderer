@@ -20,6 +20,7 @@ namespace pr
 	struct RenderItem
 	{
 		SubMesh subMesh;
+		Skin::Ptr skin = nullptr;
 		GPU::DescriptorSet::Ptr modelDesc;
 	};
 
