@@ -447,10 +447,9 @@ namespace pr
 		//currentVariant = (++currentVariant) % numVariants;
 		//auto rootNodes = scene->getRootNodes();
 
-		// TODO: FIX!!!!
-		//for (auto root : rootNodes)
-		//	for (auto r : root->getComponentsInChildren<Renderable>())
-		//		r->switchVariant(index);
+		for (auto root : rootNodes)
+			for (auto r : root->getComponentsInChildren<Renderable>())
+				r->switchVariant(index);
 	}
 
 	void Scene::switchAnimation(int index)
