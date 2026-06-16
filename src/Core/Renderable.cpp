@@ -14,10 +14,11 @@ namespace pr
 		for (auto& s : subMeshes)
 		{
 			auto mat = s.material;
-			if (mat->isTransmissive())
+			if (mat->isTransmissive() || mat->isTransparent())
 				this->type = RenderType::Transparent;
-			if (mat->isTransparent())
-				priority = 1;
+			// TODO: fix the priority
+			//if (mat->isTransparent())
+			//	priority = 1;
 		}
 
 		//auto& ctx = GraphicsContext::getInstance();
