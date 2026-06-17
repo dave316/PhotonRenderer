@@ -163,17 +163,17 @@ namespace IO
 
 		bool Importer::checkExtensions(const json::Document& doc)
 		{
-			// TODO: check required extensions
-			if (doc.HasMember("extensionsUsed"))
-			{
-				auto extensionsNode = doc.FindMember("extensionsUsed");
-				for (auto& extNode : extensionsNode->value.GetArray())
-				{
-					std::string extension(extNode.GetString());
-					if (supportedExtensions.find(extension) == supportedExtensions.end())
-						std::cout << "extension " << extension << " not supported" << std::endl;
-				}
-			}
+			//// TODO: check required extensions
+			//if (doc.HasMember("extensionsUsed"))
+			//{
+			//	auto extensionsNode = doc.FindMember("extensionsUsed");
+			//	for (auto& extNode : extensionsNode->value.GetArray())
+			//	{
+			//		std::string extension(extNode.GetString());
+			//		if (supportedExtensions.find(extension) == supportedExtensions.end())
+			//			std::cout << "extension " << extension << " not supported" << std::endl;
+			//	}
+			//}
 
 			if (doc.HasMember("extensionsRequired"))
 			{
