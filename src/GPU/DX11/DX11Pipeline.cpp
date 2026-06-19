@@ -9,8 +9,6 @@ unsigned int DX11::GraphicsPipeline::globalIDCount = 0;
 
 namespace DX11
 {
-
-
 	DXGI_FORMAT getVertexFormat(GPU::VertexAttribFormat vertexFormat)
 	{
 		DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
