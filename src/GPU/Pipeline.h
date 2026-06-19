@@ -54,6 +54,13 @@ namespace GPU
 		}
 	};
 
+	struct GraphicsPipelineConfig
+	{
+		bool depthTestEnabled = true;
+		bool depthWriteEnabled = true;
+		bool stencilTestEnabled = false;
+	};
+
 	class GraphicsPipeline
 	{
 	public:
