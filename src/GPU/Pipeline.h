@@ -54,11 +54,19 @@ namespace GPU
 		}
 	};
 
+	struct BlendState
+	{
+		int blendFunc;
+		int blendOp;
+		int blendAttachment;
+	};
+
 	struct GraphicsPipelineConfig
 	{
 		bool depthTestEnabled = true;
 		bool depthWriteEnabled = true;
 		bool stencilTestEnabled = false;
+		
 	};
 
 	class GraphicsPipeline
