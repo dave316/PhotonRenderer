@@ -54,6 +54,26 @@ namespace GPU
 		}
 	};
 
+	struct StencilOpState
+	{
+		// TODO: need StencilOP not compare op!
+		CompareOp stencilFailOp = CompareOp::Always;
+		CompareOp stencilPassOp = CompareOp::Always;
+		CompareOp stencilDepthFailOp = CompareOp::Always;
+		CompareOp compareOp = CompareOp::Always;
+
+	};
+
+	struct DepthStencilState
+	{
+		bool depthTestEnable = false;
+		bool depthWriteEnable = false;
+		CompareOp depthCompareOp = CompareOp::Always;
+		bool stencilTestEnable = false;
+		
+
+	};
+
 	struct BlendState
 	{
 		int blendFunc;
