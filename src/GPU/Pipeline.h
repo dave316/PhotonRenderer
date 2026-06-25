@@ -61,7 +61,9 @@ namespace GPU
 		CompareOp stencilPassOp = CompareOp::Always;
 		CompareOp stencilDepthFailOp = CompareOp::Always;
 		CompareOp compareOp = CompareOp::Always;
-
+		uint32 compareMask = 0xFFFF;
+		uint32 writeMask = 0xFFFF;
+		uint32 reference
 	};
 
 	struct DepthStencilState
@@ -69,9 +71,10 @@ namespace GPU
 		bool depthTestEnable = false;
 		bool depthWriteEnable = false;
 		CompareOp depthCompareOp = CompareOp::Always;
-		bool stencilTestEnable = false;
-		
 
+		bool stencilTestEnable = false;
+		StencilOpState front;
+		StencilOpState back;
 	};
 
 	struct BlendState
