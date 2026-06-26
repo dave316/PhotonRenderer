@@ -122,9 +122,9 @@ namespace IO
 				{
 					//tex->createData();
 					//tex->uploadData();
-					tex->generateMipmaps();
-					tex->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
-					tex->setAddressMode(GPU::AddressMode::Repeat);
+					//tex->generateMipmaps();
+					//tex->setFilter(GPU::Filter::LinearMipmapLinear, GPU::Filter::Linear);
+					//tex->setAddressMode(GPU::AddressMode::Repeat);
 				}
 				//else
 				//{

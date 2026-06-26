@@ -260,8 +260,9 @@ namespace pr
 				}
 				case pr::GraphicsAPI::Vulkan:
 				{
-					guiPipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/gui.vert.spv"), GPU::ShaderStage::Vertex);
-					guiPipeline->addShaderStage(loadTxtFile(shaderPath + "/Utils/gui.frag.spv"), GPU::ShaderStage::Fragment);					
+					std::string shaderPath = "../../../../cache/shaders/spv";
+					guiPipeline->addShaderStage(loadTxtFile(shaderPath + "/gui.vert.spv"), GPU::ShaderStage::Vertex);
+					guiPipeline->addShaderStage(loadTxtFile(shaderPath + "/gui.frag.spv"), GPU::ShaderStage::Fragment);					
 					break;
 				}
 			}

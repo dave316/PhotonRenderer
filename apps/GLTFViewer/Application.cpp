@@ -15,7 +15,7 @@ using namespace std::chrono;
 using namespace std::placeholders;
 
 Application::Application(const char* title, unsigned int width, unsigned int height) :
-	api(pr::GraphicsAPI::OpenGL),
+	api(pr::GraphicsAPI::Vulkan),
 	eventHandler(Win32EventHandler::instance()),
 	context(pr::GraphicsContext::getInstance())
 {

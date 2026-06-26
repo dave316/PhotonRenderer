@@ -953,10 +953,10 @@ namespace pr
 	{
 		if (updated)
 		{
-			shadows.updateShadowsCSM(0, scene);
-			shadows.updateShadowsOMNI(scene);
+			//shadows.updateShadowsCSM(0, scene);
+			//shadows.updateShadowsOMNI(scene);
 			scatter.flush();			
-			volumes.updateVolumes(scene);
+			//volumes.updateVolumes(scene);
 			updated = false;
 		}
 	}

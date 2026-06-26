@@ -9,4 +9,5 @@ void main()
 {
 	texCoord0 = vTexCoord0;
 	gl_Position = vec4(vPosition, 1.0);
+	gl_Position.y = -gl_Position.y;
 }

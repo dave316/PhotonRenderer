@@ -63,7 +63,7 @@ namespace GPU
 		CompareOp compareOp = CompareOp::Always;
 		uint32 compareMask = 0xFFFF;
 		uint32 writeMask = 0xFFFF;
-		uint32 reference
+		uint32 reference;
 	};
 
 	struct DepthStencilState
