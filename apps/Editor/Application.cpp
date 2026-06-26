@@ -82,7 +82,7 @@ Application::~Application()
 
 bool Application::init()
 {
-	api = pr::GraphicsAPI::OpenGL;
+	api = pr::GraphicsAPI::Vulkan;
 	context.init(api, window);
 
 	std::string assetPath = "C:/workspace/code/TestProject";

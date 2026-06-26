@@ -175,7 +175,7 @@ namespace VK
 		activeInstanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 		activeInstanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 
-		std::vector<const char*> requestedValidationLayers;
+		std::vector<const char*> requestedValidationLayers = requiredValidationLayers;
 
 		vk::ApplicationInfo app;
 		app.pApplicationName = "SimpleViewer";
